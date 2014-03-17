@@ -1,0 +1,8 @@
+# Define the goal
+string table_id  # Specify which table you want to observe
+---
+# Define the result
+uint32 status_code
+---
+# Define a feedback message
+float32 percent_complete
