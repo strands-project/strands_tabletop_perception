@@ -1,0 +1,44 @@
+<!-- Launch extraction of planes and table detection together with visualization -->
+<launch>
+
+    <!-- The topic of the input cloud to segment into planes and detect tables -->
+    <arg name="cloud" value="/cloud_pcd"/>
+    <!-- The topic to publish the resulting found tables on -->
+    <arg name="table_topic" value="/tables"/>
+    <!-- The topic to publish the resulting found planes on -->
+    <arg name="primitive_topic" value="/primitives"/>
+
+    <!-- Launch the primitive extraction, only extract planes -->
+    <include file="$(find primitive_extraction)/launch/extraction.launch">
+        <arg name="cloud" value="$(arg cloud)"/>
+        <arg name="primitive_topic" value="$(arg primitive_topic)"/>
+        <arg name="extract_cylinders" value="false"/>
+        <arg name="extract_spheres" value="false"/>
+    </include>
+    
+    <!-- Launch the table detection working on the extracted planes -->
+    <node pkg="table_detection" type="detection" name="detection" output="screen">
+        <!-- Minimum and maximum height of a table plane -->
+        <param name="min_height" type="double" value="0.55"/>
+        <param name="max_height" type="double" value="1.1"/>
+        <!-- Maximum deviation of table normal from straight up -->
+        <param name="max_angle" type="double" value="0.25"/>
+        <!-- Minimum ratio of shortest side divided by longest side -->
+        <param name="min_side_ratio" type="double" value="0.25"/>
+        <!-- Minimum area of table plane -->
+        <param name="min_area" type="double" value="0.3"/>
+        <param name="input" type="string" value="/primitives"/>
+        <param name="output" type="string" value="$(arg table_topic)"/>
+    </node>
+    
+    <!-- Visualize the extracted tables with a marker array -->
+    <node pkg="primitive_extraction" type="primitives_to_markers" name="tables_to_markers" output="screen">
+        <param name="input" type="string" value="$(arg table_topic)"/>
+        <param name="output" type="string" value="/table_marker_array"/>
+        <param name="display_plane_box" type="bool" value="false"/>
+        <param name="plane_r" type="double" value="0.0"/>
+        <param name="plane_g" type="double" value="0.0"/>
+        <param name="plane_b" type="double" value="1.0"/>
+    </node>
+
+</launch>
