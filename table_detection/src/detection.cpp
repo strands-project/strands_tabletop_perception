@@ -2,8 +2,8 @@
 
 #include "ros/ros.h"
 
-#include "primitive_extraction/primitive.h"
-#include "primitive_extraction/primitive_array.h"
+#include "primitive_extraction/Primitive.h"
+#include "primitive_extraction/PrimitiveArray.h"
 
 #include <Eigen/Dense>
 
@@ -32,16 +32,16 @@ double compute_plane_area(std::vector<geometry_msgs::Point>& hull)
     return area;
 }
 
-void callback(const primitive_extraction::primitive_array::ConstPtr& msg)
+void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
 {
     
     std::cout << "Tjena!" << std::endl;
     int n = msg->primitives.size();
-    primitive_extraction::primitive_array tables;
+    primitive_extraction::PrimitiveArray tables;
     tables.camera_frame = msg->camera_frame;
     
     for (int i = 0; i < n; ++i) {
-        primitive_extraction::primitive p = msg->primitives[i];
+        primitive_extraction::Primitive p = msg->primitives[i];
         
         /*std::cout << p.params[2] << std::endl;
         std::cout << p.params[3] << std::endl;
@@ -116,7 +116,7 @@ int main(int argc, char** argv)
 	ros::Subscriber sub = n.subscribe(input, 1, callback);
 	std::string output;
 	pn.param<std::string>("output", output, std::string("/tables"));
-	pub = n.advertise<primitive_extraction::primitive_array>(output, 1);
+	pub = n.advertise<primitive_extraction::PrimitiveArray>(output, 1);
     
     ros::spin();
     
