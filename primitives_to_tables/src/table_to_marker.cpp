@@ -15,6 +15,10 @@ double color_b;
 
 void write_marker(visualization_msgs::Marker& marker, const strands_perception_msgs::Table& table)
 {
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.header.frame_id = table.header.frame_id;
+    marker.header.stamp = ros::Time();
+    marker.ns = "my_namespace"; // what's this for?
     marker.type = visualization_msgs::Marker::LINE_STRIP;
     marker.pose.position.x = 0.0;
     marker.pose.position.y = 0.0;
@@ -54,11 +58,8 @@ void write_marker(visualization_msgs::Marker& marker, const strands_perception_m
 void callback(const strands_perception_msgs::Table::ConstPtr& msg)
 {
     visualization_msgs::Marker marker;
-    marker.header.frame_id = msg->header.frame_id;
-    marker.header.stamp = ros::Time();
-    marker.ns = "my_namespace"; // what's this for?
+    write_marker(marker, *msg);
     marker.id = 1; // solve this later by looking at database, table_id
-    marker.action = visualization_msgs::Marker::ADD;
     pub.publish(marker);
 }
 
