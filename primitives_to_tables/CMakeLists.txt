@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   message_generation
   strands_perception_msgs
+  visualization_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -106,13 +107,19 @@ include_directories(
 
 ## Declare a cpp executable
 add_executable(primitives_to_tables src/primitives_to_tables.cpp)
+add_executable(table_to_marker src/table_to_marker.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(primitives_to_tables primitive_extraction_generate_messages_cpp strands_perception_msgs_generate_messages_cpp)
+add_dependencies(table_to_marker strands_perception_msgs_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(primitives_to_tables
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(table_to_marker
   ${catkin_LIBRARIES}
 )
 
