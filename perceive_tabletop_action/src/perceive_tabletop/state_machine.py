@@ -36,10 +36,12 @@ class PerceiveTabletopSM(smach.StateMachine):
                                                     'preempted'],
                                                     input_keys=['goal'])
 
-        inf_radius = rospy.get_param('inflation_radius', '0.7')
         
-        #polygon = [[1.2,0.5],[-4.6,0.05],[-3.5,-6.0],[1.5,-6.0]]
-        polygon = [[-1.0,0.0],[4.0,0.0],[4.0,-4.0],[-1.0,-4.0]]
+
+        #polygon = [[-1.0,0.0],[4.0,0.0],[4.0,-4.0],[-1.0,-4.0]]
+
+        # table in TUM kitchen in map frame coordinates
+        polygon = [[0.8,-1.5],[1.4,-1.5],[1.4,-3.7],[0.8,-3.7]]
         rospy.loginfo('Polygon: %s', polygon)
         points = []
         for point in polygon:
@@ -50,27 +52,39 @@ class PerceiveTabletopSM(smach.StateMachine):
         self.userdata.sm_table_area = poly
         self.userdata.sm_table_pose = []
 
+        self.userdata.sm_action_completed = False
+
         self._action_monitor  = ActionMonitor()
-        self._view_planning   = ViewPlanning(float(inf_radius))
-        self._perception      = PerceptionSim()
-        
+        self._view_planning   = ViewPlanning()
+
+        robot = rospy.get_param('robot', 'sim')
+
+        if robot == 'real':
+            self._perception = PerceptionReal()
+        else: # 'sim'
+            self._perception = PerceptionSim()
+
         
         with self:
              smach.StateMachine.add('ActionMonitor', self._action_monitor, 
-                                    transitions={'succeeded':'ViewPlanning',
+                                    transitions={'succeeded': 'succeeded',
+                                                 'action_in_progress':'ViewPlanning',
                                                  'aborted':'aborted',
                                                  'preempted':'preempted'},
-                                    remapping={'obj_list':'sm_obj_list'})
+                                    remapping={'obj_list':'sm_obj_list',
+                                               'action_completed':'sm_action_completed'})
 
              smach.StateMachine.add('ViewPlanning', self._view_planning, 
                                     transitions={'succeeded':'Navigation',
+                                                 'action_completed':'ActionMonitor',
                                                  'aborted':'aborted',
                                                  'preempted':'preempted'},
                                     remapping={'obj_list':'sm_obj_list',
                                                'table_pose':'sm_table_pose',
                                                'table_area':'sm_table_area',
                                                'pose_output':'sm_pose_data',
-                                               'view_list':'sm_view_list'})
+                                               'view_list':'sm_view_list',
+                                               'action_completed':'sm_action_completed'})
              
              # The navigation is realized via Move Base directly
              # TODO: replace with monitored navigation in strands_navigation
