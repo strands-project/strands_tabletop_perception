@@ -21,6 +21,7 @@ using namespace octomap;
 
 #define ANGLE_MAX_DIFF (M_PI / 8)  
 
+
 struct WeightComparator
 {
   const std::vector<float> & value_vector;
@@ -407,17 +408,20 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
       sp_octree = extract_supporting_planes(octree);
     }
   
-  // Weight voxels according to distribution (uniform, QSR) 
   std::vector<OcTreeKey> keys; 
-  std::vector<point3d> coords; 
-  std::vector<int> voxel_weights;
+  std::map<int,int> key_idx_count;
+ 
+  std::vector< std::vector<OcTreeKey > > keys_at_pose(req.goals.poses.size());
+  //std::vector<point3d> coords;
+    
+  int VOXEL_WEIGHT = 1.0;
 
   std::vector<float> pose_weights;
   // init weights
   for( std::vector<geometry_msgs::Pose>::const_iterator it = req.goals.poses.begin(); 
        it!=req.goals.poses.end(); ++it)
     {
-      pose_weights.push_back(1.0);
+      pose_weights.push_back(VOXEL_WEIGHT);
     } 
 
   int max_weight = 0;
@@ -437,9 +441,7 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
             }
 
           keys.push_back(key);
-          coords.push_back(p3d);
-          
-          int weight = 1;
+          key_idx_count.insert( std::pair<int,int>(keys.size() - 1, 0) );
 
           // Check for all poses whether current voxel is in frustum
           int i = 0;
@@ -457,7 +459,7 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
               // BEGIN VISIBILITY
               // TODO: use ROS parameters
               float SENSOR_HEIGHT = 1.7; 
-              float SENSOR_RANGE = 4.0;
+              float SENSOR_RANGE = 3.0;
               
               float ox = (*it).position.x;
               float oy = (*it).position.y;
@@ -475,7 +477,8 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
 
               if ( voxel_in_frustum(p3d,*it) )
                 {                  
-                  pose_weights[i] += weight;
+                  pose_weights[i] += VOXEL_WEIGHT;
+                  keys_at_pose[i].push_back(key);
                 }
               i++;
             }
@@ -500,17 +503,71 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
 
   ROS_INFO("Sorted goal poses:");
   int i = 0;
+
+  int   coverage_idx = 0; 
+  float coverage_total = 0.0;
+  float coverage_avg = 0.0;
+
   for( std::vector<int>::const_iterator it = pose_indices.begin(); 
        it!=pose_indices.end(); ++it) 
     {
       ROS_INFO("%i POSE (%f,%f), WEIGHT %f", i, req.goals.poses[(*it)].position.x, req.goals.poses[(*it)].position.y, pose_weights[i]);
       res.sorted_goals.poses.push_back(req.goals.poses[(*it)]);
+
+      if (coverage_total < req.coverage_total || coverage_avg < req.coverage_avg)
+        {
+          // calculate coverage of views
+          
+          for (std::vector<OcTreeKey>::iterator kapit =  keys_at_pose[*it].begin(); kapit !=  keys_at_pose[*it].end(); ++kapit)
+            {
+              int kidx;
+              std::vector<OcTreeKey>::iterator kit;
+              for (kit =  keys.begin(), kidx = 0; kit !=  keys.end(); ++kit, ++kidx)
+                {
+                  if (*kapit == *kit)
+                    {
+                      key_idx_count[kidx] += 1;
+                      continue;
+                    }
+                  
+                }
+            }
+          
+          // check total coverage and average coverage per voxel
+          int voxels_all = 0;
+          int voxels_covered = 0;
+          int voxels_viewcount = 0;
+
+          std::map<int,int>::iterator mit;
+          
+          for (mit=key_idx_count.begin(); mit!=key_idx_count.end(); ++mit)
+            {
+              voxels_all++;
+
+              if (mit->second > 0)
+                {
+                  voxels_covered++;
+                  voxels_viewcount += mit->second;
+                }
+            }
+   
+          coverage_total = (float) voxels_covered /  (float) voxels_all;
+          coverage_avg =   (float) voxels_viewcount / (float) voxels_covered;
+          coverage_idx++;
+        }
+
       i++;
     }
+  // TODO: if coverage cannot be reached -> re-sample
 
   // Send responce
   res.weights = pose_weights;
- 
+  
+  res.coverage_idx = coverage_idx;
+  res.coverage_total = coverage_total;
+  res.coverage_avg = coverage_avg;
+  ROS_INFO("Coverage - index: %i, total: %f, avg: %f", res.coverage_idx, res.coverage_total, res.coverage_avg);
+  
   ROS_INFO("Finished evaluation. Sending back response ...");
   return true;
 }

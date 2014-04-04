@@ -57,7 +57,8 @@ class ViewPlanning(smach.State):
             inf_radius       = float(rospy.get_param('inflation_radius', '0.7'))
             inf_radius_coeff = float(rospy.get_param('inflation_radius_coeff', '1.5'))
 
-            coverage = float(rospy.get_param('coverage', '0.9'))
+            coverage_total = float(rospy.get_param('coverage_total', '0.8'))
+            coverage_avg = float(rospy.get_param('coverage_avg', '2.0'))
             
             # TODO: compute area in proximity to table given table_pose and table_area
             table_pose = userdata.table_pose
@@ -96,7 +97,7 @@ class ViewPlanning(smach.State):
             # TODO: sample once, order views, use views on agenda (only re-sample if necessary)
             nav_goals_resp = self.nav_goals(num_of_nav_goals, inf_radius, poly)
 
-            nav_goals_eval_resp = self.nav_goals_eval(nav_goals_resp.goals, polygon, coverage)
+            nav_goals_eval_resp = self.nav_goals_eval(nav_goals_resp.goals, polygon, coverage_total, coverage_avg)
 
             self.delete_markers()            
             markerArray = MarkerArray()
