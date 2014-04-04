@@ -47,10 +47,21 @@ class ViewPlanning(smach.State):
         # visualizing nav goals in RVIZ
         self.pubmarker = rospy.Publisher('supporting_planes_poses', MarkerArray)
         self.marker_len = 0
+
+        self.agenda = []
+        self.current_pose = 0
      
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
+
+        if self.current_pose < len(self.agenda):
+            userdata.pose_output = self.agenda[self.current_pose]
+            userdata.view_list = [[0.0,0.5]] # ,[0.5,0.5],[-0.5,0.5]]
+            self.current_pose += 1
+            return 'succeeded'
+
+        # otherwise re-sample new goals
         try:
 
             num_of_nav_goals =   int(rospy.get_param('num_of_nav_goals', '100'))
@@ -112,10 +123,14 @@ class ViewPlanning(smach.State):
             self.marker_len =  len(markerArray.markers)
             self.pubmarker.publish(markerArray)
                 
-            rospy.loginfo("Best pose: (%s,%s)", nav_goals_eval_resp.sorted_goals.poses[0].position.x,nav_goals_eval_resp.sorted_goals.poses[0].position.y )
-            
-            userdata.pose_output = nav_goals_eval_resp.sorted_goals.poses[0]
+            self.current_pose = 0
+            for i in range(0, nav_goals_eval_resp.coverage_idx):
+                self.agenda.append(nav_goals_eval_resp.sorted_goals.poses[i])
 
+
+            rospy.loginfo("Next pose: (%s,%s)", nav_goals_eval_resp.sorted_goals.poses[self.current_pose].position.x,nav_goals_eval_resp.sorted_goals.poses[self.current_pose].position.y )
+            
+            userdata.pose_output = self.agenda[self.current_pose]
             # TODO: sample PTU poses
             userdata.view_list = [[0.0,0.5]] # ,[0.5,0.5],[-0.5,0.5]]
 
