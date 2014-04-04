@@ -7,13 +7,20 @@ class ActionMonitor(smach.State):
 
     def __init__(self):
         smach.State.__init__(self,
-                             outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=['goal'],
-                             output_keys=['goal'],
+                             outcomes=['succeeded','action_in_progress', 'aborted', 'preempted'],
+                             input_keys=['goal','action_completed'],
+                             output_keys=['goal','action_completed'],
                              )
                                                   
     def execute(self, userdata):
-        return 'succeeded'
+
+        if userdata.action_completed == True:
+            userdata.action_completed = False
+            return 'succeeded'
+
+        return 'action_in_progress'
+        
+
     
         # action_server_name=userdata.goal.action_server
         # action_client= actionlib.SimpleActionClient(action_server_name, MoveBaseAction)

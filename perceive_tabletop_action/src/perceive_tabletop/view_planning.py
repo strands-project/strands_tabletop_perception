@@ -26,9 +26,9 @@ class ViewPlanning(smach.State):
     def __init__(self):
 
         smach.State.__init__(self,
-                             outcomes=['succeeded', 'aborted', 'preempted'],
+                             outcomes=['succeeded', 'aborted', 'preempted', 'action_completed'],
                              input_keys=['table_pose','table_area'],
-                             output_keys=['pose_output','view_list'])
+                             output_keys=['pose_output','view_list', 'action_completed'])
 
 
 
@@ -58,7 +58,11 @@ class ViewPlanning(smach.State):
         if self.current_pose < len(self.agenda):
             userdata.pose_output = self.agenda[self.current_pose]
             userdata.view_list = [[0.0,0.5]] # ,[0.5,0.5],[-0.5,0.5]]
+            userdata.action_completed = False
             self.current_pose += 1
+            if self.current_pose == len(self.agenda):
+                userdata.action_completed = True
+                return 'action_completed'
             return 'succeeded'
 
         # otherwise re-sample new goals
