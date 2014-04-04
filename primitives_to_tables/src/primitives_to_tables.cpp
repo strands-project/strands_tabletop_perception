@@ -5,14 +5,16 @@
 #include "primitive_extraction/Primitive.h"
 #include "primitive_extraction/PrimitiveArray.h"
 #include "strands_perception_msgs/Table.h"
+#include "table_tracking.h"
 
 #include <Eigen/Dense>
 
 ros::Publisher pub;
+boost::shared_ptr<table_tracking> t;
+//std::auto_ptr??
 
 void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
 {
-    
     for (int i = 0; i < msg->primitives.size(); ++i) {
         strands_perception_msgs::Table table;
         primitive_extraction::Primitive primitive = msg->primitives[i];
@@ -24,6 +26,7 @@ void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
             table.tabletop.points[j].y = primitive.points[j].y;
             table.tabletop.points[j].z = primitive.points[j].z;
         }
+        t->add_detected_table(table);
         pub.publish(table);
     }
 }
@@ -32,6 +35,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "primitives_to_tables");
     ros::NodeHandle n;
+    t = boost::shared_ptr<table_tracking>(new table_tracking(n));
     
     ros::NodeHandle pn("~");
 	std::string input;

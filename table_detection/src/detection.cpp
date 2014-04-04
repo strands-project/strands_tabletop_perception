@@ -23,6 +23,7 @@ double compute_plane_area(std::vector<geometry_msgs::Point>& hull)
         Eigen::Vector2d p1(hull[i].x, hull[i].y);
         Eigen::Vector2d p2(hull[i+1].x, hull[i+1].y);
         // calculate area by Heron's formula
+        // this can be done by det as in table_tracking
         double a = (p1-p0).norm();
         double b = (p2-p0).norm();
         double c = (p2-p1).norm();

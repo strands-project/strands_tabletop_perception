@@ -10,12 +10,15 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   strands_perception_msgs
   visualization_msgs
+  ros_datacentre_cpp_client
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
+
+find_package(Boost REQUIRED COMPONENTS system thread program_options filesystem)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -101,9 +104,12 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(table_detection
-#   src/${PROJECT_NAME}/table_detection.cpp
-# )
+add_library(octave_convenience
+  src/octave_convenience.cpp
+)
+add_library(table_tracking
+  src/table_tracking.cpp
+)
 
 ## Declare a cpp executable
 add_executable(primitives_to_tables src/primitives_to_tables.cpp)
@@ -115,7 +121,16 @@ add_dependencies(primitives_to_tables primitive_extraction_generate_messages_cpp
 add_dependencies(table_to_marker strands_perception_msgs_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
+target_link_libraries(table_tracking
+  mongoclient
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  octave_convenience
+  ${catkin_LIBRARIES}
+)
+
 target_link_libraries(primitives_to_tables
+  table_tracking
   ${catkin_LIBRARIES}
 )
 

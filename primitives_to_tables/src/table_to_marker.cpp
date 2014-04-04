@@ -4,6 +4,7 @@
 
 #include "strands_perception_msgs/Table.h"
 
+#include <boost/lexical_cast.hpp>
 #include "visualization_msgs/Marker.h"
 
 #include <Eigen/Dense>
@@ -15,6 +16,8 @@ double color_b;
 
 void write_marker(visualization_msgs::Marker& marker, const strands_perception_msgs::Table& table)
 {
+    std::cout << "Table id: " << table.table_id << std::endl;
+    marker.id = boost::lexical_cast<int>(table.table_id); // solve this later by looking at database, table_id
     marker.action = visualization_msgs::Marker::ADD;
     marker.header.frame_id = table.header.frame_id;
     marker.header.stamp = ros::Time();
@@ -59,7 +62,6 @@ void callback(const strands_perception_msgs::Table::ConstPtr& msg)
 {
     visualization_msgs::Marker marker;
     write_marker(marker, *msg);
-    marker.id = 1; // solve this later by looking at database, table_id
     pub.publish(marker);
 }
 
