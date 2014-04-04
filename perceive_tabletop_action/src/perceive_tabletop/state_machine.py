@@ -36,10 +36,12 @@ class PerceiveTabletopSM(smach.StateMachine):
                                                     'preempted'],
                                                     input_keys=['goal'])
 
-        inf_radius = rospy.get_param('inflation_radius', '0.7')
         
-        #polygon = [[1.2,0.5],[-4.6,0.05],[-3.5,-6.0],[1.5,-6.0]]
-        polygon = [[-1.0,0.0],[4.0,0.0],[4.0,-4.0],[-1.0,-4.0]]
+
+        #polygon = [[-1.0,0.0],[4.0,0.0],[4.0,-4.0],[-1.0,-4.0]]
+
+        # table in TUM kitchen in map frame coordinates
+        polygon = [[0.8,-1.5],[1.4,-1.5],[1.4,-3.7],[0.8,-3.7]]
         rospy.loginfo('Polygon: %s', polygon)
         points = []
         for point in polygon:
@@ -51,7 +53,7 @@ class PerceiveTabletopSM(smach.StateMachine):
         self.userdata.sm_table_pose = []
 
         self._action_monitor  = ActionMonitor()
-        self._view_planning   = ViewPlanning(float(inf_radius))
+        self._view_planning   = ViewPlanning()
         self._perception      = PerceptionSim()
         
         

@@ -4,9 +4,13 @@ import smach
 import smach_ros
 import json
 import math
+import sys
+
+from geometry_msgs.msg import Polygon
+from geometry_msgs.msg import Point32
 
 from nav_goals_msgs.srv import NavGoals
-from nav_goals_msgs.srv import WeightedNavGoals
+from nav_goals_msgs.srv import ROINavGoals
 
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker
@@ -19,10 +23,8 @@ class ViewPlanning(smach.State):
 
     """
     
-    def __init__(self, inflation_radius):
+    def __init__(self):
 
-        self.inflation_radius = inflation_radius
-        
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['table_pose','table_area'],
@@ -38,7 +40,7 @@ class ViewPlanning(smach.State):
 
         rospy.wait_for_service('nav_goals_evaluation')
         try:
-            self.nav_goals_eval = rospy.ServiceProxy('nav_goals_evaluation', WeightedNavGoals)
+            self.nav_goals_eval = rospy.ServiceProxy('nav_goals_evaluation', ROINavGoals)
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
 
@@ -50,17 +52,51 @@ class ViewPlanning(smach.State):
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         try:
+
+            num_of_nav_goals =   int(rospy.get_param('num_of_nav_goals', '100'))
+            inf_radius       = float(rospy.get_param('inflation_radius', '0.7'))
+            inf_radius_coeff = float(rospy.get_param('inflation_radius_coeff', '1.5'))
+
+            coverage = float(rospy.get_param('coverage', '0.9'))
+            
             # TODO: compute area in proximity to table given table_pose and table_area
             table_pose = userdata.table_pose
             polygon    = userdata.table_area
 
-            # TODO: sample once, order views, use views on agenda (only re-sample if necessary)
-            nav_goals_resp = self.nav_goals(20, self.inflation_radius, polygon)
+            min_x = float(sys.maxint)
+            min_y = float(sys.maxint)
+            max_x = float(-sys.maxint-1)
+            max_y = float(-sys.maxint-1)
+            
 
-            # TODO: send table_area (ROI) to evaluation server
-            nav_goals_eval_resp = self.nav_goals_eval("",# json.dumps(userdata.obj_desc),
-                                                      "",#json.dumps(userdata.obj_list),
-                                                      nav_goals_resp.goals)
+            # get 2D bounding box
+            for point in polygon.points:
+                if point.x < min_x:
+                    min_x = point.x
+                elif point.x > max_x:
+                    max_x = point.x
+                if point.y < min_y:
+                    min_y = point.y
+                elif point.y > max_y:
+                    max_y = point.y
+
+            # define area around table
+            min_max_polygon = [[min_x - inf_radius_coeff * inf_radius, min_y - inf_radius_coeff * inf_radius],
+                               [min_x - inf_radius_coeff * inf_radius, max_y + inf_radius_coeff * inf_radius],
+                               [max_x + inf_radius_coeff * inf_radius, max_y + inf_radius_coeff * inf_radius],
+                               [max_x + inf_radius_coeff * inf_radius, min_y - inf_radius_coeff * inf_radius]]
+            points = []
+            for point in min_max_polygon:
+                rospy.loginfo('Point: %s', point)
+                points.append(Point32(float(point[0]),float(point[1]),0))
+
+            poly = Polygon(points)
+            
+
+            # TODO: sample once, order views, use views on agenda (only re-sample if necessary)
+            nav_goals_resp = self.nav_goals(num_of_nav_goals, inf_radius, poly)
+
+            nav_goals_eval_resp = self.nav_goals_eval(nav_goals_resp.goals, polygon, coverage)
 
             self.delete_markers()            
             markerArray = MarkerArray()
@@ -80,7 +116,7 @@ class ViewPlanning(smach.State):
             userdata.pose_output = nav_goals_eval_resp.sorted_goals.poses[0]
 
             # TODO: sample PTU poses
-            userdata.view_list = [[0.0,0.5],[0.5,0.5],[-0.5,0.5]]
+            userdata.view_list = [[0.0,0.5]] # ,[0.5,0.5],[-0.5,0.5]]
 
             
         except rospy.ServiceException, e:
@@ -99,7 +135,7 @@ class ViewPlanning(smach.State):
         marker1.scale.x = 1
         marker1.scale.y = 1
         marker1.scale.z = 2
-        marker1.color.a = 0.25
+        marker1.color.a =   max(0.1, min(0.4, (( r_func(weights[marker_id] / weights[0]) ) / ( r_func(weights[marker_id] / weights[0]) + g_func(weights[marker_id] / weights[0]) + b_func(weights[marker_id] / weights[0]) ))))
         marker1.color.r = r_func(weights[marker_id] / weights[0])
         marker1.color.g = g_func(weights[marker_id] / weights[0])
         marker1.color.b = b_func(weights[marker_id] / weights[0])
