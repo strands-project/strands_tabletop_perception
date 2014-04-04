@@ -13,7 +13,7 @@ from geometry_msgs.msg import Pose
 
 from perceive_tabletop.action_monitor import ActionMonitor
 from perceive_tabletop.view_planning  import ViewPlanning
-from perceive_tabletop.perception     import PerceptionSim
+from perceive_tabletop.perception     import *
 
 from ros_datacentre.message_store import MessageStoreProxy
 from strands_perception_msgs.msg import Table
@@ -86,10 +86,12 @@ class PerceiveTabletopSM(smach.StateMachine):
         self._action_monitor  = ActionMonitor()
         self._view_planning   = ViewPlanning()
 
-        robot = rospy.get_param('robot', 'sim')
+        robot = rospy.get_param('robot', 'nill')
 
         if robot == 'real':
             self._perception = PerceptionReal()
+        elif robot == 'nill':
+            self._perception = PerceptionNill()
         else: # 'sim'
             self._perception = PerceptionSim()
 
