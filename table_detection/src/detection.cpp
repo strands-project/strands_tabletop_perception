@@ -100,10 +100,10 @@ int main(int argc, char** argv)
     pn.param<double>("min_area", min_area, 0.3);
 	
 	std::string input;
-	pn.param<std::string>("input", input, std::string("/primitives"));
+	pn.param<std::string>("input", input, std::string("/primitive_extraction/primitives"));
 	ros::Subscriber sub = n.subscribe(input, 1, callback);
 	std::string output;
-	pn.param<std::string>("output", output, std::string("/tables"));
+	pn.param<std::string>("output", output, std::string("/table_detection/table_primitives"));
 	pub = n.advertise<primitive_extraction::PrimitiveArray>(output, 1);
     
     ros::spin();

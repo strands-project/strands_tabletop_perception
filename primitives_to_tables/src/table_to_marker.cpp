@@ -75,10 +75,10 @@ int main(int argc, char** argv)
 	ros::NodeHandle pn("~");
 	std::string input;
 	// the input topic publishing discovered tables
-	pn.param<std::string>("input", input, std::string("/table_tables"));
+	pn.param<std::string>("input", input, std::string("/table_detection/tables"));
 	std::string output;
 	// output topic to publish the markers on
-	pn.param<std::string>("output", output, std::string("/table_markers"));
+	pn.param<std::string>("output", output, std::string("/primitives_to_tables/table_markers"));
 	// color of the published markers in rgb
 	pn.param<double>("color_r", color_r, 0.0);
 	pn.param<double>("color_g", color_g, 1.0);

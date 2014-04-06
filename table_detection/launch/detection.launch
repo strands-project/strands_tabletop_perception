@@ -3,10 +3,12 @@
 
     <!-- The topic of the input cloud to segment into planes and detect tables -->
     <arg name="cloud" value="/cloud_pcd"/>
-    <!-- The topic to publish the resulting found tables on -->
-    <arg name="table_topic" value="/tables"/>
+    <!-- The topic to publish the detected tables on -->
+    <arg name="detection_topic" value="/table_detection/table_primitives"/>
     <!-- The topic to publish the resulting found planes on -->
-    <arg name="primitive_topic" value="/primitives"/>
+    <arg name="primitive_topic" value="/primitive_extraction/primitives"/>
+    <!-- The topic to publish the tracked tables on -->
+    <arg name="table_topic" value="/table_detection/tables"/>
 
     <!-- Launch the primitive extraction, only extract planes -->
     <include file="$(find primitive_extraction)/launch/extraction.launch">
@@ -27,14 +29,14 @@
         <param name="min_side_ratio" type="double" value="0.25"/>
         <!-- Minimum area of table plane -->
         <param name="min_area" type="double" value="0.3"/>
-        <param name="input" type="string" value="/primitives"/>
-        <param name="output" type="string" value="$(arg table_topic)"/>
+        <param name="input" type="string" value="$(arg primitive_topic)"/>
+        <param name="output" type="string" value="$(arg detection_topic)"/>
     </node>
     
     <!-- Visualize the detected tables with a marker array -->
     <node pkg="primitive_extraction" type="primitives_to_markers" name="tables_to_markers" output="screen">
-        <param name="input" type="string" value="$(arg table_topic)"/>
-        <param name="output" type="string" value="/table_marker_array"/>
+        <param name="input" type="string" value="$(arg detection_topic)"/>
+        <param name="output" type="string" value="/table_detection/primitive_marker_array"/>
         <param name="display_plane_box" type="bool" value="false"/>
         <param name="plane_r" type="double" value="0.0"/>
         <param name="plane_g" type="double" value="0.0"/>
@@ -43,14 +45,14 @@
     
     <!-- Launch the tracking of tables over time, sync with datacentre -->
     <node pkg="primitives_to_tables" type="primitives_to_tables" name="primitives_to_tables" output="screen">
-        <param name="input" type="string" value="$(arg table_topic)"/>
-        <param name="output" type="string" value="/table_tables"/>
+        <param name="input" type="string" value="$(arg detection_topic)"/>
+        <param name="output" type="string" value="$(arg table_topic)"/>
     </node>
     
     <!-- Visualize the tracked tables with markers -->
     <node pkg="primitives_to_tables" type="table_to_marker" name="table_to_marker" output="screen">
-        <param name="input" type="string" value="/table_tables"/>
-        <param name="output" type="string" value="/table_markers"/>
+        <param name="input" type="string" value="$(arg table_topic)"/>
+        <param name="output" type="string" value="/primitives_to_tables/table_markers"/>
     </node>
 
 </launch>

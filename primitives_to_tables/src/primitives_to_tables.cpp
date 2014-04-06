@@ -42,10 +42,10 @@ int main(int argc, char** argv)
     
     ros::NodeHandle pn("~");
 	std::string input;
-	pn.param<std::string>("input", input, std::string("/tables"));
+	pn.param<std::string>("input", input, std::string("/table_detection/table_primitives"));
 	ros::Subscriber sub = n.subscribe(input, 1, callback);
 	std::string output;
-	pn.param<std::string>("output", output, std::string("/table_tables"));
+	pn.param<std::string>("output", output, std::string("/table_detection/tables"));
 	pub = n.advertise<strands_perception_msgs::Table>(output, 1);
     
     ros::spin();
