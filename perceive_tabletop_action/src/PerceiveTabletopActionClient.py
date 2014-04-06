@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     goal = PerceiveTabletopGoal()
     # Fill in the goal here
-    goal.table_id = "table15"
+    goal.table_id = "test_table_1"
     client.send_goal(goal)
     client.wait_for_result(rospy.Duration.from_sec(5.0))
     print client.get_result()

@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+import roslib; roslib.load_manifest("visualise_tables")
+import rospy
+import sys
+
+from interactive_markers.interactive_marker_server import (
+    InteractiveMarker,
+    InteractiveMarkerServer,
+     )
+from visualization_msgs.msg import Marker, InteractiveMarkerControl
+from strands_perception_msgs.msg import Table
+from ros_datacentre.message_store import MessageStoreProxy
+from geometry_msgs.msg import Point32, Quaternion
+        
+class Visualiser(object):
+    def __init__(self, interactive=False):
+        rospy.init_node("tables_visualiser", anonymous=True)
+
+        self._marker_server = InteractiveMarkerServer("table_markers")
+        self._msg_store=MessageStoreProxy()
+        self._tables = self._get_tables()
+        self._interactive = interactive
+
+        for table in self._tables:
+            self._create_marker(table,table.table_id)
+
+        rospy.loginfo("Started table visualiser, " + str(len(self._tables)) +
+                      " tables in datacentre")
+        rospy.spin()
+
+        T=Table()
+        T.table_id="random_nothingness"
+        T.header.frame_id="/map"
+        for p in [(0,0,0), (0,1.795,0),(0.84,1.795,0),(0.84,0,0),(0,0,0)]:
+            pt=Point32()
+            pt.x=p[0]
+            pt.y=p[1]
+            pt.z=p[2]
+            T.tabletop.points.append(pt)
+#        self._msg_store.insert(T)
+        
+    def _get_tables(self):
+        """ Get a list of tables """
+        table_list = self._msg_store.query(Table._type)
+        return zip(*table_list)[0]
+    
+    def _get_table(self, table_id):
+        """ Get a specific table """
+        # UNUSED.
+        query = {}
+        query["table_id"] = table_id
+        #TODO: what if does not exist....
+        return self._msg_store.query(Table._type, {}, query)[0]
+
+    def _create_marker(self, table,
+                       marker_description="table interactive marker"):
+        assert isinstance(table, Table)
+
+        # create an interactive marker for our server
+        marker = InteractiveMarker()
+        marker.header.frame_id = table.header.frame_id
+        marker.name = table.table_id
+        marker.description = marker_description
+
+        # the marker in the middle
+        box_marker = Marker()
+        box_marker.type = Marker.LINE_STRIP
+        box_marker.scale.x = 0.05
+        box_marker.color.r = 0.0
+        box_marker.color.g = 1.0
+        box_marker.color.b = 0.5
+        box_marker.color.a = 0.8
+        box_marker.points=table.tabletop.points
+
+        # create a non-interactive control which contains the box
+        box_control = InteractiveMarkerControl()
+        box_control.always_visible = True
+        box_control.markers.append( box_marker )
+        marker.controls.append( box_control )
+
+        def add_control(orientation,name, move_rotate=1):
+            control = InteractiveMarkerControl()
+            control.orientation = orientation
+            control.name = name
+            if move_rotate==1:
+                control.interaction_mode = InteractiveMarkerControl.MOVE_AXIS
+            else:
+                control.interaction_mode = InteractiveMarkerControl.ROTATE_AXIS
+            marker.controls.append(control)
+            
+        if self._interactive:
+            add_control(Quaternion(1,0,0,1),"move_x",1)
+            add_control(Quaternion(0,1,0,1),"move_y",1)
+            add_control(Quaternion(0,0,1,1),"move_z",1)
+            add_control(Quaternion(1,0,0,1),"rotate_x",2)
+            add_control(Quaternion(0,1,0,1),"rotate_y",2)
+            add_control(Quaternion(0,0,1,1),"rotate_z",2)
+
+        self._marker_server.insert(marker, self._marker_feedback)
+        self._marker_server.applyChanges()
+
+        self._marker_server.setPose( marker.name, table.pose.pose )
+        self._marker_server.applyChanges()
+
+
+    def _marker_feedback(self, feedback):
+        table = [t for t in self._tables if t.table_id==feedback.marker_name]
+        assert len(table)==1
+        table = table[0]
+        table.pose.pose = feedback.pose
+        #TODO: Set covariance?
+        self._msg_store.update(table,
+                               message_query={"table_id": feedback.marker_name},
+                               upsert=True);
+
+        
+if __name__=="__main__":
+    if len(sys.argv)>1 and sys.argv[1]=="edit":
+        visualiser = Visualiser(True)
+    else:
+        visualiser = Visualiser(False)
