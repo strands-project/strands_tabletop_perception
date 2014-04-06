@@ -9,7 +9,7 @@ octave_convenience::octave_convenience() : std::stringstream()
 void octave_convenience::append_vector(const std::vector<double>& y)
 {
     *this << "[";
-    for (unsigned i = 0; i < y.size(); ++i) {
+    for (size_t i = 0; i < y.size(); ++i) {
         *this << y[i] << " ";
     }
     *this << "]";

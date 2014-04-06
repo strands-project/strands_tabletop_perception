@@ -10,7 +10,7 @@ table_tracking::table_tracking(ros::NodeHandle& n) : message_store(n)
     //message_store.query<strands_perception_msgs::Table>(tables);
     Vector2d mid;
     centers.reserve(tables.size());
-    for (int i = 0; i < tables.size(); ++i) {
+    for (size_t i = 0; i < tables.size(); ++i) {
         compute_center_of_mass(mid, tables[i]->tabletop);
         centers.push_back(mid);
     }
@@ -27,7 +27,7 @@ void table_tracking::compute_center_of_mass(Vector2d& mid, const geometry_msgs::
     mid = Vector2d(0, 0);
     double area_triangle;
     double area = 0;
-    for (int i = 1; i < p.points.size()-1; ++i) {
+    for (size_t i = 1; i < p.points.size()-1; ++i) {
         Vector2d p1(p.points[i].x, p.points[i].y);
         Vector2d p2(p.points[i+1].x, p.points[i+1].y);
         mid_triangle = 1.0/3.0*(p0 + p1 + p2);
@@ -42,11 +42,11 @@ void table_tracking::compute_center_of_mass(Vector2d& mid, const geometry_msgs::
 
 bool table_tracking::center_contained(const geometry_msgs::Polygon& p, const Vector2d& c)
 {
-    int n = p.points.size();
+    size_t n = p.points.size();
     double is_signed;
     
     // check if c is on the same side of each line
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         Vector2d p0(p.points[i].x, p.points[i].y);
         Vector2d p1(p.points[(i+1)%n].x, p.points[(i+1)%n].y);
         Vector2d v0 = p1 - p0;
@@ -66,56 +66,8 @@ bool table_tracking::center_contained(const geometry_msgs::Polygon& p, const Vec
 
 // check if two tables are overlapping
 bool table_tracking::are_overlapping(Vector2d& mida, const geometry_msgs::Polygon& a, Vector2d& midb, const geometry_msgs::Polygon& b)
-{
-    ROS_INFO("Got a new table, number of tables: %lu", tables.size());
-    
-    if (center_contained(a, midb) || center_contained(b, mida)) {
-        /*std::vector<double> ax, ay;
-        ax.resize(a.points.size());
-        ay.resize(a.points.size());
-        for (int i = 0; i < a.points.size(); ++i) {
-            ax[i] = a.points[i].x;
-            ay[i] = a.points[i].y;
-        }
-        
-        std::vector<double> bx, by;
-        bx.resize(b.points.size());
-        by.resize(b.points.size());
-        for (int i = 0; i < b.points.size(); ++i) {
-            bx[i] = b.points[i].x;
-            by[i] = b.points[i].y;
-        }
-        geometry_msgs::Polygon p;
-        union_convex_hull(p, mida, a, midb, b);
-        std::vector<double> px, py;
-        px.resize(p.points.size());
-        py.resize(p.points.size());
-        for (int i = 0; i < p.points.size(); ++i) {
-            px[i] = p.points[i].x;
-            py[i] = p.points[i].y;
-        }
-        octave_convenience o;
-        o << "plot(";
-        o.append_vector(ax);
-        o << ", ";
-        o.append_vector(ay);
-        o << ", 'b'); hold on; plot(";
-        o.append_vector(bx);
-        o << ", ";
-        o.append_vector(by);
-        o << ", 'r');";
-        o << "plot(";
-        o.append_vector(px);
-        o << ", ";
-        o.append_vector(py);
-        o << ", 'g');";
-        o << "plot(" << mida(0) << ", " << mida(1) << ", 'bo');";
-        o << "plot(" << midb(0) << ", " << midb(1) << ", 'ro'); axis equal; pause";
-        o.eval();*/
-        return true;
-    }
-    
-    return false;
+{   
+    return (center_contained(a, midb) || center_contained(b, mida));
 }
 
 // make sure the centre is always on the left(?) side of the line
@@ -126,7 +78,7 @@ void table_tracking::rectify_orientation(const Vector2d& c, geometry_msgs::Polyg
     Vector2d p1(p.points[1].x, p.points[1].y);
     Vector2d v = p1 - p0;
     Vector2d o(-v(1), v(0));
-    if (o.dot(c) < 0) {
+    if (o.dot(c - p0) < 0) {
         std::reverse(p.points.begin(), p.points.end());
     }
 }
@@ -137,21 +89,61 @@ void table_tracking::union_convex_hull(geometry_msgs::Polygon& res, const Vector
 {
     std::vector<Vector2d, aligned_allocator<Vector2d> > p;
     p.resize(a.points.size() + b.points.size());
-    int n = a.points.size();
+    size_t n = a.points.size();
     double zmean = 0;
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         p[i] = Vector2d(a.points[i].x, a.points[i].y);
         zmean += a.points[i].z;
     }
-    for (int i = 0; i < b.points.size(); ++i) {
+    for (size_t i = 0; i < b.points.size(); ++i) {
         p[n + i] = Vector2d(b.points[i].x, b.points[i].y);
         zmean += b.points[i].z;
     }
     convex_hull(res, mida, p);
     zmean /= double(p.size());
-    for (int i = 0; i < res.points.size(); ++i) {
+    for (size_t i = 0; i < res.points.size(); ++i) {
         res.points[i].z = zmean;
     }
+    
+    /*std::vector<double> ax, ay;
+    ax.resize(a.points.size());
+    ay.resize(a.points.size());
+    for (int i = 0; i < a.points.size(); ++i) {
+        ax[i] = a.points[i].x;
+        ay[i] = a.points[i].y;
+    }
+    std::vector<double> bx, by;
+    bx.resize(b.points.size());
+    by.resize(b.points.size());
+    for (int i = 0; i < b.points.size(); ++i) {
+        bx[i] = b.points[i].x;
+        by[i] = b.points[i].y;
+    }
+    std::vector<double> px, py;
+    px.resize(res.points.size());
+    py.resize(res.points.size());
+    for (int i = 0; i < res.points.size(); ++i) {
+        px[i] = res.points[i].x;
+        py[i] = res.points[i].y;
+    }
+    octave_convenience o;
+    o << "plot(";
+    o.append_vector(ax);
+    o << ", ";
+    o.append_vector(ay);
+    o << ", 'b'); hold on; plot(";
+    o.append_vector(bx);
+    o << ", ";
+    o.append_vector(by);
+    o << ", 'r');";
+    o << "plot(";
+    o.append_vector(px);
+    o << ", ";
+    o.append_vector(py);
+    o << ", 'g');";
+    o << "plot(" << mida(0) << ", " << mida(1) << ", 'bo');";
+    o << "plot(" << midb(0) << ", " << midb(1) << ", 'ro'); axis equal; pause";
+    o.eval();*/
 }
 
 // compute the convex hull encompassing a set of points
@@ -160,25 +152,19 @@ void table_tracking::convex_hull(geometry_msgs::Polygon& res, const Vector2d& c,
     geometry_msgs::Point32 p32;
     std::vector<int> used;
     used.resize(p.size(), 0);
-
-    bool reverse;
+    
     int first_ind;
     int previous_ind;
-    for (int i = 0; i < p.size(); ++i) {
-        int ind = find_next_point(p[i], c, p, used, reverse, true);
+    for (size_t i = 0; i < p.size(); ++i) {
+        int ind = find_next_point(p[i], c, p, used);
         if (ind != -1) {
-            used[ind] = 1;
             used[i] = 1;
-            if (reverse) {
-                first_ind = ind;
-                previous_ind = i;
-            }
-            else {
-                first_ind = i;
-                previous_ind = ind;
-            }
+            used[ind] = 1;
+            first_ind = i;
+            previous_ind = ind;
             break;
         }
+        used[i] = 1;
     }
     p32.x = p[first_ind](0);
     p32.y = p[first_ind](1);
@@ -187,20 +173,20 @@ void table_tracking::convex_hull(geometry_msgs::Polygon& res, const Vector2d& c,
         p32.x = p[previous_ind](0);
         p32.y = p[previous_ind](1);
         res.points.push_back(p32);
-        int ind = find_next_point(p[previous_ind], c, p, used, reverse);
+        int ind = find_next_point(p[previous_ind], c, p, used);
         previous_ind = ind;
-        used[first_ind] = false;
+        used[first_ind] = 0;
     }
 }
 
-int table_tracking::find_next_point(const Vector2d& q, const Vector2d& c, const std::vector<Vector2d, aligned_allocator<Vector2d> >& p, std::vector<int>& used, bool& reverse, bool first)
+int table_tracking::find_next_point(const Vector2d& q, const Vector2d& c, const std::vector<Vector2d, aligned_allocator<Vector2d> >& p, std::vector<int>& used)
 {
     Vector2d p0;
     Vector2d p1;
     Vector2d v;
     Vector2d o;
     bool found;
-    for (int j = 0; j < p.size(); ++j) {
+    for (size_t j = 0; j < p.size(); ++j) {
         if (used[j]) {
             continue;
         }
@@ -212,17 +198,10 @@ int table_tracking::find_next_point(const Vector2d& q, const Vector2d& c, const 
         v = p1 - p0;
         o = Vector2d(-v(1), v(0));
         if (o.dot(c - p0) < 0) {
-            if (!first) {
-                ROS_INFO("Error in computation of convex hull.");
-            }
-            p0 = p[j];
-            p1 = q;
-            v = -v;
-            o = -o;
-            reverse = true;
+            continue;
         }
         found = true;
-        for (int k = 0; k < p.size(); ++k) {
+        for (size_t k = 0; k < p.size(); ++k) {
             if (k == j || (p[k](0) == q(0) && p[k](1) == q(1))) {
                 continue;
             }
@@ -244,11 +223,11 @@ int table_tracking::find_next_point(const Vector2d& q, const Vector2d& c, const 
 // if they are overlapping, incoming message is modified to reflect update
 bool table_tracking::add_detected_table(strands_perception_msgs::Table& table)
 {
-    std::vector<int> overlapping;
+    ROS_INFO("Got a new table, number of tables: %lu", tables.size());
     Vector2d mid;
     compute_center_of_mass(mid, table.tabletop);
     rectify_orientation(mid, table.tabletop);
-    for (int i = 0; i < tables.size(); ++i) {
+    for (size_t i = 0; i < tables.size(); ++i) {
         if (!are_overlapping(centers[i], tables[i]->tabletop, mid, table.tabletop)) {
             continue;
         }

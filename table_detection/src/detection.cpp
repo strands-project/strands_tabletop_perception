@@ -19,7 +19,7 @@ double compute_plane_area(std::vector<geometry_msgs::Point>& hull)
     double area = 0.0;
     // assume that it's almost parallell to the ground
     Eigen::Vector2d p0(hull[0].x, hull[0].y);
-    for (int i = 1; i < hull.size()-1; ++i) {
+    for (size_t i = 1; i < hull.size()-1; ++i) {
         Eigen::Vector2d p1(hull[i].x, hull[i].y);
         Eigen::Vector2d p2(hull[i+1].x, hull[i+1].y);
         // calculate area by Heron's formula
@@ -35,11 +35,11 @@ double compute_plane_area(std::vector<geometry_msgs::Point>& hull)
 
 void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
 {
-    int n = msg->primitives.size();
+    size_t n = msg->primitives.size();
     primitive_extraction::PrimitiveArray tables;
     tables.camera_frame = msg->camera_frame;
     
-    for (int i = 0; i < n; ++i) {
+    for (size_t i = 0; i < n; ++i) {
         primitive_extraction::Primitive p = msg->primitives[i];
         
         // check normal

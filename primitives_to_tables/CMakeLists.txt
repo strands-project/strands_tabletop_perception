@@ -126,7 +126,6 @@ target_link_libraries(table_tracking
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
   octave_convenience
-  ${catkin_LIBRARIES}
 )
 
 target_link_libraries(primitives_to_tables

@@ -16,13 +16,13 @@ boost::shared_ptr<table_tracking> t; // keeps track of all tables
 void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
 {
     // convert the primitive types into tables
-    for (int i = 0; i < msg->primitives.size(); ++i) {
+    for (size_t i = 0; i < msg->primitives.size(); ++i) {
         strands_perception_msgs::Table table;
         primitive_extraction::Primitive primitive = msg->primitives[i];
         table.header.frame_id = msg->camera_frame;
         table.pose.pose = primitive.pose;
         table.tabletop.points.resize(primitive.points.size());
-        for (int j = 0; j < primitive.points.size(); ++j) {
+        for (size_t j = 0; j < primitive.points.size(); ++j) {
             table.tabletop.points[j].x = primitive.points[j].x;
             table.tabletop.points[j].y = primitive.points[j].y;
             table.tabletop.points[j].z = primitive.points[j].z;

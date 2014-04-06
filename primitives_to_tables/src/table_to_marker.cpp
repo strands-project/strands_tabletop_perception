@@ -33,9 +33,9 @@ void write_marker(visualization_msgs::Marker& marker, const strands_perception_m
     marker.pose.orientation.z = quat.z();
     marker.pose.orientation.w = quat.w();
     marker.scale.x = 0.02;
-    int n = table.tabletop.points.size();
+    size_t n = table.tabletop.points.size();
     marker.points.resize(2*n);
-    for (int i = 0; i < n-1 ; ++i) {
+    for (size_t i = 0; i < n-1 ; ++i) {
         marker.points[2*i+2].x = table.tabletop.points[i].x;
         marker.points[2*i+2].y = table.tabletop.points[i].y;
         marker.points[2*i+2].z = table.tabletop.points[i].z;
