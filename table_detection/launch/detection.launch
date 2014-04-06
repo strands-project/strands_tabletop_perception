@@ -2,7 +2,7 @@
 <launch>
 
     <!-- The topic of the input cloud to segment into planes and detect tables -->
-    <arg name="cloud" value="/cloud_pcd"/>
+    <arg name="cloud" default="/cloud_pcd"/>
     <!-- The topic to publish the detected tables on -->
     <arg name="detection_topic" value="/table_detection/table_primitives"/>
     <!-- The topic to publish the resulting found planes on -->
