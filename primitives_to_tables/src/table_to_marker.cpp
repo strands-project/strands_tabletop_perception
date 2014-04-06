@@ -16,8 +16,7 @@ double color_b;
 
 void write_marker(visualization_msgs::Marker& marker, const strands_perception_msgs::Table& table)
 {
-    std::cout << "Table id: " << table.table_id << std::endl;
-    marker.id = boost::lexical_cast<int>(table.table_id); // solve this later by looking at database, table_id
+    marker.id = boost::lexical_cast<int>(table.table_id); // same id as in database
     marker.action = visualization_msgs::Marker::ADD;
     marker.header.frame_id = table.header.frame_id;
     marker.header.stamp = ros::Time();
@@ -75,9 +74,12 @@ int main(int argc, char** argv)
     // while using different parameters.
 	ros::NodeHandle pn("~");
 	std::string input;
+	// the input topic publishing discovered tables
 	pn.param<std::string>("input", input, std::string("/table_tables"));
 	std::string output;
+	// output topic to publish the markers on
 	pn.param<std::string>("output", output, std::string("/table_markers"));
+	// color of the published markers in rgb
 	pn.param<double>("color_r", color_r, 0.0);
 	pn.param<double>("color_g", color_g, 1.0);
 	pn.param<double>("color_b", color_b, 0.0);

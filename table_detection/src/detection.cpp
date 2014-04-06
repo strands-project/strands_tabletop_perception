@@ -35,8 +35,6 @@ double compute_plane_area(std::vector<geometry_msgs::Point>& hull)
 
 void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
 {
-    
-    std::cout << "Tjena!" << std::endl;
     int n = msg->primitives.size();
     primitive_extraction::PrimitiveArray tables;
     tables.camera_frame = msg->camera_frame;
@@ -44,18 +42,10 @@ void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
     for (int i = 0; i < n; ++i) {
         primitive_extraction::Primitive p = msg->primitives[i];
         
-        /*std::cout << p.params[2] << std::endl;
-        std::cout << p.params[3] << std::endl;
-        std::cout << p.params[4] << std::endl;
-        
-        Eigen::Vector3d normal(p.params[2], p.params[3], p.params[4]);
-        normal.normalize();
-        std::cout << normal(2) << std::endl;*/
-        
         // check normal
         double alpha = acos(fabs(p.params[4]));
         if (alpha > max_angle) {
-            std::cout << "Stopped because of angle: " << alpha << std::endl;
+            //ROS_INFO("Stopped because of angle: %f", alpha);
             continue;
         }
         
@@ -63,14 +53,14 @@ void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
         // check height
         double height = camera_height + p.pose.position.z;
         if (height < min_height || height > max_height) {
-            std::cout << "Stopped because of height: " << height << std::endl;
+            //ROS_INFO("Stopped because of height: %f", height);
             continue;
         }
         
         // check size
         double area = compute_plane_area(p.points);
         if (area < min_area) {
-            std::cout << "Stopped because of area: " << area << std::endl;
+            //ROS_INFO("Stopped because of area: %f", area);
             continue;
         }
         
@@ -86,13 +76,10 @@ void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
         }
         
         double ratio = minside/maxside;
-        //double ratio = p.params[0] > p.params[1] ? p.params[1]/p.params[0] : p.params[0]/p.params[1]; 
         if (ratio < min_side_ratio) {
-            std::cout << "Stopped because of ratio: " << ratio << std::endl;
+            //ROS_INFO("Stopped because of ratio: %f", ratio);
             continue;
         }
-        
-        std::cout << "This one got through!" << std::endl;
         
         tables.primitives.push_back(p);
     }

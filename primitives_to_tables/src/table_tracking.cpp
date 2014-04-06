@@ -7,35 +7,20 @@ using namespace Eigen;
 
 table_tracking::table_tracking(ros::NodeHandle& n) : message_store(n)
 {
-    std::cout << "1" << std::endl;
     //message_store.query<strands_perception_msgs::Table>(tables);
-    std::cout << "2" << std::endl;
     Vector2d mid;
     centers.reserve(tables.size());
     for (int i = 0; i < tables.size(); ++i) {
         compute_center_of_mass(mid, tables[i]->tabletop);
         centers.push_back(mid);
     }
-    std::cout << "Found " << tables.size() << " tables" << std::endl;
+    ROS_INFO("Found %lu tables in database.", tables.size());
 }
 
+// compute the center of mass of a convex polygon message
+// TODO: do this in 3d instead
 void table_tracking::compute_center_of_mass(Vector2d& mid, const geometry_msgs::Polygon& p)
 {
-    /*std::vector<double> px, py;
-    px.resize(p.points.size());
-    py.resize(p.points.size());
-    for (int i = 0; i < p.points.size(); ++i) {
-        px[i] = p.points[i].x;
-        py[i] = p.points[i].y;
-    }
-    
-    octave_convenience o;
-    o << "plot(";
-    o.append_vector(px);
-    o << ", ";
-    o.append_vector(py);
-    o << ", 'b'); axis equal; hold on;";*/
-
     Eigen::Vector2d p0(p.points[0].x, p.points[0].y);
     Matrix2d D;
     Vector2d mid_triangle;
@@ -51,13 +36,8 @@ void table_tracking::compute_center_of_mass(Vector2d& mid, const geometry_msgs::
         area_triangle = 0.5*D.determinant();
         mid += area_triangle*mid_triangle;
         area += area_triangle;
-        //o << "plot([" << p0(0) << " " << p1(0) << " " << p2(0) << " " << p0(0) << "], [" << p0(1) << " " << p1(1) << " " << p2(1) << " " << p0(1) << "], 'r');";
-        //o << "plot(" << mid_triangle(0) << ", " << mid_triangle(1) << ", 'ro'); pause;";
     }
     mid = 1.0/area*mid;
-    
-    //o << "plot(" << mid(0) << ", " << mid(1) << ", 'bo'); axis equal; pause";
-    //o.eval();
 }
 
 bool table_tracking::center_contained(const geometry_msgs::Polygon& p, const Vector2d& c)
@@ -84,29 +64,28 @@ bool table_tracking::center_contained(const geometry_msgs::Polygon& p, const Vec
     return true;
 }
 
-// check intersections of lines
+// check if two tables are overlapping
 bool table_tracking::are_overlapping(Vector2d& mida, const geometry_msgs::Polygon& a, Vector2d& midb, const geometry_msgs::Polygon& b)
 {
-    std::cout << "Got a new table, size of tables: " << tables.size() << std::endl;
-    
-    /*std::vector<double> ax, ay;
-    ax.resize(a.points.size());
-    ay.resize(a.points.size());
-    for (int i = 0; i < a.points.size(); ++i) {
-        ax[i] = a.points[i].x;
-        ay[i] = a.points[i].y;
-    }
-    
-    std::vector<double> bx, by;
-    bx.resize(b.points.size());
-    by.resize(b.points.size());
-    for (int i = 0; i < b.points.size(); ++i) {
-        bx[i] = b.points[i].x;
-        by[i] = b.points[i].y;
-    }*/
+    ROS_INFO("Got a new table, number of tables: %lu", tables.size());
     
     if (center_contained(a, midb) || center_contained(b, mida)) {
-        /*geometry_msgs::Polygon p;
+        /*std::vector<double> ax, ay;
+        ax.resize(a.points.size());
+        ay.resize(a.points.size());
+        for (int i = 0; i < a.points.size(); ++i) {
+            ax[i] = a.points[i].x;
+            ay[i] = a.points[i].y;
+        }
+        
+        std::vector<double> bx, by;
+        bx.resize(b.points.size());
+        by.resize(b.points.size());
+        for (int i = 0; i < b.points.size(); ++i) {
+            bx[i] = b.points[i].x;
+            by[i] = b.points[i].y;
+        }
+        geometry_msgs::Polygon p;
         union_convex_hull(p, mida, a, midb, b);
         std::vector<double> px, py;
         px.resize(p.points.size());
@@ -139,6 +118,8 @@ bool table_tracking::are_overlapping(Vector2d& mida, const geometry_msgs::Polygo
     return false;
 }
 
+// make sure the centre is always on the left(?) side of the line
+// this should not be needed in the algorithms
 void table_tracking::rectify_orientation(const Vector2d& c, geometry_msgs::Polygon& p)
 {
     Vector2d p0(p.points[0].x, p.points[0].y);
@@ -150,18 +131,32 @@ void table_tracking::rectify_orientation(const Vector2d& c, geometry_msgs::Polyg
     }
 }
 
+// compute the convex union of two convex hulls by simply
+// computing a new convex hull for the union of point vertices
 void table_tracking::union_convex_hull(geometry_msgs::Polygon& res, const Vector2d& mida, const geometry_msgs::Polygon& a, const Vector2d& midb, const geometry_msgs::Polygon& b)
 {
     std::vector<Vector2d, aligned_allocator<Vector2d> > p;
     p.resize(a.points.size() + b.points.size());
     int n = a.points.size();
+    double zmean = 0;
     for (int i = 0; i < n; ++i) {
         p[i] = Vector2d(a.points[i].x, a.points[i].y);
+        zmean += a.points[i].z;
     }
     for (int i = 0; i < b.points.size(); ++i) {
         p[n + i] = Vector2d(b.points[i].x, b.points[i].y);
+        zmean += b.points[i].z;
     }
-    
+    convex_hull(res, mida, p);
+    zmean /= double(p.size());
+    for (int i = 0; i < res.points.size(); ++i) {
+        res.points[i].z = zmean;
+    }
+}
+
+// compute the convex hull encompassing a set of points
+void table_tracking::convex_hull(geometry_msgs::Polygon& res, const Vector2d& c, const std::vector<Vector2d, aligned_allocator<Vector2d> >& p)
+{
     geometry_msgs::Point32 p32;
     std::vector<int> used;
     used.resize(p.size(), 0);
@@ -170,7 +165,7 @@ void table_tracking::union_convex_hull(geometry_msgs::Polygon& res, const Vector
     int first_ind;
     int previous_ind;
     for (int i = 0; i < p.size(); ++i) {
-        int ind = find_next_point(p[i], mida, p, used, reverse, true);
+        int ind = find_next_point(p[i], c, p, used, reverse, true);
         if (ind != -1) {
             used[ind] = 1;
             used[i] = 1;
@@ -192,13 +187,13 @@ void table_tracking::union_convex_hull(geometry_msgs::Polygon& res, const Vector
         p32.x = p[previous_ind](0);
         p32.y = p[previous_ind](1);
         res.points.push_back(p32);
-        int ind = find_next_point(p[previous_ind], mida, p, used, reverse);
+        int ind = find_next_point(p[previous_ind], c, p, used, reverse);
         previous_ind = ind;
         used[first_ind] = false;
     }
 }
 
-int table_tracking::find_next_point(const Vector2d& q, const Vector2d& c, std::vector<Vector2d, aligned_allocator<Vector2d> >& p, std::vector<int>& used, bool& reverse, bool first)
+int table_tracking::find_next_point(const Vector2d& q, const Vector2d& c, const std::vector<Vector2d, aligned_allocator<Vector2d> >& p, std::vector<int>& used, bool& reverse, bool first)
 {
     Vector2d p0;
     Vector2d p1;
@@ -218,7 +213,7 @@ int table_tracking::find_next_point(const Vector2d& q, const Vector2d& c, std::v
         o = Vector2d(-v(1), v(0));
         if (o.dot(c - p0) < 0) {
             if (!first) {
-                // ERROR
+                ROS_INFO("Error in computation of convex hull.");
             }
             p0 = p[j];
             p1 = q;
@@ -244,6 +239,9 @@ int table_tracking::find_next_point(const Vector2d& q, const Vector2d& c, std::v
     return -1;
 }
 
+// add a detected table into the database, either by identifying it with a
+// previous table or by creating a new table instance. tables are merged
+// if they are overlapping, incoming message is modified to reflect update
 bool table_tracking::add_detected_table(strands_perception_msgs::Table& table)
 {
     std::vector<int> overlapping;
@@ -259,15 +257,15 @@ bool table_tracking::add_detected_table(strands_perception_msgs::Table& table)
         tables[i]->tabletop = p;
         compute_center_of_mass(mid, table.tabletop);
         centers[i] = mid;
-        message_store.updateNamed(std::string("table") + tables[i]->table_id, *tables[i]);
+        //message_store.updateNamed(std::string("table") + tables[i]->table_id, *tables[i]);
         
-        table = *tables[i];
+        table = *tables[i]; // make sure that the published table has the same value
         return false;
     }
     centers.push_back(mid);
     table.table_id = boost::lexical_cast<std::string>(tables.size());
     tables.push_back(boost::shared_ptr<strands_perception_msgs::Table>(new strands_perception_msgs::Table(table)));
     //Insert something with a name
-    message_store.insertNamed(std::string("table") + table.table_id, table);
+    //message_store.insertNamed(std::string("table") + table.table_id, table);
     return true;
 }

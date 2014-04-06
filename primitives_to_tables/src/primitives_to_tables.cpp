@@ -10,11 +10,12 @@
 #include <Eigen/Dense>
 
 ros::Publisher pub;
-boost::shared_ptr<table_tracking> t;
+boost::shared_ptr<table_tracking> t; // keeps track of all tables
 //std::auto_ptr??
 
 void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
 {
+    // convert the primitive types into tables
     for (int i = 0; i < msg->primitives.size(); ++i) {
         strands_perception_msgs::Table table;
         primitive_extraction::Primitive primitive = msg->primitives[i];
@@ -26,7 +27,9 @@ void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
             table.tabletop.points[j].y = primitive.points[j].y;
             table.tabletop.points[j].z = primitive.points[j].z;
         }
+        // check overlap, possibly merging with previous tables
         t->add_detected_table(table);
+        // if merged, that will be the table published
         pub.publish(table);
     }
 }
