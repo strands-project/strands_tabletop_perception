@@ -31,7 +31,7 @@
         <param name="output" type="string" value="$(arg table_topic)"/>
     </node>
     
-    <!-- Visualize the extracted tables with a marker array -->
+    <!-- Visualize the detected tables with a marker array -->
     <node pkg="primitive_extraction" type="primitives_to_markers" name="tables_to_markers" output="screen">
         <param name="input" type="string" value="$(arg table_topic)"/>
         <param name="output" type="string" value="/table_marker_array"/>
@@ -39,6 +39,18 @@
         <param name="plane_r" type="double" value="0.0"/>
         <param name="plane_g" type="double" value="0.0"/>
         <param name="plane_b" type="double" value="1.0"/>
+    </node>
+    
+    <!-- Launch the tracking of tables over time, sync with datacentre -->
+    <node pkg="primitives_to_tables" type="primitives_to_tables" name="primitives_to_tables" output="screen">
+        <param name="input" type="string" value="$(arg table_topic)"/>
+        <param name="output" type="string" value="/table_tables"/>
+    </node>
+    
+    <!-- Visualize the tracked tables with markers -->
+    <node pkg="primitives_to_tables" type="table_to_marker" name="table_to_marker" output="screen">
+        <param name="input" type="string" value="/table_tables"/>
+        <param name="output" type="string" value="/table_markers"/>
     </node>
 
 </launch>
