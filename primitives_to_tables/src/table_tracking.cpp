@@ -7,7 +7,7 @@ using namespace Eigen;
 
 table_tracking::table_tracking(ros::NodeHandle& n) : message_store(n)
 {
-    //message_store.query<strands_perception_msgs::Table>(tables);
+    message_store.query<strands_perception_msgs::Table>(tables);
     Vector2d mid;
     centers.reserve(tables.size());
     for (size_t i = 0; i < tables.size(); ++i) {
@@ -236,7 +236,7 @@ bool table_tracking::add_detected_table(strands_perception_msgs::Table& table)
         tables[i]->tabletop = p;
         compute_center_of_mass(mid, table.tabletop);
         centers[i] = mid;
-        //message_store.updateNamed(std::string("table") + tables[i]->table_id, *tables[i]);
+        message_store.updateNamed(std::string("table") + tables[i]->table_id, *tables[i]);
         
         table = *tables[i]; // make sure that the published table has the same value
         return false;
@@ -245,6 +245,6 @@ bool table_tracking::add_detected_table(strands_perception_msgs::Table& table)
     table.table_id = boost::lexical_cast<std::string>(tables.size());
     tables.push_back(boost::shared_ptr<strands_perception_msgs::Table>(new strands_perception_msgs::Table(table)));
     //Insert something with a name
-    //message_store.insertNamed(std::string("table") + table.table_id, table);
+    message_store.insertNamed(std::string("table") + table.table_id, table);
     return true;
 }
