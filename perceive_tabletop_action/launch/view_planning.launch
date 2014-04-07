@@ -3,9 +3,9 @@
   <arg name="map" default="/projected_map"/>
 
   <include file="$(find nav_goals_generator)/launch/nav_goals_generator.launch">
-    <param name="map_frame" value="$(arg map)"/>
+    <arg name="map_frame" value="$(arg map)"/>
   </include>
 
-  <node name="evaluate_tabletop_views" pkg="evaluate_tabletop_views" type="evaluate_tabletop_views_service" args="$(arg map)"/>
+  <node name="evaluate_tabletop_views" pkg="evaluate_tabletop_views" type="evaluate_tabletop_views_service" args="$(arg map)" output="screen"/>
 
 </launch>
