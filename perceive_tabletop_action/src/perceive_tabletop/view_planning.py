@@ -69,9 +69,9 @@ class ViewPlanning(smach.State):
         # otherwise re-sample new goals
         try:
 
-            num_of_nav_goals =   int(rospy.get_param('num_of_nav_goals', '50'))
-            inf_radius       = float(rospy.get_param('inflation_radius', '0.9'))
-            inf_radius_coeff = float(rospy.get_param('inflation_radius_coeff', '2.0'))
+            num_of_nav_goals =   int(rospy.get_param('num_of_nav_goals', '100'))
+            inf_radius       = float(rospy.get_param('inflation_radius', '0.35'))
+            inf_radius_coeff = float(rospy.get_param('inflation_radius_coeff', '10.0'))
 
             coverage_total = float(rospy.get_param('coverage_total', '0.8'))
             coverage_avg = float(rospy.get_param('coverage_avg', '2.0'))
