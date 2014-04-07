@@ -453,7 +453,7 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
               if ( voxel_in_frustum(p3d,*it) )
                 { 
                   // BEGIN VISIBILITY 
-                  float SENSOR_HEIGHT = 1.7; 
+				  /*                  float SENSOR_HEIGHT = 1.7; 
                   float SENSOR_RANGE = 3.0;
                   
                   float ox = (*it).position.x;
@@ -467,7 +467,7 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
                     {
                       continue;
                     }
-                  // END VISIBILITY 
+                  */// END VISIBILITY 
                 
                   pose_weights[i] += VOXEL_WEIGHT;
                   keys_at_pose[i].push_back(key);
