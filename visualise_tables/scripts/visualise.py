@@ -2,6 +2,7 @@
 import roslib; roslib.load_manifest("visualise_tables")
 import rospy
 import sys
+import copy
 
 from interactive_markers.interactive_marker_server import (
     InteractiveMarker,
@@ -22,7 +23,8 @@ class Visualiser(object):
         self._interactive = interactive
 
         for table in self._tables:
-            self._create_marker(table,table.table_id)
+            table_cp=copy.deepcopy(table)
+            self._create_marker(table_cp,table.table_id)
 
         rospy.loginfo("Started table visualiser, " + str(len(self._tables)) +
                       " tables in datacentre")
@@ -55,7 +57,7 @@ class Visualiser(object):
     def _create_marker(self, table,
                        marker_description="table interactive marker"):
         assert isinstance(table, Table)
-
+        table.tabletop.points.append(table.tabletop.points[0])
         # create an interactive marker for our server
         marker = InteractiveMarker()
         marker.header.frame_id = table.header.frame_id
