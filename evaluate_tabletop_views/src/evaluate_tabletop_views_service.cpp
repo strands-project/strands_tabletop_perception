@@ -450,33 +450,25 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
             {
               //if ( p3d.z() >= 0.4 )//IGNORE THE GROUND PLANE 
               
-               // BEGIN NAVIGATABILITY 3D
-              // check whether footprint area about pose is free
-              // if not -> continue
-              // END NAVIGATABILITY 3D
-
-              
-              // BEGIN VISIBILITY
-              // TODO: use ROS parameters
-              float SENSOR_HEIGHT = 1.7; 
-              float SENSOR_RANGE = 3.0;
-              
-              float ox = (*it).position.x;
-              float oy = (*it).position.y;
-
-              point3d origin ( ox, oy, SENSOR_HEIGHT); 
-              point3d direction (p3d.x() - ox, p3d.y() - oy, p3d.z() - SENSOR_HEIGHT);
-              point3d end;
-              octree->castRay(origin, direction, end, true, SENSOR_RANGE);
-
-              if ( !voxel_in_ROI(end, req.roi) )
-                {
-                  continue;
-                }
-              // END VISIBILITY
-
               if ( voxel_in_frustum(p3d,*it) )
-                {                  
+                { 
+                  // BEGIN VISIBILITY 
+                  float SENSOR_HEIGHT = 1.7; 
+                  float SENSOR_RANGE = 3.0;
+                  
+                  float ox = (*it).position.x;
+                  float oy = (*it).position.y;
+                  
+                  point3d origin ( ox, oy, SENSOR_HEIGHT); 
+                  point3d direction (p3d.x() - ox, p3d.y() - oy, p3d.z() - SENSOR_HEIGHT);
+                  point3d end;
+                  octree->castRay(origin, direction, end, true, SENSOR_RANGE);
+                  if ( !voxel_in_ROI(end, req.roi) )
+                    {
+                      continue;
+                    }
+                  // END VISIBILITY 
+                
                   pose_weights[i] += VOXEL_WEIGHT;
                   keys_at_pose[i].push_back(key);
                 }
