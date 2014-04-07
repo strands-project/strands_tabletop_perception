@@ -1,0 +1,11 @@
+<launch>
+
+  <arg name="map" default="/projected_map"/>
+
+  <include file="$(find perceive_tabletop_action)/launch/view_planning.launch">
+    <param name="map" value="$(arg map)"/>
+  </include>
+
+  <node name="perceive_tabletop_action" pkg="perceive_tabletop_action" type="PerceiveTabletopActionServer.py"/>
+
+</launch>

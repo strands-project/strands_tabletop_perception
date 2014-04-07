@@ -62,15 +62,16 @@ class ViewPlanning(smach.State):
             self.current_pose += 1
             if self.current_pose == len(self.agenda):
                 userdata.action_completed = True
+                self.agenda = []
                 return 'action_completed'
             return 'succeeded'
 
         # otherwise re-sample new goals
         try:
 
-            num_of_nav_goals =   int(rospy.get_param('num_of_nav_goals', '100'))
-            inf_radius       = float(rospy.get_param('inflation_radius', '0.7'))
-            inf_radius_coeff = float(rospy.get_param('inflation_radius_coeff', '1.5'))
+            num_of_nav_goals =   int(rospy.get_param('num_of_nav_goals', '50'))
+            inf_radius       = float(rospy.get_param('inflation_radius', '0.9'))
+            inf_radius_coeff = float(rospy.get_param('inflation_radius_coeff', '2.0'))
 
             coverage_total = float(rospy.get_param('coverage_total', '0.8'))
             coverage_avg = float(rospy.get_param('coverage_avg', '2.0'))
