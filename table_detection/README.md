@@ -11,7 +11,7 @@ The table detection is launched by:
 `roslaunch table_detection detection.launch cloud:=/pointcloud2/topic`,
 
 where `/pointcloud2/topic` is a point cloud in the frame of reference of a global map. Currently, the package outputs
-three visualization topics in rviz:
+three visualization topics in RViz:
 
 * `/primitive_extraction/primitive_marker_array` - All detected planes from the last processed point cloud as `visualization_msgs/MarkerArray`.
 * `/table_detection/primitive_marker_array` - All detected tables from the last processed point cloud as `visualization_msgs/MarkerArray`.
