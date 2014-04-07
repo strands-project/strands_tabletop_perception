@@ -104,7 +104,7 @@ class PerceptionNill(smach.State):
 
     def execute(self, userdata):
 
-        rospy.wait(2)
+        rospy.sleep(2)
 
         return 'succeeded'
 

@@ -34,15 +34,6 @@ def move_base_goal_cb(userdata,goal):
     
     return next_goal
 
-def _get_table(table_id):
-    """ Get a specific table """
-    # UNUSED.
-    query = {}
-    query["table_id"] = table_id
-    #TODO: what if does not exist....
-    return self._msg_store.query(Table._type, {}, query)[0]
-
-
 class PerceiveTabletopSM(smach.StateMachine):
     def __init__(self):
         smach.StateMachine.__init__(self, outcomes=['succeeded',
@@ -55,29 +46,34 @@ class PerceiveTabletopSM(smach.StateMachine):
         #polygon = [[-1.0,0.0],[4.0,0.0],[4.0,-4.0],[-1.0,-4.0]]
 
         self._msg_store=MessageStoreProxy()
-        table=self._get_table(self.userdata.goal) #"lab_test_1")
-        mat=tf.transformations.quaternion_matrix(table.pose.pose.orientation)
+        table=self._get_table("test_table_2") #self.userdata.goal) #
+        o=table.pose.pose.orientation
+        quat=numpy.array([o.w,o.x,o.y,o.z])
+        mat=tf.transformations.quaternion_matrix(quat)
         mat[3][0]=table.pose.pose.position.x
         mat[3][1]=table.pose.pose.position.y
         mat[3][2]=table.pose.pose.position.z
 
-        for pt in table.tabletop.points:
-            p=numpy.array([pt.x, pt.y, pt.z,1])
-            new=numpy.dot(mat,p)[:-1]
-            pt.x=new[0]
-            pt.y=new[1]
-            pt.z=new[2]
+        #for pt in table.tabletop.points:
+        #    p=numpy.array([pt.x, pt.y, pt.z,1])
+        #    new=numpy.dot(mat,p)[:-1]
+        #    pt.x=new[0]
+        #    pt.y=new[1]
+        #    pt.z=new[2]
 
-        # table in TUM kitchen in map frame coordinates
-        #polygon = [[0.8,-1.5],[1.4,-1.5],[1.4,-3.7],[0.8,-3.7]]
-        
+        # Table in bham lab
+        polygon = [[-1.9,-5.2],
+                   [-1.9,-5.8],
+                   [-3.8,-5.8],
+                   [-3.8,-5.2]]
+         
         rospy.loginfo('Polygon: %s', polygon)
         points = []
         for point in polygon:
             rospy.loginfo('Point: %s', point)
             points.append(Point32(float(point[0]),float(point[1]),0))
 
-        poly = table.tabletop #Polygon(points)
+        poly = Polygon(points) #table.tabletop #
         self.userdata.sm_table_area = poly
         self.userdata.sm_table_pose = []
 
@@ -148,6 +144,6 @@ class PerceiveTabletopSM(smach.StateMachine):
         query = {}
         query["table_id"] = table_id
         #TODO: what if does not exist....
-        return self._msg_store.query(Table._type, {}, query)[0]
+        return self._msg_store.query(Table._type, query,single=True)[0]
 
     
