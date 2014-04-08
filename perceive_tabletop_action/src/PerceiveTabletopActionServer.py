@@ -24,7 +24,7 @@ class PerceiveTabletopActionServer:
             succeeded_outcomes = ['succeeded'],
             aborted_outcomes = ['aborted'],
             preempted_outcomes = ['preempted'],
-            goal_key = 'goal')
+            goal_key = 'table_id')
 
         # Run the server in a background thread
         asw.run_server()
