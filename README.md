@@ -165,7 +165,7 @@ When the image shows the chessboard highlighted in rainbow colours, it has been 
 
 
 ### Autonomous table detection (KTH, Nils)
-
+See [README](https://github.com/strands-project/strands_tabletop_perception/blob/hydro-devel/table_detection/README.md).
 
 ## Table Visualisation and Tweeking
 Once tables are inside the datacentre, they can be manually moved about using the `visualise_tables` package.
@@ -211,3 +211,4 @@ rosrun perceive_tabletop_action PerceiveTabletopActionClient.py table_id:='table
 
 
 ## Appendix: table and object data management using MongoDB (BHAM, Chris) 
+On route.
