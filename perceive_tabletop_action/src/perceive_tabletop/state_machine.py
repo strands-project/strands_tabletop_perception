@@ -4,10 +4,6 @@ import smach
 import smach_ros
 import sys
 
-
-from ros_datacentre.message_store import MessageStoreProxy
-from strands_perception_msgs.msg import Table
-
 import actionlib
 from actionlib_msgs.msg import *
 from move_base_msgs.msg import *
@@ -43,46 +39,7 @@ class PerceiveTabletopSM(smach.StateMachine):
                                                     'preempted'],
                                                     input_keys=['table_id'])
 
-        
-
-        #polygon = [[-1.0,0.0],[4.0,0.0],[4.0,-4.0],[-1.0,-4.0]]
-
-        self._msg_store=MessageStoreProxy()
-        table=self._get_table("test_lg_1") #userdata.table_id) #TODO: what if non exist?
-        o=table.pose.pose.orientation
-        quat=numpy.array([o.x,o.y,o.z,o.w])
-        mat=tf.transformations.quaternion_matrix(quat)
-        mat[0][3]=table.pose.pose.position.x
-        mat[1][3]=table.pose.pose.position.y
-        mat[2][3]=table.pose.pose.position.z
-
-        for pt in table.tabletop.points:
-            p=numpy.array([pt.x, pt.y, pt.z,1])
-            new=numpy.dot(mat,p)[:-1]
-            pt.x=new[0]
-            pt.y=new[1]
-            pt.z=new[2]
-
-        
-        # Table in bham lab
-#        polygon = [[-1.9,-5.2],
-#                   [-1.9,-5.8],
-#                   [-3.8,-5.8],
-#                   [-3.8,-5.2]]
-#        rospy.loginfo('Polygon: %s', polygon)
-#        points = []
-#        for point in polygon:
-#            rospy.loginfo('Point: %s', point)
-#            points.append(Point32(float(point[0]),float(point[1]),0))
-
-        poly = table.tabletop #Polygon(points) #
-        rospy.loginfo("Table: %s" % poly)
-
-        self.userdata.sm_table_area = poly
-        self.userdata.sm_table_pose = []
-
-        self.userdata.sm_action_completed = False
-
+        self.userdata.action_completed = False
 
         self._action_monitor  = ActionMonitor()
         self._view_planning   = ViewPlanning()
