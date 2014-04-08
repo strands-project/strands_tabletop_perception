@@ -4,9 +4,200 @@ Tabletop perception for STRANDS. The tabletop perception is realized as a ROS ac
 
 The information about the tables is stored in the ros datacentre (MongoDB). This information can either be added through the autonoumous table detection or a maunual process using a marker (cf. to the descriptions below). 
 
+## Finding/Storing Tables
+
+Tables are stored in the datacentre as strands_perception_msgs/Table messages, using the MessageStore system. 
+
+### Manually inserting tables into the datacentre:
+
+There are a few possible ways this can be done: 
+
+* Use RoboMongo or any MongoDB client to create a new Table message inside the message_store collection inside the message_store database.
+Create a document that looks like:
+
+```
+ {
+    "_id" : ObjectId("533c147c9f9d51517be039af"),
+    "header" : {
+        "stamp" : {
+            "secs" : 0,
+            "nsecs" : 0
+        },
+        "frame_id" : "/map",
+        "seq" : 0
+    },
+    "pose" : {
+        "pose" : {
+            "position" : {
+                "y" : -5.604931354522705,
+                "x" : 5.736222267150879,
+                "z" : 1.433120727539062
+            },
+            "orientation" : {
+                "y" : 0.6713822484016418,
+                "x" : 0.7393708229064941,
+                "z" : 0.04276063665747643,
+                "w" : 0.02735294029116631
+            }
+        },
+        "covariance" : [ 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0, 
+            0
+        ]
+    },
+    "table_id" : "lg_table_8",
+    "tabletop" : {
+        "points" : [ 
+            {
+                "y" : 0,
+                "x" : 0,
+                "z" : 0
+            }, 
+            {
+                "y" : 1,
+                "x" : 0,
+                "z" : 0
+            }, 
+            {
+                "y" : 1,
+                "x" : 1,
+                "z" : 0
+            }, 
+            {
+                "y" : 0.2000000029802322,
+                "x" : 1,
+                "z" : 0
+            }, 
+            {
+                "y" : 0,
+                "x" : 0,
+                "z" : 0
+            }
+        ]
+    },
+    "_meta" : {
+        "stored_type" : "strands_perception_msgs/Table",
+        "stored_class" : "strands_perception_msgs.msg._Table.Table"
+    }
+}
+```
+
+* Create a Table message in your program and use the message store proxy classes to insert it:
+
+```python
+from strands_perception_msgs.msg import Table
+from geometry_msgs.msg import PoseWithCovariance, Polygon
+
+from ros_datacentre.message_store import MessageStoreProxy
+
+my_table = Table()
+my_table.table_id = "MagicTable1"
+my_table.header.frame_id = "/map"  # The parent frame that the table is in
+
+table_pose = PoseWithCovariance()  # The transformation to the table frame
+# Fill in the table position...
+my_table.pose = table_pose
+
+polygon = Polygon()                # The table top sorrounding polygon in the table frame
+# Fill in the points in the polygon....
+my_table.tabletop = polygon
+
+_msg_store = MessageStoreProxy()
+# Store the table
+_msg_store.insert(my_table)
+        
+```
+
+
+### Semi-automatic table insertion:
+The `manual_table_storer` package provides a script to create tables at locations given by a calibration board/chessboard. This avoids the need to work out where the table is in space, but does still require the manual measurements of the table plane polygon.
+
+To do so:
+
+1. Checkout and compile the chessboard detection code into your catkin workspace:
+
+  ```bash
+roscd
+cd ../src
+git clone https://github.com/cburbridge/chessboards
+cd ..
+catkin_make
+```
+2. Measure your chosen table's top, choosing an origin point. +z will point down, so +y will be clockwise to +x. Write down the co-ordinates of the table top:
+
+3. Add your new table top to the top of store.py file:
+
+```python
+TABLES["LGType4"]=[(0,0,0),
+                   (0.4,0,0),
+                   (0.4,0.6,0),
+                   (-1.0,.6,0),
+                   (-1,-1.0,0),
+                   (-0.4,-1,0),
+                   (-0.4,-0.6,0)]
+```
+
+4. Launch the table store program with the table type and the new name for the table:
+
+```
+rosrun manual_table_storer store.py LGType my_magic_table
+```
+
+5. Print out an A3 calibration patter, found in `chessboards/chessboards/boards/A3 cal.pdf`. Stikck it to some card.
+
+6. Place the calibration pattern on to the table, with the centre of the board at your origin and the x & y axis aligned with your axis:
+
+7. Make sure your robot is well localised in the 2D map then run the chessboard detector:
+
+```
+roslaunch chessboard_pose detect_a3_8_5.launch 
+```
+
+When the image shows the chessboard highlighted in rainbow colours, it has been found. At that point, the storer node will store and exit.
+
+
+
 ## Autonomous table detection (KTH, Nils)
 
-## Manual table annotation (BHAM, Chris)
+
+## Table Visualisation and Tweeking
+Once tables are inside the datacentre, they can be manually moved about using the `visualise_tables` package.
+
+
 
 ## View planning for tabletop perception (BHAM, Lars)
 
