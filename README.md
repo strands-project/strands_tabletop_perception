@@ -129,7 +129,7 @@ catkin_make
 ```
 2. Measure your chosen table's top, choosing an origin point. +z will point down, so +y will be clockwise to +x. Write down the co-ordinates of the table top:
 
-![table](images/table.png)
+![table](https://github.com/strands-project/strands_tabletop_perception/raw/hydro-devel/images/tables.png)
 
 3. Add your new table top to the top of store.py file:
 
@@ -151,7 +151,7 @@ rosrun manual_table_storer store.py LGType my_magic_table
 
 5. Print out an A3 calibration patter, found in `chessboards/chessboards/boards/A3 cal.pdf`. Stikck it to some card.
 
-6. Place the calibration pattern on to the table, with the centre of the board at your origin and the x & y axis aligned with your axis:
+6. Place the calibration pattern on to the table, with the centre of the board at your origin and the x & y axis aligned with your axis. See image above.
 
 7. Make sure your robot is well localised in the 2D map then run the chessboard detector:
 
