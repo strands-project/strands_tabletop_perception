@@ -41,42 +41,12 @@ Create a document that looks like:
             }
         },
         "covariance" : [ 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0, 
-            0
+            0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0
         ]
     },
     "table_id" : "lg_table_8",
@@ -158,6 +128,8 @@ cd ..
 catkin_make
 ```
 2. Measure your chosen table's top, choosing an origin point. +z will point down, so +y will be clockwise to +x. Write down the co-ordinates of the table top:
+
+![table](images/table.png)
 
 3. Add your new table top to the top of store.py file:
 
