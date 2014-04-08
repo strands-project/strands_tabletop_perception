@@ -12,7 +12,7 @@ Tables are stored in the datacentre as strands_perception_msgs/Table messages, u
 
 There are a few possible ways this can be done: 
 
-* Use RoboMongo or any MongoDB client to create a new Table message inside the message_store collection inside the message_store database.
+**OPTION A**) Use RoboMongo or any MongoDB client to create a new Table message inside the message_store collection inside the message_store database.
 Create a document that looks like:
 
 ```
@@ -86,7 +86,7 @@ Create a document that looks like:
 }
 ```
 
-* Create a Table message in your program and use the message store proxy classes to insert it:
+**OPTION B**) Create a Table message in your program and use the message store proxy classes to insert it:
 
 ```python
 from strands_perception_msgs.msg import Table
@@ -118,7 +118,7 @@ The `manual_table_storer` package provides a script to create tables at location
 
 To do so:
 
-1. Checkout and compile the chessboard detection code into your catkin workspace:
+1) Checkout and compile the chessboard detection code into your catkin workspace:
 
   ```bash
 roscd
@@ -127,11 +127,12 @@ git clone https://github.com/cburbridge/chessboards
 cd ..
 catkin_make
 ```
-2. Measure your chosen table's top, choosing an origin point. +z will point down, so +y will be clockwise to +x. Write down the co-ordinates of the table top:
+
+2) Measure your chosen table's top, choosing an origin point. +z will point down, so +y will be clockwise to +x. Write down the co-ordinates of the table top:
 
 ![table](https://github.com/strands-project/strands_tabletop_perception/raw/hydro-devel/images/tables.png)
 
-3. Add your new table top to the top of store.py file:
+3) Add your new table top to the top of store.py file:
 
 ```python
 TABLES["LGType4"]=[(0,0,0),
@@ -143,17 +144,17 @@ TABLES["LGType4"]=[(0,0,0),
                    (-0.4,-0.6,0)]
 ```
 
-4. Launch the table store program with the table type and the new name for the table:
+4) Launch the table store program with the table type and the new name for the table:
 
 ```
 rosrun manual_table_storer store.py LGType my_magic_table
 ```
 
-5. Print out an A3 calibration patter, found in `chessboards/chessboards/boards/A3 cal.pdf`. Stikck it to some card.
+5) Print out an A3 calibration patter, found in `chessboards/chessboards/boards/A3 cal.pdf`. Stick it to some card.
 
-6. Place the calibration pattern on to the table, with the centre of the board at your origin and the x & y axis aligned with your axis. See image above.
+6) Place the calibration pattern on to the table, with the centre of the board at your origin and the x & y axis aligned with your axis. See image above.
 
-7. Make sure your robot is well localised in the 2D map then run the chessboard detector:
+7) Make sure your robot is well localised in the 2D map then run the chessboard detector:
 
 ```
 roslaunch chessboard_pose detect_a3_8_5.launch 
