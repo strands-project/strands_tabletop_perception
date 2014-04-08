@@ -1,8 +1,8 @@
 # STRANDS Tabletop Perception
 
-Tabletop perception for STRANDS. The tabletop perception is realized as a ROS action server. Given the information about a table in the environment, i.e. its pose and its shape specified as a polygon, the robot plans multiple views to perceive the tabletop, segments the data from the depth camera at each of the planned views, and classifies the extracted segements for a given set of object classes. The individual components of the system are described below.
+Tabletop perception for STRANDS. The tabletop perception is realised as a ROS action server. Given the information about a table in the environment, i.e. its pose and its shape specified as a polygon, the robot plans multiple views to perceive the tabletop, segments the data from the depth camera at each of the planned views, and classifies the extracted segments for a given set of object classes. The individual components of the system are described below.
 
-The information about the tables is stored in the ros datacentre (MongoDB). This information can either be added through the autonoumous table detection or a maunual process using a marker (cf. to the descriptions below). 
+The information about the tables is stored in the ros datacentre (MongoDB). This information can either be added through the autonomous table detection or a manual process using a marker (cf. to the descriptions below). 
 
 ## Finding/Storing Tables
 
@@ -102,7 +102,7 @@ table_pose = PoseWithCovariance()  # The transformation to the table frame
 # Fill in the table position...
 my_table.pose = table_pose
 
-polygon = Polygon()                # The table top sorrounding polygon in the table frame
+polygon = Polygon()                # The table top surrounding polygon in the table frame
 # Fill in the points in the polygon....
 my_table.tabletop = polygon
 
@@ -150,7 +150,7 @@ TABLES["LGType4"]=[(0,0,0),
 rosrun manual_table_storer store.py LGType my_magic_table
 ```
 
-5) Print out an A3 calibration patter, found in `chessboards/chessboards/boards/A3 cal.pdf`. Stick it to some card.
+5) Print out an A3 calibration pattern, found in `chessboards/chessboards/boards/A3 cal.pdf`. Stick it to some card.
 
 6) Place the calibration pattern on to the table, with the centre of the board at your origin and the x & y axis aligned with your axis. See image above.
 
