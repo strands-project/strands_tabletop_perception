@@ -206,7 +206,7 @@ roslaunch perceive_tabletop_action perceive_tabletop.launch
 
 Run the tabletop action client with a table id (known by the ros datacentre):
 ```
-rosrun perceive_tabletop_action PerceiveTabletopActionClient.py table_id:='table27'
+rosrun perceive_tabletop_action PerceiveTabletopActionClient.py table27
 ```
 
 
