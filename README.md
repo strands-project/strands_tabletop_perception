@@ -200,15 +200,18 @@ Launch the view planning components and action server:
 roslaunch perceive_tabletop_action perceive_tabletop.launch
 ```
 
+
 ## 3D Object recognition (TUW, Aitor, Thomas, Michael) 
 
 ## Run the 'perceive tabletop' action
 
 Run the tabletop action client with a table id (known by the ros datacentre):
 ```
-rosrun perceive_tabletop_action PerceiveTabletopActionClient.py table27
+rosrun perceive_tabletop_action PerceiveTabletopActionClient.py test_lg_1
 ```
+Visualisation of the viewplanning in RVIZ:
 
+![table](https://github.com/strands-project/strands_tabletop_perception/raw/hydro-devel/images/viewplanning_rviz.png)
 
 ## Appendix: table and object data management using MongoDB (BHAM, Chris) 
 On route.
