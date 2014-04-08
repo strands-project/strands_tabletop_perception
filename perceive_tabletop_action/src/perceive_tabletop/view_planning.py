@@ -27,7 +27,7 @@ class ViewPlanning(smach.State):
 
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted', 'action_completed'],
-                             input_keys=['table_pose','table_area'],
+                             input_keys=['table_area'],
                              output_keys=['pose_output','view_list', 'action_completed'])
 
 
@@ -77,7 +77,6 @@ class ViewPlanning(smach.State):
             coverage_avg = float(rospy.get_param('coverage_avg', '2.0'))
             
             # TODO: compute area in proximity to table given table_pose and table_area
-            table_pose = userdata.table_pose
             polygon    = userdata.table_area
 
             min_x = float(sys.maxint)
