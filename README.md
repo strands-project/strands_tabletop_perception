@@ -163,11 +163,25 @@ When the image shows the chessboard highlighted in rainbow colours, it has been 
 
 
 
-## Autonomous table detection (KTH, Nils)
+### Autonomous table detection (KTH, Nils)
 
 
 ## Table Visualisation and Tweeking
 Once tables are inside the datacentre, they can be manually moved about using the `visualise_tables` package.
+
+To visualise the tables, without the option to move them (safer):
+
+```
+rosrun visualise_tables visualise.py
+```
+
+To visualise the tables with interactive markers enabled to move the table:
+
+```
+rosrun visualise_tables visualise.py edit
+```
+
+In RViz, add an InteractiveMarkers display and set the Update Topic to `/table_markers/update`. If enabled, dragging the table about updates the datacentre.
 
 
 
@@ -193,5 +207,6 @@ Run the tabletop action client with a table id (known by the ros datacentre):
 ```
 rosrun perceive_tabletop_action PerceiveTabletopActionClient.py table_id:='table27'
 ```
+
 
 ## Appendix: table and object data management using MongoDB (BHAM, Chris) 
