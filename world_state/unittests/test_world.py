@@ -27,7 +27,7 @@ class TestWorld(unittest.TestCase):
         self.assertEqual(obj.get_identification("TableDetection").class_type,
                          ["Football", 0.3])
         
-        #w.remove_object(obj)
+        w.remove_object(obj)
          
             
 if __name__ == '__main__':
