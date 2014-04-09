@@ -29,6 +29,12 @@ class TestWorld(unittest.TestCase):
         
         w.remove_object(obj)
          
+        with self.assertRaises(Exception) as ex:
+            w.remove_object(obj.name)
+                
+        the_exception = ex.exception
+        self.assertEqual(str(the_exception),
+                         "get_object failed to find object '%s' in database."%obj.name)
             
 if __name__ == '__main__':
     import rosunit

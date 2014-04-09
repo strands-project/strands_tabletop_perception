@@ -114,7 +114,9 @@ class World(object):
         result = self._mongo.database.Objects.find(
             {"__pyobject_class_type": Object.get_pyoboject_class_string(),
              'key': object_name,})
-
+        
+        if result.count() != 1:
+            raise Exception("get_object failed to find object '%s' in database."%object_name)
         found = result[0]
         found._connect(self._mongo)
 
@@ -132,7 +134,7 @@ class World(object):
     def remove_object(self, obj):
         if not isinstance(obj, Object):
             obj = self.get_object(obj)
-        new_id = self._mongo.database.ObjectWasteland.insert(Object._mongo_encode(obj))
+        new_id = self._mongo.database.ObjectWasteland.save(Object._mongo_encode(obj))
         self._mongo.database.Objects.remove({
             "__pyobject_class_type": Object.get_pyoboject_class_string(),
              'key': obj.name, })
