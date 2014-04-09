@@ -110,15 +110,10 @@ class World(object):
                  server_port=62345):
         self._mongo = MongoConnection(database_name, server_host, server_port)
     
-    def get_object(self, object_name):  #, fannyabout=False):
+    def get_object(self, object_name):  
         result = self._mongo.database.Objects.find(
             {"__pyobject_class_type": Object.get_pyoboject_class_string(),
              'key': object_name,})
-
-        #if fannyabout:
-            #print result[0].identifications
-            #print ("result[0].identifications[\"TableDetection\"][0] <- ",
-                   #type(result[0].identifications["TableDetection"][0]) )
 
         found = result[0]
         found._connect(self._mongo)
