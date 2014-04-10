@@ -5,11 +5,10 @@ project(pcd_filter)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED roscpp rospy strandsv4r)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
-set(PCL_DIR CACHE PATH "pcl directory")
 find_package(PCL 1.7 REQUIRED)
 
-set(FAAT_PCL_DIR_BUILD CACHE PATH "FAAT PCL DIR BUILD")
 find_package(FAAT_PCL)
 
 ## System dependencies are found with CMake's conventions

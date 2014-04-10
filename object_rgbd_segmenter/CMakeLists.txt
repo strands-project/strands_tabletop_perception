@@ -7,7 +7,8 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp rospy sensor_msgs std_msgs segmentation_srv_definitions message_generation strandsv4r)
 
-set(PCL_DIR CACHE PATH "pcl directory")
+include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
+
 find_package(PCL REQUIRED)
 
 set(V4R_DIR "${PROJECT_SOURCE_DIR}/../strandsv4r")
