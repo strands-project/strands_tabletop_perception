@@ -40,11 +40,12 @@ class TestObjectMaster(unittest.TestCase):
 
         cat = om.ObjectCategory()
         cat.name = "test__cat"
+        o.add_category(cat)
         
         for t in to_add:
             tt = om.ObjectInstance()
             tt.name = t
-            tt.category = cat.category_id
+            tt.category = cat.name
             
             o.add_instance(tt)
             
@@ -57,11 +58,11 @@ class TestObjectMaster(unittest.TestCase):
         for t in to_add:
             tt = om.ObjectInstance()
             tt.name = t
-            tt.category = cat.category_id
+            tt.category = cat.name
             o.remove_instance(tt)
             
         added = o.get_instances(cat)
-        
+        o.remove_category(cat)
         print added
         for c in to_add:
             self.assertNotIn(c, added)
