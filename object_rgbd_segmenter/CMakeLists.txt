@@ -9,7 +9,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy sensor_msgs std_msgs segmen
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
-find_package(PCL REQUIRED)
+find_package(PCL 1.7.1 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
 
 ## System dependencies are found with CMake's conventions
@@ -64,7 +64,12 @@ add_executable(object_rgbd_segmenter_demo src/test.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(grasping_recognition_master_node grasping_recognition_master_generate_messages_cpp)
+add_dependencies(object_rgbd_segmenter_service ${catkin_EXPORTED_TARGETS}    v4rSurfaceSegmenter
+   v4rSurfaceUtils
+   v4rTomGine)
+add_dependencies(object_rgbd_segmenter_demo ${catkin_EXPORTED_TARGETS}    v4rSurfaceSegmenter
+   v4rSurfaceUtils
+   v4rTomGine)
 
 #set(V4R_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/strandsv4r/lib)
 #message(STATUS "V4R_LIBRARIES:" ${V4R_LIB_DIR})
@@ -86,6 +91,9 @@ target_link_libraries(object_rgbd_segmenter_service
 target_link_libraries(object_rgbd_segmenter_demo
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
+   v4rSurfaceSegmenter
+   v4rSurfaceUtils
+   v4rTomGine
 )
 
 #############
