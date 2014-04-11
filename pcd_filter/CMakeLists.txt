@@ -8,9 +8,6 @@ find_package(catkin REQUIRED roscpp rospy strandsv4r)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
 find_package(PCL 1.7 REQUIRED)
-
-find_package(FAAT_PCL)
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -96,7 +93,12 @@ set(incs include/my_filter.h)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${PCL_INCLUDE_DIRS} ${FAAT_PCL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
+include_directories(
+include 
+${PCL_INCLUDE_DIRS} 
+#${FAAT_PCL_INCLUDE_DIRS} 
+${catkin_INCLUDE_DIRS}
+)
 
 ## Declare a cpp library
 # add_library(pcd_filter
@@ -114,7 +116,7 @@ add_executable(pcd_filter_node src/main.cpp ${incs})
  target_link_libraries(pcd_filter_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-  ${FAAT_PCL_LIBRARIES}
+  #${FAAT_PCL_LIBRARIES}
  )
 
 #############

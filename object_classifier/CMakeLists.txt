@@ -9,9 +9,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp sensor_msgs std_msgs segmentation
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
-find_package(PCL REQUIRED)
-
-find_package(FAAT_PCL)
+find_package(PCL 1.7 REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
 
@@ -47,7 +45,11 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
- include_directories(include ${FAAT_PCL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
+ include_directories(include
+ #${FAAT_PCL_INCLUDE_DIRS}
+ ${catkin_INCLUDE_DIRS}
+)
+
 set(incs include/pcl_conversions.h include/segmenter.h)
 ## Declare a cpp library
 # add_library(object_classifier
@@ -66,13 +68,13 @@ add_executable(object_classifier_demo_node src/test.cpp)
  target_link_libraries(object_classifier_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-  ${FAAT_PCL_LIBRARIES}  
+  #${FAAT_PCL_LIBRARIES}  
 )
 
 target_link_libraries(object_classifier_demo_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-  ${FAAT_PCL_LIBRARIES}
+  #${FAAT_PCL_LIBRARIES}
   )
 
 #############
