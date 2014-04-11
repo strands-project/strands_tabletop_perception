@@ -79,7 +79,7 @@ add_executable(recognition_service src/recognition_service.cpp ${incs})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(grasping_recognition_master_node grasping_recognition_master_generate_messages_cpp)
+add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(recognition_service
