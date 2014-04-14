@@ -64,12 +64,8 @@ add_executable(object_rgbd_segmenter_demo src/test.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(object_rgbd_segmenter_service ${catkin_EXPORTED_TARGETS}    v4rSurfaceSegmenter
-   v4rSurfaceUtils
-   v4rTomGine)
-add_dependencies(object_rgbd_segmenter_demo ${catkin_EXPORTED_TARGETS}    v4rSurfaceSegmenter
-   v4rSurfaceUtils
-   v4rTomGine)
+add_dependencies(object_rgbd_segmenter_service ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(object_rgbd_segmenter_demo ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 #set(V4R_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/strandsv4r/lib)
 #message(STATUS "V4R_LIBRARIES:" ${V4R_LIB_DIR})
@@ -83,17 +79,11 @@ target_link_libraries(object_rgbd_segmenter_service
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
-   v4rSurfaceSegmenter
-   v4rSurfaceUtils
-   v4rTomGine
 )
 
 target_link_libraries(object_rgbd_segmenter_demo
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
-   v4rSurfaceSegmenter
-   v4rSurfaceUtils
-   v4rTomGine
 )
 
 #############

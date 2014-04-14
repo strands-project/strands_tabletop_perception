@@ -9,7 +9,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
-find_package(PCL 1.7.1 REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
 
 #list(${FAAT_PCL_LIBRARIES} APPEND boost_regex)
@@ -64,7 +64,6 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(include
   ${PCL_INCLUDE_DIRS}
-  #${FAAT_PCL_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -79,13 +78,12 @@ add_executable(recognition_service src/recognition_service.cpp ${incs})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS} FAAT_PCL_3d_rec_framework FAAT_PCL_registration)
+add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(recognition_service
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
-   #${FAAT_PCL_LIBRARIES}
    ${OpenCV_LIBS}
 )
 

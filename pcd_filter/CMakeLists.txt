@@ -110,13 +110,12 @@ add_executable(pcd_filter_node src/main.cpp ${incs})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(pcd_filter_node ${catkin_EXPORTED_TARGETS} v4rPCLAddOns v4rSurfaceUtils)
+add_dependencies(pcd_filter_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(pcd_filter_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
- v4rPCLAddOns v4rSurfaceUtils
   #${FAAT_PCL_LIBRARIES}
  )
 

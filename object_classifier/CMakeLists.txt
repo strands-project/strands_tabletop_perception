@@ -62,26 +62,18 @@ add_executable(object_classifier_demo_node src/test.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(object_classifier_demo_node ${catkin_EXPORTED_TARGETS} FAAT_PCL_3d_rec_framework FAAT_PCL_registration v4rSurfaceModeling v4rSurfaceRelations v4rSurfaceSegmenter
-   v4rSurfaceUtils)
-add_dependencies(object_classifier_node ${catkin_EXPORTED_TARGETS} FAAT_PCL_3d_rec_framework FAAT_PCL_registration v4rSurfaceModeling v4rSurfaceRelations v4rSurfaceRelations 
-   v4rSurfaceUtils)
+add_dependencies(object_classifier_demo_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(object_classifier_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(object_classifier_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-v4rSurfaceModeling  v4rSurfaceRelations v4rSurfaceRelations
-   v4rSurfaceUtils
-  #${FAAT_PCL_LIBRARIES}  
 )
 
 target_link_libraries(object_classifier_demo_node
   ${catkin_LIBRARIES}
-  ${PCL_LIBRARIES} 
-v4rSurfaceModeling  v4rSurfaceRelations v4rSurfaceRelations
-   v4rSurfaceUtils
-  #${FAAT_PCL_LIBRARIES}
+  ${PCL_LIBRARIES}
   )
 
 #############
