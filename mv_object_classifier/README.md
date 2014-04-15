@@ -6,6 +6,6 @@ roslaunch mv_object_classifier mv_classifier_from_files_demo.launch models_dir:=
 
 and then:
 
-rosrun mv_object_classifier mv_object_classifier_demo_from_file
+rosrun mv_object_classifier mv_object_classifier_demo_from_file _folder:=${DATA}
 
-which will use the PCD files stored in data.
+where data should point to the data/mv_seq1/ folder within this package or any folder containing PCD files that will be used as input for the multi-view classifier.
