@@ -10,8 +10,8 @@
 	<arg name="seg_type" default="0" />
 	<arg name="do_segmentation" default="true" />
 
-	<arg name="segmenation_models_filename" default="file://$(find object_rgbd_segmenter)/data/ST-TrainAll.model.txt" />
-	<arg name="segmentation_scaling_filename" default="file://$(find object_rgbd_segmenter)/data/ST-TrainAll.scalingparams.txt" />
+	<arg name="segmenation_models_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.model.txt" />
+	<arg name="segmentation_scaling_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.scalingparams.txt" />
 
 
 	<!-- classifier demo -->

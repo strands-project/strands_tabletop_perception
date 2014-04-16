@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs objec
    FILES
   segment_and_classify.srv
   classify.srv
+  mv_classify.srv
  )
 
 ## Generate actions in the 'action' folder

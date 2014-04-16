@@ -7,12 +7,9 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp rospy sensor_msgs std_msgs segmentation_srv_definitions message_generation strandsv4r)
 
-set(PCL_DIR CACHE PATH "pcl directory")
-find_package(PCL REQUIRED)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
-set(V4R_DIR "${PROJECT_SOURCE_DIR}/../strandsv4r")
-message(STATUS "V4R DIR:" ${V4R_DIR})
-
+find_package(PCL 1.7.1 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
 
 ## System dependencies are found with CMake's conventions
@@ -53,7 +50,7 @@ include_directories(include
   ${PCL_INCLUDE_DIRS}
   ${V4R_INCLUDE_DIR}
   ${catkin_INCLUDE_DIRS}
-  ${V4R_DIR}
+  #${V4R_DIR}
 )
 set(incs include/pcl_conversions.h)
 ## Declare a cpp library
@@ -67,22 +64,21 @@ add_executable(object_rgbd_segmenter_demo src/test.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(grasping_recognition_master_node grasping_recognition_master_generate_messages_cpp)
+add_dependencies(object_rgbd_segmenter_service ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(object_rgbd_segmenter_demo ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
-set(V4R_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/strandsv4r/lib)
-message(STATUS "V4R_LIBRARIES:" ${V4R_LIB_DIR})
-message(STATUS "V4R_INCLUDES:" ${V4R_INCLUDE_DIR})
+#set(V4R_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/strandsv4r/lib)
+#message(STATUS "V4R_LIBRARIES:" ${V4R_LIB_DIR})
+#message(STATUS "V4R_INCLUDES:" ${V4R_INCLUDE_DIR})
 
 
-link_directories(${V4R_LIB_DIR})
+#link_directories(${V4R_LIB_DIR})
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(object_rgbd_segmenter_service
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
-   v4rSurfaceSegmenter
-   v4rSurfaceUtils
-   v4rTomGine
 )
 
 target_link_libraries(object_rgbd_segmenter_demo

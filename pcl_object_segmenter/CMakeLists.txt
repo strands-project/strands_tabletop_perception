@@ -7,7 +7,7 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS segmentation_srv_definitions roscpp rospy sensor_msgs std_msgs)
 
-set(PCL_DIR CACHE PATH "pcl directory")
+include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 find_package(PCL REQUIRED)
 
 ## System dependencies are found with CMake's conventions
@@ -62,7 +62,8 @@ add_executable(pcl_object_segmenter_demo src/test.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(grasping_recognition_master_node grasping_recognition_master_generate_messages_cpp)
+add_dependencies(pcl_object_segmenter_service ${catkin_EXPORTED_TARGETS})
+add_dependencies(pcl_object_segmenter_demo ${catkin_EXPORTED_TARGETS})
 
 #message(STATUS "V4R_LIBRARIES:" ${V4R_LIB_DIR})
 #message(STATUS "V4R_INCLUDES:" ${V4R_INCLUDE_DIR})

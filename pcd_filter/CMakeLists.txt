@@ -5,13 +5,9 @@ project(pcd_filter)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED roscpp rospy strandsv4r)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
-set(PCL_DIR CACHE PATH "pcl directory")
 find_package(PCL 1.7 REQUIRED)
-
-set(FAAT_PCL_DIR_BUILD CACHE PATH "FAAT PCL DIR BUILD")
-find_package(FAAT_PCL)
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -97,7 +93,12 @@ set(incs include/my_filter.h)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include ${PCL_INCLUDE_DIRS} ${FAAT_PCL_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS})
+include_directories(
+include 
+${PCL_INCLUDE_DIRS} 
+#${FAAT_PCL_INCLUDE_DIRS} 
+${catkin_INCLUDE_DIRS}
+)
 
 ## Declare a cpp library
 # add_library(pcd_filter
@@ -109,13 +110,13 @@ add_executable(pcd_filter_node src/main.cpp ${incs})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(pcd_filter_node pcd_filter_generate_messages_cpp)
+add_dependencies(pcd_filter_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(pcd_filter_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-  ${FAAT_PCL_LIBRARIES}
+  #${FAAT_PCL_LIBRARIES}
  )
 
 #############
