@@ -22,7 +22,8 @@ if __name__ == '__main__':
 
     try:
 
-	task = Task(start_node_id='WayPoint4', action='perceive_tabletop')
+	#task = Task(start_node_id='WayPoint4', action='perceive_tabletop')
+	task = Task( action='perceive_tabletop')
         task_utils.add_string_argument(task, 'test_lg_1')
 
         print task
