@@ -27,7 +27,7 @@ class ViewPlanning(smach.State):
 
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted', 'action_completed'],
-                             input_keys=['table_pose','table_area'],
+                             input_keys=['table_area'],
                              output_keys=['pose_output','view_list', 'action_completed'])
 
 
@@ -62,6 +62,7 @@ class ViewPlanning(smach.State):
             self.current_pose += 1
             if self.current_pose == len(self.agenda):
                 userdata.action_completed = True
+                self.agenda = []
                 return 'action_completed'
             return 'succeeded'
 
@@ -69,14 +70,13 @@ class ViewPlanning(smach.State):
         try:
 
             num_of_nav_goals =   int(rospy.get_param('num_of_nav_goals', '100'))
-            inf_radius       = float(rospy.get_param('inflation_radius', '0.7'))
-            inf_radius_coeff = float(rospy.get_param('inflation_radius_coeff', '1.5'))
+            inf_radius       = float(rospy.get_param('inflation_radius', '0.35'))
+            inf_radius_coeff = float(rospy.get_param('inflation_radius_coeff', '10.0'))
 
             coverage_total = float(rospy.get_param('coverage_total', '0.8'))
             coverage_avg = float(rospy.get_param('coverage_avg', '2.0'))
             
             # TODO: compute area in proximity to table given table_pose and table_area
-            table_pose = userdata.table_pose
             polygon    = userdata.table_area
 
             min_x = float(sys.maxint)

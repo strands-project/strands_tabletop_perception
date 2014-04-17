@@ -89,6 +89,26 @@ class PerceptionSim(smach.State):
         return 'succeeded'
 
 
+class PerceptionNill(smach.State):
+    """
+    Perceive the environemt (or not).
+
+    """
+
+    def __init__(self):
+        smach.State.__init__(self,
+                             outcomes=['succeeded', 'aborted', 'preempted'],
+                             input_keys=['view_list'],
+                             output_keys=['obj_list'])
+
+
+    def execute(self, userdata):
+
+        rospy.sleep(2)
+
+        return 'succeeded'
+
+
 class PerceptionReal (smach.State):
 
     """
