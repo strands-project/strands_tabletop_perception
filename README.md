@@ -192,7 +192,7 @@ In RViz, add an InteractiveMarkers display and set the Update Topic to `/table_m
 
 2. Make sure that you have a octomap server running with a local 3D map:
 ```
-roslaunch perceive_tabletop_action octomao.launch
+roslaunch perceive_tabletop_action octomap.launch
 ```
 3.  
 Launch the view planning components and action server:
