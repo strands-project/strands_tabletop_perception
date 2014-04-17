@@ -103,8 +103,8 @@ class PerceptionNill(smach.State):
 
 
     def execute(self, userdata):
-
-        rospy.sleep(2)
+        print "Sleeping for a bit of"
+        rospy.sleep(6)
 
         return 'succeeded'
 

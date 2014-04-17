@@ -10,6 +10,9 @@ from geometry_msgs.msg import Polygon
 from geometry_msgs.msg import Point32
 from geometry_msgs.msg import Pose
 
+import numpy
+import tf
+
 
 class ActionMonitor(smach.State):
 
@@ -26,7 +29,7 @@ class ActionMonitor(smach.State):
         
 
         self._msg_store=MessageStoreProxy()
-        table=self._get_table(userdata.table_id)  #userdata.table_id) #TODO: what if non exist?
+        table=self._get_table(str(userdata.table_id.table_id))  #userdata.table_id) #TODO: what if non exist?
         o=table.pose.pose.orientation
         quat=numpy.array([o.x,o.y,o.z,o.w])
         mat=tf.transformations.quaternion_matrix(quat)
@@ -53,7 +56,7 @@ class ActionMonitor(smach.State):
         poly = table.tabletop #Polygon(points) #
         rospy.loginfo("Table: %s" % poly)
 
-        self.userdata.sm_table_area = poly
+        userdata.sm_table_area = poly
 
         
         if userdata.action_completed == True:
@@ -61,7 +64,7 @@ class ActionMonitor(smach.State):
             return 'succeeded'
 
         return 'action_in_progress'
-        
+        x
 
     
         # action_server_name=userdata.goal.action_server
@@ -85,3 +88,10 @@ class ActionMonitor(smach.State):
         #     userdata.n_nav_fails = userdata.n_nav_fails + 1
         #     return 'aborted'
     
+    def _get_table(self, table_id):
+        """ Get a specific table """
+        query = {}
+        query["table_id"] = table_id
+        #TODO: what if does not exist....
+        return self._msg_store.query(Table._type, query,single=True)[0]
+                                                  
