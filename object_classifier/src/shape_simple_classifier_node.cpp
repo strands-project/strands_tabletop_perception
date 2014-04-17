@@ -115,6 +115,31 @@ class ShapeClassifier
           centroid_ros.z = centroid[2];
           response.centroid.push_back(centroid_ros);
 
+          // calculating the bounding box of the cluster 
+          Eigen::Vector4f min; 
+          Eigen::Vector4f max;   
+          pcl::getMinMax3D (*frame_, cluster_indices_int, min, max); 
+          
+          object_perception_msgs::BBox bbox;
+          geometry_msgs::Point32 pt;
+          pt.x = min[0]; pt.y = min[1]; pt.z = min[2]; bbox.point.push_back(pt);
+          pt.x = min[0]; pt.y = min[1]; pt.z = max[2]; bbox.point.push_back(pt);
+          pt.x = min[0]; pt.y = max[1]; pt.z = min[2]; bbox.point.push_back(pt);
+          pt.x = min[0]; pt.y = max[1]; pt.z = max[2]; bbox.point.push_back(pt);
+          pt.x = max[0]; pt.y = min[1]; pt.z = min[2]; bbox.point.push_back(pt);
+          pt.x = max[0]; pt.y = min[1]; pt.z = max[2]; bbox.point.push_back(pt);
+          pt.x = max[0]; pt.y = max[1]; pt.z = min[2]; bbox.point.push_back(pt);
+          pt.x = max[0]; pt.y = max[1]; pt.z = max[2]; bbox.point.push_back(pt);
+          response.bbox.push_back(bbox);
+
+          // getting the point cloud of the cluster 
+          pcl::PointCloud<PointT>::Ptr cluster (new pcl::PointCloud<PointT>);
+          pcl::copyPointCloud(*frame_, cluster_indices_int, *cluster);
+
+          sensor_msgs::PointCloud2  pc2;
+          pcl::toROSMsg (*cluster, pc2);
+          response.cloud.push_back(pc2);
+
           /*boost::shared_ptr<pcl::visualization::PCLVisualizer> vis;
           vis.reset(new pcl::visualization::PCLVisualizer("cluster visualization"));
           vis->addCoordinateSystem(0.2f);
@@ -205,6 +230,8 @@ class ShapeClassifier
           response.class_results = srv.response.class_results;
           response.clusters_indices = srv.response.clusters_indices;
           response.centroid = srv.response.centroid;
+          response.bbox = srv.response.bbox;
+          response.cloud = srv.response.cloud;
       }
       else
       {
