@@ -44,7 +44,7 @@ class PerceiveTabletopSM(smach.StateMachine):
         self._action_monitor  = ActionMonitor()
         self._view_planning   = ViewPlanning()
 
-        robot = rospy.get_param('robot', 'nill')
+        robot = rospy.get_param('robot', 'real')
 
         if robot == 'real':
             self._perception = PerceptionReal()
