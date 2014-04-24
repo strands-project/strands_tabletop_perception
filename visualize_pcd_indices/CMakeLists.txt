@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(pcd_filter)
+project(visualize_pcd_indices)
 
 set(CMAKE_BUILD_TYPE "Debug")
 
@@ -7,7 +7,6 @@ set(CMAKE_BUILD_TYPE "Debug")
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED roscpp)
-
 find_package(PCL 1.7 REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -79,45 +78,40 @@ find_package(PCL 1.7 REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
-#  LIBRARIES pcd_filter
-#   CATKIN_DEPENDS strandsv4r
+#  INCLUDE_DIRS include
+#  LIBRARIES visualize_pcd_indices
+#  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
 
 ###########
 ## Build ##
 ###########
-
-
-set(incs include/my_filter.h)
-
+set(incs include/visualize_pcd_indices.h)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-include 
+include
 ${PCL_INCLUDE_DIRS} 
-#${FAAT_PCL_INCLUDE_DIRS} 
 ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
-# add_library(pcd_filter
-#   src/${PROJECT_NAME}/pcd_filter.cpp
+# add_library(visualize_pcd_indices
+#   src/${PROJECT_NAME}/visualize_pcd_indices.cpp
 # )
 
 ## Declare a cpp executable
-add_executable(pcd_filter_node src/main.cpp ${incs})
+add_executable(visualize_pcd_indices_node src/main.cpp ${incs})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-#add_dependencies(pcd_filter_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+# add_dependencies(visualize_pcd_indices_node visualize_pcd_indices_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
- target_link_libraries(pcd_filter_node
-  ${catkin_LIBRARIES}
+ target_link_libraries(visualize_pcd_indices_node
+   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
-  #${FAAT_PCL_LIBRARIES}
  )
 
 #############
@@ -135,7 +129,7 @@ add_executable(pcd_filter_node src/main.cpp ${incs})
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS pcd_filter pcd_filter_node
+# install(TARGETS visualize_pcd_indices visualize_pcd_indices_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -160,7 +154,7 @@ add_executable(pcd_filter_node src/main.cpp ${incs})
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_pcd_filter.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_visualize_pcd_indices.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

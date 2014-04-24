@@ -2,6 +2,7 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/io.h>
 #include <pcl/point_types.h>
+#include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <iostream>
 #include <boost/filesystem.hpp>
@@ -10,8 +11,17 @@
 #include <pcl/surface/convex_hull.h>
 
 //#include <faat_pcl/utils/segmentation_utils.h>
-#include <faat_pcl/3d_rec_framework/defines/faat_3d_rec_framework_defines.h>
+//#include <faat_pcl/3d_rec_framework/defines/faat_3d_rec_framework_defines.h>
 #include <pcl/apps/dominant_plane_segmentation.h>
+
+struct IndexPoint
+{
+  int idx;
+};
+
+POINT_CLOUD_REGISTER_POINT_STRUCT (IndexPoint,
+    (int, idx, idx)
+)
 
 namespace bf = boost::filesystem;
 
@@ -133,7 +143,7 @@ void TableTopFilter::filterAndWriteToFile(const std::string path)
 
     std::cout << "Filtering point cloud: " << filename << std::endl;
 
-    pcl::PointCloud<PointT>::Ptr pCloud, pSegmentedCloud;
+    boost::shared_ptr<pcl::PointCloud<PointT> > pCloud, pSegmentedCloud;
     pcl::PointIndices indices;
     pcl::PointCloud<IndexPoint> obj_indices_cloud;
 
