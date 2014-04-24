@@ -1,0 +1,29 @@
+<launch>
+
+	<arg name="topic" default="/camera/depth_registered/points" />
+	<arg name="models_dir" default="/home/lars/tmp/CatQSR_ObjSet1_ModelDatabase" />
+	<arg name="training_dir" default="/home/lars/tmp/trained_catqsr_objset1" />
+	<arg name="descriptor_name" default="esf" />
+	<arg name="nn" default="50" />
+	<arg name="chop_z" default="1.4" />
+	<arg name="seg_type" default="0" />
+
+	<arg name="segmenation_models_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.model.txt" />
+	<arg name="segmentation_scaling_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.scalingparams.txt" />
+
+
+	<!-- classifier service -->
+	<node pkg="object_classifier" type="object_classifier_node" name="classifier_service" output="screen" >
+		<param name="models_dir" value="$(arg models_dir)" type="string"/>
+		<param name="training_dir" value="$(arg training_dir)" type="string"/>
+		<param name="descriptor_name" value="$(arg descriptor_name)" type="string"/>
+		<param name="nn" value="$(arg nn)" type="int"/>
+		<param name="chop_z" value="$(arg chop_z)" type="double"/>
+	</node>
+
+	<!-- pcl segmentation Service -->
+	<node pkg="pcl_object_segmenter" type="pcl_object_segmenter_service" name="object_segmenter_service" output="screen" >
+		<param name="seg_type" value="$(arg seg_type)" type="int"/>
+		<param name="chop_z" value="$(arg chop_z)" type="double"/>
+	</node>
+</launch>
