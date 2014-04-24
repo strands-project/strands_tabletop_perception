@@ -20,4 +20,4 @@ _my_input_dir
 |   +-- 003.pcd
  ```
 
-One possibility to compute the indices of the point cloud above a table plane is to use the catkin package *pcd\_filter*.
+One possibility to compute the indices of the point cloud above a table plane is to use the catkin package *pcd\_filter* (https://github.com/strands-project/strands_tabletop_perception/tree/hydro-devel/pcd_filter).
