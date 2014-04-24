@@ -17,9 +17,10 @@ namespace bf = boost::filesystem;
 
 typedef pcl::PointXYZRGB PointT;
 
-void segmentObjectFromTableTop(pcl::PointCloud<PointT>::Ptr pInput_cloud, pcl::PointCloud<PointT>::Ptr pOutput_cloud, std::vector<pcl::PointIndices> &indices_above_plane, float z_max = 1.5f)
+void segmentObjectFromTableTop(pcl::PointCloud<PointT>::Ptr pInput_cloud, pcl::PointIndices &indices_above_plane, float z_max = 1.5f)
 {
     std::vector<pcl::PointCloud<PointT>::Ptr > clusters;
+    std::vector<pcl::PointIndices> indices_above_plane_v;
     Eigen::Vector4f table_plane;
     //segmentation_utils::computeTablePlane<PointT>(pInput_cloud, table_plane, z_max);
     boost::shared_ptr< pcl::apps::DominantPlaneSegmentation<PointT>  > dps (new pcl::apps::DominantPlaneSegmentation<PointT>());
@@ -28,9 +29,17 @@ void segmentObjectFromTableTop(pcl::PointCloud<PointT>::Ptr pInput_cloud, pcl::P
     //dps->compute_table_plane();
     dps->compute_fast(clusters);
     dps->getTableCoefficients(table_plane);
-    dps->getIndicesClusters(indices_above_plane);
+    dps->getIndicesClusters(indices_above_plane_v);
 
-    /*for (int k = 0; k < pInput_cloud->points.size (); k++)
+    for(size_t cluster_id = 0; cluster_id < indices_above_plane_v.size(); cluster_id++)
+    {
+        for(size_t kk=0; kk < indices_above_plane_v[cluster_id].indices.size(); kk++)
+        {
+            indices_above_plane.indices.push_back(indices_above_plane_v[cluster_id].indices[kk]);
+        }
+    }
+
+    /*for (size_t k = 0; k < pInput_cloud->points.size (); k++)
     {
         Eigen::Vector3f xyz_p = pInput_cloud->points[k].getVector3fMap ();
 
@@ -44,8 +53,6 @@ void segmentObjectFromTableTop(pcl::PointCloud<PointT>::Ptr pInput_cloud, pcl::P
             indices_above_plane.push_back (static_cast<int> (k));
         }
     }*/
-
-    pcl::copyPointCloud(*pInput_cloud, indices_above_plane, *pOutput_cloud);
 }
 
 void getFilenamesFromFilename(bf::path & dir, std::vector<std::string> & file_v)
@@ -70,79 +77,155 @@ void getFilenamesFromFilename(bf::path & dir, std::vector<std::string> & file_v)
             file_v.push_back(path);
         }
     }
-
 }
 
-int
-main (int argc, char ** argv)
+void
+getFoldersInDirectory (bf::path & dir, std::string & rel_path_so_far, std::vector<std::string> & relative_paths)
 {
-    ros::init(argc, argv, "pcd_filter_node");
+  bf::directory_iterator end_itr;
+  for (bf::directory_iterator itr (dir); itr != end_itr; ++itr)
+  {
+    //check if its a directory, else ignore
+    if (bf::is_directory (*itr))
+    {
+#if BOOST_FILESYSTEM_VERSION == 3
+      std::string path = rel_path_so_far + (itr->path ().filename ()).string();
+#else
+      std::string path = rel_path_so_far + (itr->path ()).filename ();
+#endif
+      relative_paths.push_back (path);
+    }
+  }
+}
 
-    std::string indices_prefix = "object_indices_";
+void TableTopFilter::filterAndWriteToFile(const std::string path)
+{
+    std::string directory, filename;
+    char sep = '/';
+     #ifdef _WIN32
+        sep = '\\';
+     #endif
+
+    size_t position = path.rfind(sep);
+       if (position != std::string::npos)
+       {
+          directory = path.substr(0, position);
+          filename = path.substr(position+1, path.length()-1);
+       }
+
+   std::stringstream path_oi;
+   path_oi << directory << "/" << indices_prefix_ << filename ;
+
+    if(bf::exists(path_oi.str()) && !force_refilter_)
+    {
+        std::cout << filename << " is already filtered and no re-filtering desired. " << std::endl;
+        return;
+    }
+
+    if(filename.length() > indices_prefix_.length())
+    {
+        if(filename.compare(0, indices_prefix_.length(), indices_prefix_)==0 )
+        {
+            std::cout << filename << " is not a point cloud. " << std::endl;
+            return;
+        }
+    }
+
+    std::cout << "Filtering point cloud: " << filename << std::endl;
+
+    pcl::PointCloud<PointT>::Ptr pCloud, pSegmentedCloud;
+    pcl::PointIndices indices;
+    pcl::PointCloud<IndexPoint> obj_indices_cloud;
+
+    pCloud.reset(new pcl::PointCloud<PointT>());
+    pSegmentedCloud.reset(new pcl::PointCloud<PointT>());
+    pcl::io::loadPCDFile(path, *pCloud);
+
+    segmentObjectFromTableTop(pCloud, indices, chop_z_max_);
+
+    obj_indices_cloud.width = indices.indices.size();
+    obj_indices_cloud.height = 1;
+    obj_indices_cloud.points.resize(indices.indices.size());
+
+    for(size_t kk=0; kk < indices.indices.size(); kk++)
+    {
+        obj_indices_cloud.points[kk].idx = indices.indices[kk];
+    }
+
+    if(obj_indices_cloud.points.size()==0)
+    {
+        std::cerr << "No points could be segmented above the table plane for file " <<
+                     path << std::endl;
+    }
+
+    else
+    {
+        pcl::io::savePCDFileBinary(path_oi.str(), obj_indices_cloud);
+
+        if(visualize_)
+        {
+            pcl::io::loadPCDFile (path_oi.str(), obj_indices_cloud);
+
+            pcl::PointIndices indicesFinal;
+            indicesFinal.indices.resize(obj_indices_cloud.points.size());
+            for(size_t kk=0; kk < obj_indices_cloud.points.size(); kk++)
+                  indicesFinal.indices[kk] = obj_indices_cloud.points[kk].idx;
+
+            pcl::copyPointCloud(*pCloud, indicesFinal, *pSegmentedCloud);
+            pcl::visualization::PCLVisualizer::Ptr vis;
+            vis.reset(new pcl::visualization::PCLVisualizer("Filter result"));
+            int v1(0), v2(0);
+            vis->createViewPort(0.0, 0.0, 0.5, 1.0, v1);
+            vis->createViewPort(0.5, 0.0, 1.0, 1.0, v2);
+            pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler (pCloud);
+            vis->addPointCloud<PointT> (pCloud, rgb_handler, "input", v1);
+            pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2 (pSegmentedCloud);
+            vis->addPointCloud<PointT> (pSegmentedCloud, rgb_handler2, "filtered pcl", v2);
+            vis->resetCameraViewpoint();
+            vis->spin();
+        }
+    }
+}
+
+void TableTopFilter::filterAndWriteToFileRecursive(const std::string path)
+{
+    std::vector < std::string > folders;
+    std::string start = "";
+    bf::path input_dir_bf = path;
+
+    getFoldersInDirectory (input_dir_bf, start, folders);
+    std::cout << "There are " << folders.size() << " folders. " << std::endl;
+
+    for (size_t i = 0; i < folders.size (); i++)
+    {
+        std::stringstream sub_dir;
+        sub_dir << path << "/" << folders[i];
+        filterAndWriteToFileRecursive(sub_dir.str());
+    }
+
+    bf::path sub_dir_bf = path;
     std::vector<std::string> file_v;
-    bool force_refilter = true;
-
-    bf::path path = "/home/thomas/data/Cat50_TestDB_small/pcd_binary";
-    getFilenamesFromFilename(path, file_v);
+    getFilenamesFromFilename(sub_dir_bf, file_v);
 
     for(size_t i=0; i<file_v.size(); i++)
     {
-        std::string directory, filename;
-        char sep = '/';
-         #ifdef _WIN32
-            sep = '\\';
-         #endif
+        filterAndWriteToFile(file_v[i]);
+    }
+}
 
-        size_t position = file_v[i].rfind(sep);
-           if (position != std::string::npos)
-           {
-              directory = file_v[i].substr(0, position);
-              filename = file_v[i].substr(position+1, file_v[i].length()-1);
-           }
+int main (int argc, char ** argv)
+{
+    TableTopFilter ttf;
+    ttf.init(argc, argv);
 
-       std::stringstream path_oi;
-       path_oi << directory << "/" << indices_prefix << filename ;
-
-        if(bf::exists(path_oi.str()) && !force_refilter)
-        {
-            std::cout << filename << " is already filtered and no re-filtering desired. " << std::cout;
-            continue;
-        }
-
-        if(filename.length() > indices_prefix.length())
-        {
-            if(filename.compare(0, indices_prefix.length(), indices_prefix)==0 )
-            {
-                std::cout << filename << " is not a point cloud. " << std::cout;
-                continue;
-            }
-        }
-
-
-        pcl::PointCloud<PointT>::Ptr pCloud, pSegmentedCloud;
-        pCloud.reset(new pcl::PointCloud<PointT>());
-        pSegmentedCloud.reset(new pcl::PointCloud<PointT>());
-        pcl::io::loadPCDFile(file_v[i], *pCloud);
-        std::vector<pcl::PointIndices> indices;
-        segmentObjectFromTableTop(pCloud, pSegmentedCloud, indices, 1.2f);
-
-        pcl::PointCloud<IndexPoint> obj_indices_cloud;
-        obj_indices_cloud.width = indices[0].indices.size();
-        obj_indices_cloud.height = 1;
-        obj_indices_cloud.points.resize(indices[0].indices.size());
-
-        for(size_t kk=0; kk < indices[0].indices.size(); kk++)
-        {
-            obj_indices_cloud.points[kk].idx = indices[0].indices[kk];
-        }
-
-        pcl::io::savePCDFileBinary(path_oi.str(), obj_indices_cloud);
-
-        /*pcl::visualization::PCLVisualizer::Ptr vis;
-        vis.reset(new pcl::visualization::PCLVisualizer("classifier visualization"));
-        pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler (pSegmentedCloud);
-        vis->addPointCloud<PointT> (pSegmentedCloud, rgb_handler, "classified_pcl");
-        vis->spin();*/
+    std::string input_dir = ttf.getInputDir();
+    if(bf::is_directory(input_dir))
+    {
+        ttf.filterAndWriteToFileRecursive(input_dir);
+    }
+    else
+    {
+        std::cout << "Input directory: " << input_dir << " is not a directory." << std::endl;
     }
     return 0;
 }
