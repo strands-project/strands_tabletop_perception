@@ -1,15 +1,11 @@
-This classifier relies on object shape and is based on the approach of [*W. Wohlkinger and M. Vincze*, *Ensemble of Shape Functions for 3D Object Classification*].
+It is based on the *object_classifier* ros package (read instructions there on how to train it).
 
-It uses CAD data for training, such as https://repo.acin.tuwien.ac.at/tmp/permanent/Cat200_ModelDatabase.zip.
+You can launch the multi-view service, single-view service and segmentation module as follows:
 
-In order to speed up training, please select a subset of the training data you want to use and put it in a folder `Cat200_ModelDatabase__small`.
+roslaunch mv_object_classifier mv_classifier_from_files_demo.launch models_dir:=/media/DATA/Cat200_ModelDatabase__small/ training_dir:=/media/DATA/Cat200_ModelDatabase__small_trained/ chop_z:=1 mv_visualize_output:=true
 
-The classifier can then be started by:
+and then:
 
-`roslaunch openni_launch openni.launch depth_registration:=true`
-`roslaunch object_classifier classifier_demo.launch models_dir:=your_dataset_dir/Cat200_ModelDatabase__small/ topic:=/camera/depth_registered/points training_dir:=your_training_dir`
+rosrun mv_object_classifier mv_object_classifier_demo_from_file _folder:=${DATA}
 
-, where *models_dir* is your training directory with the CAD models of the classes, *training_dir* is the directory containing the trained data (if they exist - otherwise they will be re-trained) and *topic* is the camera topic.
-
-The launch file also lets you choose which segmentation type you want to use. The *pcl_object_segmenter* segments objects on a table plane, whereby the highest plane parallel to the largest plane (usually the floor) is considered as table.
-On the contrary, the *object_rgb_segmenter* segments all objects within a distance *chop_z* from the camera. The segmentation takes a bit longer in this case.
+where data should point to the data/mv_seq1/ folder within this package or any folder containing PCD files that will be used as input for the multi-view classifier.

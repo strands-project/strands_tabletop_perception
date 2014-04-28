@@ -44,7 +44,7 @@ class PerceiveTabletopSM(smach.StateMachine):
         self._action_monitor  = ActionMonitor()
         self._view_planning   = ViewPlanning()
 
-        robot = rospy.get_param('robot', 'nill')
+        robot = rospy.get_param('robot', 'real')
 
         if robot == 'real':
             self._perception = PerceptionReal()
@@ -60,8 +60,8 @@ class PerceiveTabletopSM(smach.StateMachine):
                                                  'action_in_progress':'ViewPlanning',
                                                  'aborted':'aborted',
                                                  'preempted':'preempted'},
-                                    remapping={'obj_list':'sm_obj_list',
-                                               'action_completed':'sm_action_completed'})
+                                    remapping={'obj_list':'sm_obj_list' #  ,
+                                               }) #'action_completed':'sm_action_completed'
 
              smach.StateMachine.add('ViewPlanning', self._view_planning, 
                                     transitions={'succeeded':'Navigation',
@@ -72,8 +72,8 @@ class PerceiveTabletopSM(smach.StateMachine):
                                                'table_pose':'sm_table_pose',
                                                'table_area':'sm_table_area',
                                                'pose_output':'sm_pose_data',
-                                               'view_list':'sm_view_list',
-                                               'action_completed':'sm_action_completed'})
+                                               'view_list':'sm_view_list' #,
+                                               }) #                                               'action_completed':'sm_action_completed'
              
              # The navigation is realized via Move Base directly
              # TODO: replace with monitored navigation in strands_navigation
@@ -100,10 +100,3 @@ class PerceiveTabletopSM(smach.StateMachine):
                                     )
 
 
-    def _get_table(self, table_id):
-        """ Get a specific table """
-        query = {}
-        query["table_id"] = table_id
-        #TODO: what if does not exist....
-        return self._msg_store.query(Table._type, query,single=True)[0]
-                                                  

@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(pcd_filter)
 
+set(CMAKE_BUILD_TYPE "Debug")
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp rospy strandsv4r)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
+find_package(catkin REQUIRED roscpp)
 
 find_package(PCL 1.7 REQUIRED)
 ## System dependencies are found with CMake's conventions
@@ -80,7 +81,7 @@ find_package(PCL 1.7 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES pcd_filter
-   CATKIN_DEPENDS strandsv4r
+#   CATKIN_DEPENDS strandsv4r
 #  DEPENDS system_lib
 )
 
@@ -110,7 +111,7 @@ add_executable(pcd_filter_node src/main.cpp ${incs})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(pcd_filter_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+#add_dependencies(pcd_filter_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(pcd_filter_node

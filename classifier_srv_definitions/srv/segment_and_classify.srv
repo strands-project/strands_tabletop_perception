@@ -7,3 +7,9 @@ object_perception_msgs/classification[] class_results
 
 # centroid of the cluster
 geometry_msgs/Point32[] centroid
+
+# bounding box of the cluster
+object_perception_msgs/BBox[] bbox
+
+# point cloud of the cluster 
+sensor_msgs/PointCloud2[] cloud
