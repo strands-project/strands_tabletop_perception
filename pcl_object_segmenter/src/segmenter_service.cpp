@@ -29,6 +29,8 @@
 #include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/features/normal_3d_omp.h>
 
+//#include<pcl/visualization/pcl_visualizer.h>
+
 class PCLSegmenterService
 {
 private:
@@ -46,13 +48,18 @@ private:
     {
       int min_cluster_size_ = 500;
 
+      //std::cout << xyz_points->points.size() << std::endl;
+      //pcl::visualization::PCLVisualizer vis("cloud for segmentation");
+      //vis.addPointCloud<PointT>(xyz_points, "cloud");
+      //vis.spin();
+
       if (seg == 0)
       {
         int num_plane_inliers = 1000;
 
         pcl::OrganizedMultiPlaneSegmentation<PointT, pcl::Normal, pcl::Label> mps;
         mps.setMinInliers (num_plane_inliers);
-        mps.setAngularThreshold (0.017453 * 2.f); // 2 degrees
+        mps.setAngularThreshold (0.017453 * 10.f); // 2 degrees
         mps.setDistanceThreshold (0.01); // 1cm
         mps.setInputNormals (normal_cloud);
         mps.setInputCloud (xyz_points);
