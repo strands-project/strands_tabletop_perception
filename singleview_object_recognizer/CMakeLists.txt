@@ -5,7 +5,7 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions strandsv4r)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions strandsv4r genmsg actionlib_msgs actionlib)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
@@ -26,6 +26,9 @@ find_package( OpenCV 2.4 REQUIRED )
 #######################################
 ## Declare ROS messages and services ##
 #######################################
+
+add_action_files(DIRECTORY action FILES CheckObjectPresence.action)
+generate_messages(DEPENDENCIES actionlib_msgs)
 
 ## Generate services in the 'srv' folder
 #add_service_files(
@@ -75,16 +78,28 @@ set(incs include/pcl_conversions.h include/segmenter.h)
 
 ## Declare a cpp executable
 add_executable(recognition_service src/recognition_service.cpp ${incs})
+add_executable(checkObjectPresence src/CheckObjectPresence.cpp)
+add_executable(checkObjectPresence_client src/CheckObjectPresence_client.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(checkObjectPresence ${catkin_EXPORTED_TARGETS})
+add_dependencies(checkObjectPresence_client ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(recognition_service
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
+)
+
+target_link_libraries(checkObjectPresence
+   ${catkin_LIBRARIES}
+)
+
+target_link_libraries(checkObjectPresence_client
+   ${catkin_LIBRARIES}
 )
 
 #############
