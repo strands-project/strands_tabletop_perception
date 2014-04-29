@@ -36,15 +36,14 @@ class PerceiveTabletopSM(smach.StateMachine):
     def __init__(self):
         smach.StateMachine.__init__(self, outcomes=['succeeded',
                                                     'aborted',
-                                                    'preempted'],
-                                                    input_keys=['table_id'])
+                                                    'preempted'])
 
         self.userdata.action_completed = False
 
         self._action_monitor  = ActionMonitor()
         self._view_planning   = ViewPlanning()
 
-        robot = rospy.get_param('robot', 'real')
+        robot = rospy.get_param('robot', 'sim')
 
         if robot == 'real':
             self._perception = PerceptionReal()

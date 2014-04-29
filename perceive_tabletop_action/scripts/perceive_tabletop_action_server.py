@@ -11,6 +11,8 @@ import actionlib
 from  perceive_tabletop_action.msg import *
 from  perceive_tabletop.state_machine import PerceiveTabletopSM
 
+_EPSILON = 0.0001
+
 class PerceiveTabletopActionServer:
 
 
@@ -65,7 +67,7 @@ class PerceiveTabletopActionServer:
                 
             # get current pose form state machine
             self._feedback = perceive_tabletop_action.msg.PerceiveTabletopFeedback()
-            self._feedback.percent_complete = userdata.current_view / (userdata.num_of_views + 0.01) 
+            self._feedback.percent_complete = (userdata.current_view / (userdata.num_of_views + _EPSILON)) * 100 
 
             self._as.publish_feedback(self._feedback)
 
