@@ -1,0 +1,8 @@
+#goal definition
+string object_id
+---
+#result definition
+int32 found
+---
+#feedback
+string status

@@ -1,16 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(perceive_tabletop_action)
+project(visualize_pcd_indices)
+
+set(CMAKE_BUILD_TYPE "Debug")
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS
-  actionlib
-  actionlib_msgs
-  genmsg
-  rospy
-)
-
+find_package(catkin REQUIRED roscpp)
+find_package(PCL 1.7 REQUIRED)
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -18,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
 ## See http://ros.org/doc/api/catkin/html/user_guide/setup_dot_py.html
-catkin_python_setup()
+# catkin_python_setup()
 
 ################################################
 ## Declare ROS messages, services and actions ##
@@ -59,17 +56,17 @@ catkin_python_setup()
 # )
 
 ## Generate actions in the 'action' folder
-add_action_files(
-   FILES
-   PerceiveTabletop.action
+# add_action_files(
+#   FILES
+#   Action1.action
 #   Action2.action
-)
+# )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-   DEPENDENCIES
-   actionlib_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ###################################
 ## catkin specific configuration ##
@@ -82,38 +79,40 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES perceive_tabletop_action
-#  CATKIN_DEPENDS actionlib actionlib_msgs genmsg rospy
+#  LIBRARIES visualize_pcd_indices
+#  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
 )
 
 ###########
 ## Build ##
 ###########
-
+set(incs include/visualize_pcd_indices.h)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+include
+${PCL_INCLUDE_DIRS} 
+${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a cpp library
-# add_library(perceive_tabletop_action
-#   src/${PROJECT_NAME}/perceive_tabletop_action.cpp
+# add_library(visualize_pcd_indices
+#   src/${PROJECT_NAME}/visualize_pcd_indices.cpp
 # )
 
 ## Declare a cpp executable
-# add_executable(perceive_tabletop_action_node src/perceive_tabletop_action_node.cpp)
+add_executable(visualize_pcd_indices_node src/main.cpp ${incs})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(perceive_tabletop_action_node perceive_tabletop_action_generate_messages_cpp)
+# add_dependencies(visualize_pcd_indices_node visualize_pcd_indices_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(perceive_tabletop_action_node
-#   ${catkin_LIBRARIES}
-# )
+ target_link_libraries(visualize_pcd_indices_node
+   ${catkin_LIBRARIES}
+  ${PCL_LIBRARIES}
+ )
 
 #############
 ## Install ##
@@ -130,7 +129,7 @@ include_directories(
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS perceive_tabletop_action perceive_tabletop_action_node
+# install(TARGETS visualize_pcd_indices visualize_pcd_indices_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -155,7 +154,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_perceive_tabletop_action.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_visualize_pcd_indices.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
