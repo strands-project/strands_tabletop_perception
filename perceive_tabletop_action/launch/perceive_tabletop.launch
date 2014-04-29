@@ -6,6 +6,6 @@
     <arg name="map" value="$(arg map)"/>
   </include>
 
-  <node name="perceive_tabletop_action" pkg="perceive_tabletop_action" type="PerceiveTabletopActionServer.py" output="screen"/>
+  <node name="perceive_tabletop_action" pkg="perceive_tabletop_action" type="perceive_tabletop_action_server.py" output="screen"/>
 
 </launch>
