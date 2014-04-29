@@ -57,11 +57,10 @@ find_package(Boost REQUIRED COMPONENTS system thread program_options filesystem)
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  PrimitivesToTables.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -71,10 +70,12 @@ find_package(Boost REQUIRED COMPONENTS system thread program_options filesystem)
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs  # Or other packages containing msgs
+  strands_perception_msgs
+  primitive_extraction
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -117,7 +118,7 @@ add_executable(table_to_marker src/table_to_marker.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(primitives_to_tables primitive_extraction_generate_messages_cpp strands_perception_msgs_generate_messages_cpp)
+add_dependencies(primitives_to_tables primitive_extraction_generate_messages_cpp strands_perception_msgs_generate_messages_cpp primitives_to_tables_generate_messages_cpp)
 add_dependencies(table_to_marker strands_perception_msgs_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against

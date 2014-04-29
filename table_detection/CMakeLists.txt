@@ -8,6 +8,9 @@ find_package(catkin REQUIRED COMPONENTS
   primitive_extraction
   roscpp
   message_generation
+  primitives_to_tables
+  sensor_msgs
+  strands_perception_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -52,11 +55,10 @@ include_directories(${Eigen_INCLUDE_DIRS})
 # )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+  FILES
+  DetectTables.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -66,10 +68,13 @@ include_directories(${Eigen_INCLUDE_DIRS})
 # )
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES
+  std_msgs  # Or other packages containing msgs
+  sensor_msgs
+  strands_perception_msgs
+  primitive_extraction
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -83,7 +88,7 @@ include_directories(${Eigen_INCLUDE_DIRS})
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES table_detection
-   CATKIN_DEPENDS primitive_extraction roscpp message_runtime
+   CATKIN_DEPENDS primitive_extraction roscpp message_runtime primitives_to_tables sensor_msgs strands_perception_msgs
 #  DEPENDS system_lib
 )
 
@@ -108,7 +113,7 @@ add_executable(detection src/detection.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(detection primitive_extraction_generate_messages_cpp)
+add_dependencies(detection primitive_extraction_generate_messages_cpp primitives_to_tables_generate_messages_cpp table_detection_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(detection
