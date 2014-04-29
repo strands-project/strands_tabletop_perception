@@ -29,8 +29,8 @@ class ActionMonitor(smach.State):
         
 
         self._msg_store=MessageStoreProxy()
-        table=self._get_table(str(userdata.table_id.table_id))  #userdata.table_id) #TODO: what if non exist?
-        o=table.pose.pose.orientation
+        table = self._get_table(str(userdata.table_id))  #userdata.table_id) #TODO: what if non exist?
+        o = table.pose.pose.orientation
         quat=numpy.array([o.x,o.y,o.z,o.w])
         mat=tf.transformations.quaternion_matrix(quat)
         mat[0][3]=table.pose.pose.position.x
@@ -46,25 +46,25 @@ class ActionMonitor(smach.State):
         
         # Table in bham lab
         # polygon = [[3.11,2.12], [5.09,2.12], [5.09,3.3], [3.11, 3.3]]
-        # polygon = [[-1.9,-5.2],[-1.9,-5.8],[-3.8,-5.8],[-3.8,-5.2]]
+        # #polygon = [[-1.9,-5.2],[-1.9,-5.8],[-3.8,-5.8],[-3.8,-5.2]]
         # rospy.loginfo('Polygon: %s', polygon)
         # points = []
         # for point in polygon:
-        #     rospy.loginfo('Point: %s', point)
+        #     #rospy.loginfo('Point: %s', point)
         #     points.append(Point32(float(point[0]),float(point[1]),0))
 
         poly = table.tabletop #Polygon(points) #
-        rospy.loginfo("Table: %s" % poly)
+        #poly = Polygon(points) 
+        #rospy.loginfo("Table: %s" % poly)
 
         userdata.sm_table_area = poly
-
         
         if userdata.action_completed == True:
             userdata.action_completed = False
             return 'succeeded'
 
         return 'action_in_progress'
-        x
+        
 
     
         # action_server_name=userdata.goal.action_server
