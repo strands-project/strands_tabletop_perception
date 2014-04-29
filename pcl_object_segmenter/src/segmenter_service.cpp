@@ -220,7 +220,7 @@ private:
           }
         }
       }
-      else
+      else if(seg == 1)
       {
         pcl::apps::DominantPlaneSegmentation<PointT> dps;
         dps.setInputCloud (xyz_points);
@@ -232,6 +232,21 @@ private:
         std::vector<typename pcl::PointCloud<PointT>::Ptr> clusters;
         dps.setDownsamplingSize (0.01f);
         dps.compute_fast (clusters);
+        dps.getIndicesClusters (indices);
+        dps.getTableCoefficients (table_plane);
+      }
+      else
+      {
+        pcl::apps::DominantPlaneSegmentation<PointT> dps;
+        dps.setInputCloud (xyz_points);
+        dps.setMaxZBounds (3.F);
+        dps.setObjectMinHeight (0.01);
+        dps.setMinClusterSize (min_cluster_size_);
+        dps.setWSize (9);
+        dps.setDistanceBetweenClusters (0.03f);
+        std::vector<typename pcl::PointCloud<PointT>::Ptr> clusters;
+        dps.setDownsamplingSize (0.01f);
+        dps.compute_full (clusters);
         dps.getIndicesClusters (indices);
         dps.getTableCoefficients (table_plane);
       }
