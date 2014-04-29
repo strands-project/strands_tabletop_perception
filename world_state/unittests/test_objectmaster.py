@@ -3,8 +3,14 @@
 import sys
 import unittest
 import world_state.objectmaster as om
+import rospy
 
 class TestObjectMaster(unittest.TestCase):
+    def setUp(self):
+        try:
+            rospy.init_node("testint_om", anonymous=True)
+        except rospy.ROSException, e:
+            pass # Already a node? 
 
     def test_object_master_categories(self):
         o = om.ObjectMaster()

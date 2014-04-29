@@ -1,4 +1,4 @@
-import time
+import rospy
 from mongo import MongoTransformable
 import numpy as np
 
@@ -21,7 +21,7 @@ class Quaternion(MongoTransformable):
         
 class Pose(MongoTransformable):
     def __init__(self, position=None, quaternion=None):
-        self.stamp = time.time()
+        self.stamp = rospy.Time.now().to_time()
         if position is not None:
             self.postion = copy.deepcopy(position)
         else:

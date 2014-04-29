@@ -2,7 +2,7 @@ import json
 import pymongo
 import numpy as np
 import importlib
-import time
+import rospy
 import copy
 
 def load_class(full_class_string):
@@ -87,7 +87,8 @@ class Keyed(object):
         return n
     
     def __create_unique_name(self):
-        self.key = self.__rebase(int(time.time() * 1000000),
+        t = rospy.Time.now()
+        self.key = self.__rebase(int(t.secs * 1000000 + t.nsecs),
                       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
                       '1234567890')
 

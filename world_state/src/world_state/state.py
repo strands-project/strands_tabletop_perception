@@ -1,4 +1,4 @@
-import time
+import rospy
 import copy
 import numpy as np
 
@@ -18,7 +18,7 @@ class Object(MongoDocument):
         self._bounding_box = None #BBoxArray(bbox)
         self._observations = None
         
-        self._life_start = time.time()
+        self._life_start = rospy.Time.now().to_time()
         self._life_end = None
         
         self.identifications = {}
@@ -51,7 +51,7 @@ class Object(MongoDocument):
         return self._pose.as_homog_matrix
         
     def cut(self):
-        self._life_end = time.time()
+        self._life_end = rospy.Time.now().to_time()
     
     def cut_all_children(self):
         for i in self._children:
