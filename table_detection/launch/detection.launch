@@ -16,6 +16,8 @@
         <arg name="primitive_topic" value="$(arg primitive_topic)"/>
         <arg name="extract_cylinders" value="false"/>
         <arg name="extract_spheres" value="false"/>
+        <arg name="min_height" value="0.55"/>
+        <arg name="max_height" value="1.1"/>
     </include>
     
     <!-- Launch the table detection working on the extracted planes -->
