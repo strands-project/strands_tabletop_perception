@@ -5,6 +5,7 @@ import numpy as np
 from mongo import MongoDocument, MongoTransformable, MongoConnection
 from geometry import Pose
 from identification import ObjectIdentifcation
+from observation import Observation
         
 class Object(MongoDocument):
     def __init__(self, mongo=None):
@@ -22,6 +23,10 @@ class Object(MongoDocument):
         
         self.identifications = {}
         self.identification = ObjectIdentifcation()
+        
+        self._msg_store_objects =  [] # a list of object IDs (strings) 
+
+        self._observations =  [] # a list of observation objects
         
         p = Pose.create_zero()
         self._poses = [p] 
@@ -77,6 +82,15 @@ class Object(MongoDocument):
         self._poses.append(p) #[str(p)] = p
         self._poses = self._poses #force mongo update
         self._pose = p
+        
+    def add_observation(self, observation):
+        assert isinstance(observation,  Observation)
+        self._observations.append(observation)
+        self._observations =  self._observations
+        
+    def add_msg_store(self, message_id):
+        self._msg_store_objects.append(message_id)
+        self._msg_store_objects = self._msg_store_objects
         
     def get_identification(self, classifier_id=None):
         if classifier_id is None:
