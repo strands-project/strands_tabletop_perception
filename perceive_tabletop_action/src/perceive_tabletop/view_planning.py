@@ -49,7 +49,8 @@ class ViewPlanning(smach.State):
 
 
         # get current robot pose
-        self.first_call = True
+        self.got_current_pose = False            
+
         rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.amcl_cb)
 
         # visualizing nav goals in RVIZ
@@ -60,13 +61,14 @@ class ViewPlanning(smach.State):
         self.current_pose_idx = 0
 
         self.first_call = True
+        
 
     def amcl_cb(self, data):
-            
-        if self.first_call == True:
+
+        if self.got_current_pose == False:
             self.current_pose = data.pose.pose
             rospy.loginfo("Got current robot pose: (%f,%f)" % (self.current_pose.position.x, self.current_pose.position.y))
-            self.first_call = True
+            self.got_current_pose = True
 
      
 
@@ -146,6 +148,8 @@ class ViewPlanning(smach.State):
                                            nav_goals_eval_resp.weights,
                                            nav_goals_eval_resp.coverage_idx)
             
+            while not self.got_current_pose:
+                rospy.info("Waiting for current pose from amcl")
             
             vp_trajectory = plan_views(self.current_pose, viewpoints, self.num_of_trajectories, len(viewpoints))
             
