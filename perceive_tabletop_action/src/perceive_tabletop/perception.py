@@ -60,7 +60,6 @@ class PerceptionSim(smach.State):
             joint_state.effort = [float(1.0),float(1.0)]
             
             self.ptu_cmd.publish(joint_state)
-
             
             # wait until PTU has finished or point cloud get screwed up
             rospy.sleep(2)
@@ -138,8 +137,6 @@ class PerceptionReal (smach.State):
 
 
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
-
-        #self.cluster_vis = rospy.Publisher('/cluster_vis', PointCloud2)
 
         rospy.wait_for_service('/classifier_service/segment_and_classify')
 
@@ -237,15 +234,6 @@ class PerceptionReal (smach.State):
             i = i + 1
             
         
-        # back to original position
-        joint_state = JointState()
-        joint_state.header.frame_id = 'tessdaf'
-        joint_state.name = ['pan', 'tilt']
-        joint_state.position = [float(0.0),float(0.5)]
-        joint_state.velocity = [float(1.0),float(1.0)]
-        joint_state.effort = [float(1.0),float(1.0)]
-            
-        self.ptu_cmd.publish(joint_state)
 
         return 'succeeded'
 
