@@ -73,7 +73,6 @@ class PerceiveTabletopSM(smach.StateMachine):
                                                  'preempted':'preempted'},
                                     remapping={'obj_list':'sm_obj_list',
                                                'table_pose':'sm_table_pose',
-                                               'table_area':'sm_table_area',
                                                'pose_output':'sm_pose_data',
                                                'view_list':'sm_view_list' #,
                                                }) #                                               'action_completed':'sm_action_completed'

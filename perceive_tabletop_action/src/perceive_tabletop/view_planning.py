@@ -70,37 +70,13 @@ class ViewPlanning(smach.State):
             rospy.loginfo("Got current robot pose: (%f,%f)" % (self.current_pose.position.x, self.current_pose.position.y))
             self.got_current_pose = True
 
-     
+    def plan_views(self, userdata):
 
-    def execute(self, userdata):
-        rospy.loginfo('Executing state %s', self.__class__.__name__)
-
-        userdata.current_view = self.current_pose_idx
-        userdata.num_of_views = len(self.agenda)
-        
-        if self.first_call == False:
-
-            
-            if self.current_pose_idx < len(self.agenda):
-                userdata.pose_output = self.agenda[self.current_pose_idx]
-                userdata.view_list = [[0.0,0.5]] # ,[0.5,0.5],[-0.5,0.5]]
-                userdata.action_completed = False
-                self.current_pose_idx += 1
-                return 'succeeded'
-            
-            elif self.current_pose_idx == len(self.agenda):
-                userdata.action_completed = True
-                
-                rospy.sleep(4) # sleep to see update in feedback
-                return 'action_completed'
-
-
-        # otherwise re-sample new goals
         try:
             self.first_call = False
             
             self.num_of_nav_goals =   int(rospy.get_param('num_of_nav_goals', '100'))
-            self.num_of_trajectories = int(rospy.get_param('num_of_trajectories', '500'))
+            self.num_of_trajectories = int(rospy.get_param('num_of_trajectories', '50'))
             
             min_radius = float(rospy.get_param('min_radius', '0.40'))
             max_radius = float(rospy.get_param('max_radius', '2.0'))
@@ -194,6 +170,33 @@ class ViewPlanning(smach.State):
             return 'aborted'
                
         return 'succeeded'
+
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state %s', self.__class__.__name__)
+
+        userdata.current_view = self.current_pose_idx
+        userdata.num_of_views = len(self.agenda)
+        
+        if self.first_call == False:
+
+            
+            if self.current_pose_idx < len(self.agenda):
+                userdata.pose_output = self.agenda[self.current_pose_idx]
+                userdata.view_list = [[0.0,0.5]] # ,[0.5,0.5],[-0.5,0.5]]
+                userdata.action_completed = False
+                self.current_pose_idx += 1
+                return 'succeeded'
+            
+            elif self.current_pose_idx == len(self.agenda):
+                userdata.action_completed = True
+                
+                rospy.sleep(4) # sleep to see update in feedback
+                return 'action_completed'
+        else:
+            return self.plan_views(userdata)
+
+        
 
     def create_marker(self,markerArray, marker_id, pose, weights):
         marker1 = Marker()
