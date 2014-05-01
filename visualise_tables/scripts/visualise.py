@@ -18,7 +18,7 @@ class Visualiser(object):
         rospy.init_node("tables_visualiser", anonymous=True)
 
         self._marker_server = InteractiveMarkerServer("table_markers")
-        self._msg_store=MessageStoreProxy()
+        self._msg_store=MessageStoreProxy(collection="tables")
         self._tables = self._get_tables()
         self._interactive = interactive
 
