@@ -31,6 +31,7 @@ class PerceptionSim(smach.State):
     def callback(self,data):
         if self.active == True and self.first_call == True:
             self.first_call = False
+            self.got_pointcloud = True
             obj_list = json.loads(data.data)
             if len(obj_list) == 0:
                 rospy.loginfo("Nothing perceived")
@@ -62,14 +63,17 @@ class PerceptionSim(smach.State):
             
             # wait until PTU has finished or point cloud get screwed up
             rospy.sleep(2)
-            
+           
             rospy.loginfo('%i view: receive from semantic camera',i)
             self.active = True
             self.first_call = True
-
+            self.got_pointcloud = False
             # wait for some time to read once from the topic and store it onto self.pointcloud
             # TODO: replace with a service call
-            rospy.sleep(2)
+
+            while not self.got_pointcloud:
+                rospy.sleep(0.5)
+                rospy.loginfo("Waiting for pointcloud")
             
             self.active = False
 
@@ -134,8 +138,6 @@ class PerceptionReal (smach.State):
 
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
 
-        self.cluster_vis = rospy.Publisher('/cluster_vis', PointCloud2)
-
         rospy.wait_for_service('/classifier_service/segment_and_classify')
 
         try:
@@ -149,7 +151,7 @@ class PerceptionReal (smach.State):
 
         if self.active == True and self.first_call == True:
             self.first_call = False
-
+            self.got_pointcloud = True
             self.pointcloud = data
             
     
@@ -178,14 +180,20 @@ class PerceptionReal (smach.State):
             rospy.sleep(2)
             
             rospy.loginfo('%i view: receive point cloud',i)
+
+            self.got_pointcloud = False
             self.active = True
             self.first_call = True
 
             userdata.state = 'taking_image'
 
+            while not self.got_pointcloud:
+                rospy.sleep(0.5)
+                rospy.loginfo("Waiting for pointcloud")
+            
             # wait for some time to read once from the topic and store it onto self.pointcloud
             # TODO: replace with a service call
-            rospy.sleep(2)
+
             self.active = False
 
             rospy.loginfo('%i view: call object recognition service',i)
@@ -226,15 +234,6 @@ class PerceptionReal (smach.State):
             i = i + 1
             
         
-        # back to original position
-        joint_state = JointState()
-        joint_state.header.frame_id = 'tessdaf'
-        joint_state.name = ['pan', 'tilt']
-        joint_state.position = [float(0.0),float(0.5)]
-        joint_state.velocity = [float(1.0),float(1.0)]
-        joint_state.effort = [float(1.0),float(1.0)]
-            
-        self.ptu_cmd.publish(joint_state)
 
         return 'succeeded'
 

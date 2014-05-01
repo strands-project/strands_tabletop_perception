@@ -10,6 +10,8 @@ from geometry_msgs.msg import Polygon
 from geometry_msgs.msg import Point32
 from geometry_msgs.msg import Pose
 
+from sensor_msgs.msg import JointState
+
 import numpy
 import tf
 
@@ -20,74 +22,60 @@ class ActionMonitor(smach.State):
         smach.State.__init__(self,
                              outcomes=['succeeded','action_in_progress', 'aborted', 'preempted'],
                              input_keys=['action_completed', 'table_id'],
-                             output_keys=['action_completed', 'sm_table_area'],
+                             output_keys=['action_completed', 'table_area'],
                              )
+
+        self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
+        self.got_table = False
                                                   
     def execute(self, userdata):
 
-        rospy.loginfo('TABLE: %s', userdata.table_id)
+        # back to original position
+        joint_state = JointState()
+        joint_state.header.frame_id = 'tessdaf'
+        joint_state.name = ['pan', 'tilt']
+        joint_state.position = [float(0.0),float(0.0)]
+        joint_state.velocity = [float(1.0),float(1.0)]
+        joint_state.effort = [float(1.0),float(1.0)]
+            
+        self.ptu_cmd.publish(joint_state)
+
+
+        if self.got_table == False:
+
+            rospy.loginfo('Retrieving polygon for table: %s', userdata.table_id)
         
 
-        self._msg_store=MessageStoreProxy()
-        table=self._get_table(str(userdata.table_id.table_id))  #userdata.table_id) #TODO: what if non exist?
-        o=table.pose.pose.orientation
-        quat=numpy.array([o.x,o.y,o.z,o.w])
-        mat=tf.transformations.quaternion_matrix(quat)
-        mat[0][3]=table.pose.pose.position.x
-        mat[1][3]=table.pose.pose.position.y
-        mat[2][3]=table.pose.pose.position.z
+            self._msg_store=MessageStoreProxy()
+            table = self._get_table(str(userdata.table_id))  #userdata.table_id) #TODO: what if non exist?
+            # o = table.pose.pose.orientation
+            # quat=numpy.array([o.x,o.y,o.z,o.w])
+            # mat=tf.transformations.quaternion_matrix(quat)
+            # mat[0][3]=table.pose.pose.position.x
+            # mat[1][3]=table.pose.pose.position.y
+            # mat[2][3]=table.pose.pose.position.z
 
-        for pt in table.tabletop.points:
-            p=numpy.array([pt.x, pt.y, pt.z,1])
-            new=numpy.dot(mat,p)[:-1]
-            pt.x=new[0]
-            pt.y=new[1]
-            pt.z=new[2]
+            # for pt in table.tabletop.points:
+            #     p=numpy.array([pt.x, pt.y, pt.z,1])
+            #     new=numpy.dot(mat,p)[:-1]
+            #     pt.x=new[0]
+            #     pt.y=new[1]
+            #     pt.z=new[2]
         
-        # Table in bham lab
-        # polygon = [[3.11,2.12], [5.09,2.12], [5.09,3.3], [3.11, 3.3]]
-        # polygon = [[-1.9,-5.2],[-1.9,-5.8],[-3.8,-5.8],[-3.8,-5.2]]
-        # rospy.loginfo('Polygon: %s', polygon)
-        # points = []
-        # for point in polygon:
-        #     rospy.loginfo('Point: %s', point)
-        #     points.append(Point32(float(point[0]),float(point[1]),0))
+            poly = table.tabletop #Polygon(points) #
 
-        poly = table.tabletop #Polygon(points) #
-        rospy.loginfo("Table: %s" % poly)
+            userdata.table_area = table.tabletop
+            self.got_table = True
+            
 
-        userdata.sm_table_area = poly
-
-        
         if userdata.action_completed == True:
+            rospy.loginfo('Action completed')
             userdata.action_completed = False
             return 'succeeded'
 
+        rospy.loginfo('Action in progress')
         return 'action_in_progress'
-        x
-
-    
-        # action_server_name=userdata.goal.action_server
-        # action_client= actionlib.SimpleActionClient(action_server_name, MoveBaseAction)
-        # action_client.wait_for_server()
-        # action_client.send_goal(userdata.goal)
-        # status= action_client.get_state()
-        # while status==GoalStatus.PENDING or status==GoalStatus.ACTIVE:   
-        #     status= action_client.get_state()
-        #     if self.preempt_requested():
-        #         action_client.cancel_goal()
-        #         self.service_preempt()
-        #     action_client.wait_for_result(rospy.Duration(0.2))
-        
-        # if status == GoalStatus.SUCCEEDED:
-        #     userdata.n_nav_fails = 0
-        #     return 'succeeded'
-        # elif status==GoalStatus.PREEMPTED:
-        #     return 'preempted'
-        # else:
-        #     userdata.n_nav_fails = userdata.n_nav_fails + 1
-        #     return 'aborted'
-    
+            
     def _get_table(self, table_id):
         """ Get a specific table """
         query = {}

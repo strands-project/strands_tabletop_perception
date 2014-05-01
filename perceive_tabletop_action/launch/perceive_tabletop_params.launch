@@ -1,0 +1,13 @@
+<launch>
+
+  <arg name="robot" default='sim'/> 
+  <param name="robot" type="string" value="$(arg robot)" />    
+
+
+  <param name="num_of_nav_goals" type="int" value="100" />  
+  <param name="num_of_trajectories" type="int" value="100" />  
+
+  <param name="min_radius" type="double" value="0.40" />  
+  <param name="max_radius" type="double" value="2.0" />  
+  
+</launch>
