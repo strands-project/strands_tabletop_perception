@@ -246,6 +246,6 @@ bool table_tracking::add_detected_table(strands_perception_msgs::Table& table)
     table.table_id = std::string("table") + boost::lexical_cast<std::string>(tables.size());
     tables.push_back(boost::shared_ptr<strands_perception_msgs::Table>(new strands_perception_msgs::Table(table)));
     //Insert something with a name
-    message_store.insertNamed(std::string("table") + table.table_id, table);
+    message_store.insertNamed(table.table_id, table);
     return true;
 }
