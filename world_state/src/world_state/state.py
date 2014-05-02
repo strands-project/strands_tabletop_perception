@@ -7,6 +7,8 @@ from geometry import Pose
 from identification import ObjectIdentification
 from observation import Observation,  MessageStoreObject
 
+from ros_datacentre.message_store import MessageStoreProxy
+
 class Object(MongoDocument):
     def __init__(self, mongo=None):
         super(Object, self).__init__()
@@ -105,6 +107,15 @@ class Object(MongoDocument):
         #self._children.append(child_object.get_name)
         # have to recreate to catch in setattr
         self._children+=[child_object.name]
+
+    def get_message_store_messages(self):
+        msgs = []
+        proxy = MessageStoreProxy()
+        for msg in self._msg_store_objects:
+            proxy.database =  msg.database
+            proxy.collection =  msg.collection
+            msgs.append(proxy.query_id(msg.obj_id, msg.typ))
+        return msgs
         
     @classmethod
     def _mongo_encode(cls, class_object):
