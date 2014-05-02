@@ -144,7 +144,7 @@ class World(object):
         if min_confidence is None:
             result = self._mongo.database.Objects.find(
                 {"__pyobject_class_type": Object.get_pyoboject_class_string(),
-                 'indentification.class_type': object_name,})
+                 'indentification.class_type': ob_type,})
         else:
             raise NotImplementedError("TODO: implement confidence check.")
         
