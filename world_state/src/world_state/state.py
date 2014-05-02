@@ -106,7 +106,7 @@ class Object(MongoDocument):
     
         
 class World(object):
-    def __init__(self, database_name, server_host="localhost",
+    def __init__(self, database_name='world_state', server_host="localhost",
                  server_port=62345):
         self._mongo = MongoConnection(database_name, server_host, server_port)
     
