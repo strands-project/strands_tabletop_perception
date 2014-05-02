@@ -45,4 +45,5 @@ if __name__ == '__main__':
         
         table.add_identification("TableDetection", ObjectIdentification({'Table':
                                                                       1.0}))
-        table.add_msg_store(MessageStoreObject("message_store", "tables", name))
+        table.add_msg_store(MessageStoreObject("message_store", "tables", name,
+                                               Table._type))
