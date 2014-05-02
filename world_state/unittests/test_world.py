@@ -4,8 +4,15 @@ import sys
 import unittest
 from world_state.state import World, Object
 from world_state.identification import ObjectIdentification
+import rospy
+
 
 class TestWorld(unittest.TestCase):
+    def setUp(self):
+        try:
+            rospy.init_node("testing_world", anonymous=True)
+        except rospy.ROSException, e:
+            pass # Already a node? 
 
     def test_world_add_object(self):
         w = World("world_state")

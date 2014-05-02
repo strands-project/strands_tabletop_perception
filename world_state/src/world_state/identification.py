@@ -1,4 +1,4 @@
-import time
+import rospy
 from mongo import MongoTransformable
 
 class ObjectIdentification(MongoTransformable):
@@ -7,7 +7,7 @@ class ObjectIdentification(MongoTransformable):
         # TODO: check the conf sum == 1.0
         self.class_distribution = class_conf
         self.instance_distribution = instance_conf
-        self._time_stamp = time.time()
+        self._time_stamp = rospy.Time.now().to_time()
         
         if len(class_conf.keys()) == 0:
             self.class_type = ("unknown", 1.0)

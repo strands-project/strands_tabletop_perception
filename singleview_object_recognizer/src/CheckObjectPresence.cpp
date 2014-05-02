@@ -1,8 +1,11 @@
 #include <ros/ros.h>
 #include <actionlib/server/simple_action_server.h>
-#include <singleview_object_recognizer/CheckObjectPresenceAction.h>
-#include "recognition_srv_definitions/recognize.h"
+#include <actionlib/client/simple_action_client.h>
+#include <actionlib/client/terminal_state.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <singleview_object_recognizer/CheckObjectPresenceAction.h>
+#include <recognition_srv_definitions/recognize.h>
+#include <flir_pantilt_d46/PtuGotoAction.h>
 
 class CheckObjectPresenceAction
 {
@@ -51,6 +54,21 @@ public:
     // helper variables
     got_cloud_ = false;
     result_.found = 0;
+
+    //move pan-tilt to goal view
+    ROS_INFO("Moving PTU to %f %f", goal->ptu_pan, goal->ptu_tilt);
+    actionlib::SimpleActionClient<flir_pantilt_d46::PtuGotoAction> ptu("/PtuGotoAction", true);
+    ptu.waitForServer();
+    flir_pantilt_d46::PtuGotoGoal ptuGoal;
+    ptuGoal.pan = goal->ptu_pan;
+    ptuGoal.tilt = goal->ptu_tilt;
+    ptuGoal.pan_vel = 20; // 20 is a reasonable default choice
+    ptuGoal.tilt = 20; // 20 is a reasonable default choice
+    ptu.sendGoal(ptuGoal);
+    bool finished_before_timeout = ptu.waitForResult(ros::Duration(30.0));
+    if (!finished_before_timeout)
+      ROS_ERROR("Failed to move the PTU.");
+    // TODO: now our own action should actually terminate with failure
 
     //get point cloud
     feedback_.status = "Getting cloud";
