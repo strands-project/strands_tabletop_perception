@@ -2,6 +2,7 @@
 import rospy
 from world_state.state import World, Object
 from world_state.identification import ObjectIdentification
+from world_state.observation import MessageStoreObject
 
 import world_state.objectmaster as objectmaster
 
@@ -34,7 +35,9 @@ if __name__ == '__main__':
         name = t.table_id
         if w.does_object_exist(name):
             table = w.get_object(name)
+            continue
 #            rospy.loginfo("Table named '%s' already known."%name)
+
         else:
             rospy.loginfo("Freezing new table: %s"%name)
             table = w.create_object()
@@ -42,3 +45,4 @@ if __name__ == '__main__':
         
         table.add_identification("TableDetection", ObjectIdentification({'Table':
                                                                       1.0}))
+        table.add_msg_store(MessageStoreObject("message_store", "tables", name))
