@@ -109,6 +109,14 @@ class World(object):
     def __init__(self, database_name='world_state', server_host=None,
                  server_port=None):
         self._mongo = MongoConnection(database_name, server_host, server_port)
+
+    def does_object_exist(self, object_name):
+        result = self._mongo.database.Objects.find(
+            {"__pyobject_class_type": Object.get_pyoboject_class_string(),
+             'key': object_name,})
+
+        return result.count() == 1
+
     
     def get_object(self, object_name):  
         result = self._mongo.database.Objects.find(
@@ -144,11 +152,10 @@ class World(object):
         if min_confidence is None:
             result = self._mongo.database.Objects.find(
                 {"__pyobject_class_type": Object.get_pyoboject_class_string(),
-                 'indentification.class_type': ob_type,})
+                 'identification.class_type': ob_type,})
         else:
             raise NotImplementedError("TODO: implement confidence check.")
         
-        objs =  [r for r in result]
         objs = []
         for r in result:
             r._connect(self._mongo)
