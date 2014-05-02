@@ -81,8 +81,6 @@ class ObjectMaster(object):
         
     def add_instance(self, instance):
         # check that category exists
-        print instance.category, instance.name
-        print self.get_categories()
         if instance.category not in self.get_categories():
             raise ObjectMasterException("UNKNOWN_CAT")
         self._mongo.database.ObjectMaster.save(ObjectInstance._mongo_encode(instance))
