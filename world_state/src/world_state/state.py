@@ -4,7 +4,7 @@ import numpy as np
 
 from mongo import MongoDocument, MongoTransformable, MongoConnection
 from geometry import Pose
-from identification import ObjectIdentifcation
+from identification import ObjectIdentification
 
 class Object(MongoDocument):
     def __init__(self, mongo=None):
@@ -21,7 +21,7 @@ class Object(MongoDocument):
         self._life_end = None
         
         self.identifications = {}
-        self.identification = ObjectIdentifcation()
+        self.identification = ObjectIdentification()
         
         p = Pose.create_zero()
         self._poses = [p] 
