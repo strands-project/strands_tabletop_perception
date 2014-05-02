@@ -5,7 +5,7 @@ import numpy as np
 from mongo import MongoDocument, MongoTransformable, MongoConnection
 from geometry import Pose
 from identification import ObjectIdentifcation
-        
+
 class Object(MongoDocument):
     def __init__(self, mongo=None):
         super(Object, self).__init__()
@@ -106,8 +106,8 @@ class Object(MongoDocument):
     
         
 class World(object):
-    def __init__(self, database_name='world_state', server_host="localhost",
-                 server_port=62345):
+    def __init__(self, database_name='world_state', server_host=None,
+                 server_port=None):
         self._mongo = MongoConnection(database_name, server_host, server_port)
     
     def get_object(self, object_name):  
@@ -138,5 +138,4 @@ class World(object):
         self._mongo.database.Objects.remove({
             "__pyobject_class_type": Object.get_pyoboject_class_string(),
              'key': obj.name, })
-
 
