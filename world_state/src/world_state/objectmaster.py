@@ -2,9 +2,11 @@ from mongo import MongoConnection, MongoTransformable
 from exceptions import ObjectMasterException
 
 class ObjectCategory(MongoTransformable):
-    def __init__(self):
+    def __init__(self, name=None):
         super(ObjectCategory, self).__init__()
         self._id = "None"
+        if name is not None:
+            self.name = name
         #self._id = "ObjectCategory_None"
         #self._name = None
         
