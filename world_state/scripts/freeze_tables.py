@@ -27,11 +27,11 @@ if __name__ == '__main__':
     
     message_proxy = MessageStoreProxy(collection="tables")
     table_list = message_proxy.query(Table._type)
-    dc_tables = zip(*table_list)[0]
-    rospy.loginfo("Message store contains %d tables."%len(dc_tables))
+    #dc_tables = zip(*table_list)[0]
+    rospy.loginfo("Message store contains %d tables."%len(table_list))
 
     rospy.loginfo("Freezing all tables")
-    for t in dc_tables:
+    for t, t_meta in table_list:
         name = t.table_id
         if w.does_object_exist(name):
             table = w.get_object(name)
@@ -45,5 +45,5 @@ if __name__ == '__main__':
         
         table.add_identification("TableDetection", ObjectIdentification({'Table':
                                                                       1.0}))
-        table.add_msg_store(MessageStoreObject("message_store", "tables", name,
+        table.add_msg_store(MessageStoreObject("message_store", "tables", str(t_meta['_id']),
                                                Table._type))
