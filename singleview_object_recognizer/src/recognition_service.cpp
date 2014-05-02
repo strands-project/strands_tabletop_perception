@@ -404,9 +404,11 @@ public:
 
     gcg_alg->setGCThreshold (5);
     gcg_alg->setGCSize (0.015);
-    gcg_alg->setRansacThreshold (0.01);
+    gcg_alg->setRansacThreshold (0.015);
     gcg_alg->setUseGraph (true);
     gcg_alg->setDistForClusterFactor (0);
+    gcg_alg->setMaxTaken(2);
+    gcg_alg->setMaxTimeForCliquesComputation(100);
     gcg_alg->setDotDistance (0.2);
     cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
 
