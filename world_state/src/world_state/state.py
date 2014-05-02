@@ -139,3 +139,20 @@ class World(object):
             "__pyobject_class_type": Object.get_pyoboject_class_string(),
              'key': obj.name, })
 
+
+    def get_objects_of_type(self, ob_type, min_confidence=None):
+        if min_confidence is None:
+            result = self._mongo.database.Objects.find(
+                {"__pyobject_class_type": Object.get_pyoboject_class_string(),
+                 'indentification.class_type': object_name,})
+        else:
+            raise NotImplementedError("TODO: implement confidence check.")
+        
+        objs =  [r for r in result]
+        objs = []
+        for r in result:
+            r._connect(self._mongo)
+            objs.append(r)
+        return objs
+    
+    
