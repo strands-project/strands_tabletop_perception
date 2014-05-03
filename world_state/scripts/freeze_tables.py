@@ -3,6 +3,7 @@ import rospy
 from world_state.state import World, Object
 from world_state.identification import ObjectIdentification
 from world_state.observation import MessageStoreObject
+from world_state.geometry import Pose
 
 import world_state.objectmaster as objectmaster
 
@@ -34,9 +35,9 @@ if __name__ == '__main__':
     for t, t_meta in table_list:
         name = t.table_id
         if w.does_object_exist(name):
+            rospy.loginfo("Table named '%s' already known."%name)
             table = w.get_object(name)
             continue
-#            rospy.loginfo("Table named '%s' already known."%name)
 
         else:
             rospy.loginfo("Freezing new table: %s"%name)
@@ -47,3 +48,5 @@ if __name__ == '__main__':
                                                                       1.0}))
         table.add_msg_store(MessageStoreObject("message_store", "tables", str(t_meta['_id']),
                                                Table._type))
+        
+        table.add_pose(Pose.from_ros_msg(t.pose.pose))
