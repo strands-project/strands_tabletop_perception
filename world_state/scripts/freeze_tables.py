@@ -27,6 +27,7 @@ if __name__ == '__main__':
     rospy.loginfo("World state contains %d tables."%len(tables))
     
     message_proxy = MessageStoreProxy(collection="tables")
+    frozen_message_proxy = MessageStoreProxy(collection="frozen_tables")
     table_list = message_proxy.query(Table._type)
     #dc_tables = zip(*table_list)[0]
     rospy.loginfo("Message store contains %d tables."%len(table_list))
@@ -39,14 +40,17 @@ if __name__ == '__main__':
             table = w.get_object(name)
             continue
 
-        else:
-            rospy.loginfo("Freezing new table: %s"%name)
-            table = w.create_object()
-            table.name = name
+       
+        rospy.loginfo("Freezing new table: %s"%name)
+        table = w.create_object()
+        table.name = name
         
         table.add_identification("TableDetection", ObjectIdentification({'Table':
+       
                                                                       1.0}))
-        table.add_msg_store(MessageStoreObject("message_store", "tables", str(t_meta['_id']),
+        table_id = frozen_message_proxy.insert(t, t_meta)
+        table.add_msg_store(MessageStoreObject("message_store", "frozen_tables",
+                                               table_id,
                                                Table._type))
         
         table.add_pose(Pose.from_ros_msg(t.pose.pose))
