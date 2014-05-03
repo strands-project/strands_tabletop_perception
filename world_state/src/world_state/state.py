@@ -32,21 +32,20 @@ class Object(MongoDocument):
         
         p = Pose.create_zero()
         self._poses = [p] 
-        self._pose = p
         
     # TODO: properies for all, remove MongoDocument?
     
     @property
     def pose(self):
-        return copy.deepcopy(self._pose)
+        return copy.deepcopy(self._poses[-1])
     
     @property
     def position(self):
-        return copy.deepcopy(self._pose['position'])
+        return copy.deepcopy(self._poses[-1]['position'])
     
     @property
     def quaternion(self):
-        return copy.deepcopy(self._pose['quaternion'])
+        return copy.deepcopy(self._poses[-1]['quaternion'])
     
     @property
     def pose_homog_transform(self):
@@ -83,7 +82,6 @@ class Object(MongoDocument):
         p = copy.deepcopy(pose)
         self._poses.append(p) #[str(p)] = p
         self._poses = self._poses #force mongo update
-        self._pose = p
         
     def add_observation(self, observation):
         assert isinstance(observation,  Observation)
