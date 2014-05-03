@@ -5,7 +5,8 @@ class Observation(object):
     pass
 
 class MessageStoreObject(mongo.MongoTransformable):
-    def __init__(self,  database, collection, obj_id, typ):
+    def __init__(self,  database="message_store", collection="message_store",
+                 obj_id=None, typ=None):
         self.database = database
         self.collection = collection
         self.obj_id = obj_id
