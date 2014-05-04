@@ -23,7 +23,7 @@ class Quaternion(MongoTransformable):
 class Pose(MongoTransformable):
     def __init__(self, position=None, quaternion=None):
         self.stamp = rospy.Time.now().to_time()
-        self.frame_id = ""
+        self.ros_frame_id = ""
         if position is not None:
             self.position = copy.deepcopy(position)
         else:
@@ -49,7 +49,7 @@ class Pose(MongoTransformable):
         p = cls()
         if hasattr(pose, "pose"):
             p.stamp = pose.header.stamp.to_time()
-            p.frame_id = pose.header.frame_id
+            p.ros_frame_id = pose.header.ros_frame_id
             pose = pose.pose
         p.position.x = pose.position.x
         p.position.y = pose.position.y

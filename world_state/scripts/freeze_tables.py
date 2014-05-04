@@ -18,7 +18,7 @@ if __name__ == '__main__':
     w = World()
     om =  objectmaster.ObjectMaster()
 
-    # Check that "Table is a type in the object master
+    # Check that "Table" is a type in the object master
     if not om.check_category_exists("Table"):
         rospy.loginfo("Object master doesnt know 'Table' type. Creating it.")
         om.add_category(objectmaster.ObjectCategory("Table"))
@@ -53,4 +53,7 @@ if __name__ == '__main__':
                                                table_id,
                                                Table._type))
         
-        table.add_pose(Pose.from_ros_msg(t.pose.pose))
+        table_pose = Pose.from_ros_msg(t.pose.pose)
+        table_pose.stamp = t.header.stamp.to_time()
+        table_pose.ros_frame_id = t.header.frame_id
+        table.add_pose(table_pose)
