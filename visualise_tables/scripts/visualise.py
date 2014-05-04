@@ -3,6 +3,8 @@ import roslib; roslib.load_manifest("visualise_tables")
 import rospy
 import sys
 import copy
+import numpy
+import tf
 
 from interactive_markers.interactive_marker_server import (
     InteractiveMarker,
@@ -18,7 +20,7 @@ class Visualiser(object):
         rospy.init_node("tables_visualiser", anonymous=True)
 
         self._marker_server = InteractiveMarkerServer("table_markers")
-        self._msg_store=MessageStoreProxy()
+        self._msg_store=MessageStoreProxy(collection="tables")
         self._tables = self._get_tables()
         self._interactive = interactive
 
@@ -57,22 +59,40 @@ class Visualiser(object):
     def _create_marker(self, table,
                        marker_description="table interactive marker"):
         assert isinstance(table, Table)
-        table.tabletop.points.append(table.tabletop.points[0])
+        table.tabletop.points.append(copy.deepcopy(table.tabletop.points[0]))
         # create an interactive marker for our server
         marker = InteractiveMarker()
         marker.header.frame_id = table.header.frame_id
         marker.name = table.table_id
+        print table.table_id
         marker.description = marker_description
 
         # the marker in the middle
         box_marker = Marker()
         box_marker.type = Marker.LINE_STRIP
-        box_marker.scale.x = 0.05
-        box_marker.color.r = 0.0
+        box_marker.scale.x = 0.1
+        box_marker.color.r = 1.0
         box_marker.color.g = 1.0
         box_marker.color.b = 0.5
         box_marker.color.a = 0.8
-        box_marker.points=table.tabletop.points
+        
+        # Move the world-frame table points into table frame.
+        o = table.pose.pose.orientation
+        quat=numpy.array([o.x,o.y,o.z,o.w])
+        mat=tf.transformations.quaternion_matrix(quat)
+        mat[0][3]= table.pose.pose.position.x
+        mat[1][3]= table.pose.pose.position.y
+        mat[2][3]= table.pose.pose.position.z
+        mat = numpy.linalg.inv(mat)
+
+        for pt in table.tabletop.points:
+            p=numpy.array([pt.x, pt.y, pt.z,1])
+            new=numpy.dot(mat,p)[:-1]
+            pt.x=new[0]
+            pt.y=new[1]
+            pt.z=new[2]
+          
+            box_marker.points.append(pt)
 
         # create a non-interactive control which contains the box
         box_control = InteractiveMarkerControl()
@@ -118,6 +138,7 @@ class Visualiser(object):
         
 if __name__=="__main__":
     if len(sys.argv)>1 and sys.argv[1]=="edit":
+        print "Edit mode"
         visualiser = Visualiser(True)
     else:
         visualiser = Visualiser(False)

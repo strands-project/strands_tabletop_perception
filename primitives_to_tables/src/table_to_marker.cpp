@@ -16,7 +16,7 @@ double color_b;
 
 void write_marker(visualization_msgs::Marker& marker, const strands_perception_msgs::Table& table)
 {
-    marker.id = boost::lexical_cast<int>(table.table_id); // same id as in database
+    marker.id = boost::lexical_cast<int>(table.table_id.substr(5)); // same id as in database
     marker.action = visualization_msgs::Marker::ADD;
     marker.header.frame_id = table.header.frame_id;
     marker.header.stamp = ros::Time();

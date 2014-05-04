@@ -1,6 +1,6 @@
 <launch>
 
-  <arg name="robot" default='sim'/> 
+  <arg name="robot" default='real'/> 
   <param name="robot" type="string" value="$(arg robot)" />    
 
 

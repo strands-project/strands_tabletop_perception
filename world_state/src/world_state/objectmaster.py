@@ -2,9 +2,11 @@ from mongo import MongoConnection, MongoTransformable
 from exceptions import ObjectMasterException
 
 class ObjectCategory(MongoTransformable):
-    def __init__(self):
+    def __init__(self, name=None):
         super(ObjectCategory, self).__init__()
         self._id = "None"
+        if name is not None:
+            self.name = name
         #self._id = "ObjectCategory_None"
         #self._name = None
         
@@ -79,8 +81,6 @@ class ObjectMaster(object):
         
     def add_instance(self, instance):
         # check that category exists
-        print instance.category, instance.name
-        print self.get_categories()
         if instance.category not in self.get_categories():
             raise ObjectMasterException("UNKNOWN_CAT")
         self._mongo.database.ObjectMaster.save(ObjectInstance._mongo_encode(instance))

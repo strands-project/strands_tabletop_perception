@@ -46,7 +46,7 @@ class ActionMonitor(smach.State):
             rospy.loginfo('Retrieving polygon for table: %s', userdata.table_id)
         
 
-            self._msg_store=MessageStoreProxy()
+            self._msg_store=MessageStoreProxy(collection="tables")
             table = self._get_table(str(userdata.table_id))  #userdata.table_id) #TODO: what if non exist?
             # o = table.pose.pose.orientation
             # quat=numpy.array([o.x,o.y,o.z,o.w])

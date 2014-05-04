@@ -5,6 +5,8 @@ import importlib
 import rospy
 import copy
 
+import rospy
+
 def load_class(full_class_string):
     """
     dynamically load a class from a string
@@ -19,7 +21,12 @@ def load_class(full_class_string):
     return getattr(module, class_str)
 
 class MongoConnection(object):
-    def __init__(self, database_name="world_state", server="localhost", port=62345):
+    def __init__(self, database_name="world_state", server=None, port=None):
+        if server is None:
+            server = rospy.get_param("datacentre_host")
+        if port is None:
+            port = rospy.get_param("datacentre_port")
+            
         self.client = pymongo.MongoClient(server, port)
         self.database = self.client[database_name]
         

@@ -1,7 +1,7 @@
 import rospy
 from mongo import MongoTransformable
 
-class ObjectIdentifcation(MongoTransformable):
+class ObjectIdentification(MongoTransformable):
     def __init__(self,  class_conf={}, instance_conf={}):
         # TODO: check that objects specified actually exist in object master.
         # TODO: check the conf sum == 1.0

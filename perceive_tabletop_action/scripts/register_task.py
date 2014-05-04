@@ -12,6 +12,7 @@ from strands_executive_msgs import task_utils
 from strands_executive_msgs.msg import Task
 from strands_executive_msgs.srv import AddTask, SetExecutionStatus
 
+import sys
 
 
 if __name__ == '__main__':
@@ -22,19 +23,25 @@ if __name__ == '__main__':
 
     try:
 
-	#task = Task(start_node_id='WayPoint4', action='perceive_tabletop')
-	task = Task( action='perceive_tabletop')
-        task_utils.add_string_argument(task, 'test_lg_1')
+	task = Task(start_node_id=sys.argv[1], action='perceive_tabletop',max_duration=rospy.Duration(600))
+	#task = Task( action='perceive_tabletop')
+        task_utils.add_string_argument(task, sys.argv[2])
+
 
         print task
-
-        # now register this with the executor
-        add_task_srv_name = '/task_executor/add_task'
+        
+        # now register this with the executor                                                                                                                                                                                          
+        if  len(sys.argv)>3 and sys.argv[3]=="demand":
+            print "Demanding task be run NOW."
+            add_task_srv_name = '/task_executor/demand_task'
+        else:
+            add_task_srv_name = '/task_executor/add_task'
         set_exe_stat_srv_name = '/task_executor/set_execution_status'
         rospy.loginfo("Waiting for task_executor service...")
         rospy.wait_for_service(add_task_srv_name)
         rospy.wait_for_service(set_exe_stat_srv_name)
-        rospy.loginfo("Done")        
+        rospy.loginfo("Done")
+
         
         add_task_srv = rospy.ServiceProxy(add_task_srv_name, AddTask)
         set_execution_status = rospy.ServiceProxy(set_exe_stat_srv_name, SetExecutionStatus)
