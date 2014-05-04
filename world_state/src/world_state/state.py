@@ -6,6 +6,7 @@ from mongo import MongoDocument, MongoTransformable, MongoConnection
 from geometry import Pose
 from identification import ObjectIdentification
 from observation import Observation,  MessageStoreObject
+from exceptions import StateException
 
 from ros_datacentre.message_store import MessageStoreProxy
 
@@ -30,26 +31,33 @@ class Object(MongoDocument):
 
         self._observations =  [] # a list of observation objects
         
-        p = Pose.create_zero()
-        self._poses = [p] 
+        self._poses = [] 
         
     # TODO: properies for all, remove MongoDocument?
     
     @property
     def pose(self):
+        if len(self._poses) < 1:
+            raise StateException("NOPOSE")
         return copy.deepcopy(self._poses[-1])
     
     @property
     def position(self):
+        if len(self._poses) < 1:
+            raise StateException("NOPOSE")
         return copy.deepcopy(self._poses[-1]['position'])
     
     @property
     def quaternion(self):
+        if len(self._poses) < 1:
+            raise StateException("NOPOSE")
         return copy.deepcopy(self._poses[-1]['quaternion'])
     
     @property
     def pose_homog_transform(self):
-        return self._pose.as_homog_matrix
+        if len(self._poses) < 1:
+            raise StateException("NOPOSE")
+        return self._poses[-1].as_homog_matrix
         
     def cut(self):
         self._life_end = rospy.Time.now().to_time()
