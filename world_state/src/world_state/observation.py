@@ -1,13 +1,17 @@
 import mongo
 import rospy
 import tf
-from sensor_msgs.msg import Image, PointCloud2
+from sensor_msgs.msg import Image, PointCloud2, CameraInfo, JointState
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from ros_datacentre.message_store import MessageStoreProxy
+from exceptions import StateException
 
 DEFAULT_TOPICS = [("/amcl_pose", PoseWithCovarianceStamped),
                   ("/chest_xtion/rgb/image_color", Image), 
-                  ("/chest_xtion/depth/points", PointCloud2)]
+                  ("/chest_xtion/rgb/camera_info", CameraInfo), 
+                  ("/chest_xtion/depth/points", PointCloud2),
+                  ("/chest_xtion/depth/camera_info", CameraInfo),
+                  ("/ptu/state", JointState)]
 
 class MessageStoreObject(mongo.MongoTransformable):
     def __init__(self,  database="message_store", collection="message_store",
@@ -16,15 +20,13 @@ class MessageStoreObject(mongo.MongoTransformable):
         self.collection = collection
         self.obj_id = obj_id
         self.typ = typ
+        
+    def retrieve(self):
+        proxy = MessageStoreProxy(database=self.database,
+                                  collection=self.collection)
+        return proxy.query_id(self.obj_id, self.typ)[0]
 
 class Observation(mongo.MongoTransformable):
-    # Snap shot of robot sensors & actuators
-    # What:
-    #  - TF
-    #  - RGB Image
-    #  - Point cloud
-    #  - indices
-    #  - stmp
     def __init__(self):
         self.stamp = rospy.Time.now().to_time()
         self._messages = {}
@@ -51,3 +53,8 @@ class Observation(mongo.MongoTransformable):
                 obj_id=msg_id,
                 typ=msg._type)
         return observation
+    
+    def get_message(self, topic):
+        if not self._messages.has_key(topic):
+            raise StateException("NO_OBSERVATION")
+        return self._messages[topic].retrieve()

@@ -21,6 +21,7 @@ class StateException(Exception):
     def __init__(self, tp, additional_info=None):
         self.types={}
         self.types["NO_POSE"]="Object has no pose."
+        self.types["NO_OBSERVATION"]="Observation has not got this topic."
 
         self.tp = tp
         self.additional_info=additional_info
