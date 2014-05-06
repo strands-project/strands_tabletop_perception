@@ -2,11 +2,14 @@
 #include <actionlib/client/simple_action_client.h>
 #include <actionlib/client/terminal_state.h>
 #include <singleview_object_recognizer/CheckObjectPresenceAction.h>
+#include <pcl/console/parse.h>
 
 int main (int argc, char **argv)
 {
   ros::init(argc, argv, "test_object_presence");
 
+  std::string object_id = "frucht_molke.pcd";
+  pcl::console::parse_argument (argc, argv, "-object_id", object_id);
   // create the action client
   // true causes the client to spin its own thread
   actionlib::SimpleActionClient<singleview_object_recognizer::CheckObjectPresenceAction> ac("/CheckObjectPresenceAction", true);
@@ -18,7 +21,7 @@ int main (int argc, char **argv)
   ROS_INFO("Action server started, sending goal.");
   // send a goal to the action
   singleview_object_recognizer::CheckObjectPresenceGoal goal;
-  goal.object_id = "fruchtmolke.pcd";
+  goal.object_id = object_id;
   ac.sendGoal(goal);
 
   //wait for the action to return

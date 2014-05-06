@@ -100,6 +100,7 @@ target_link_libraries(checkObjectPresence
 
 target_link_libraries(checkObjectPresence_client
    ${catkin_LIBRARIES}
+   ${PCL_LIBRARIES}
 )
 
 #############
