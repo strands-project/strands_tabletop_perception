@@ -19,6 +19,8 @@ int main (int argc, char **argv)
   ac.waitForServer(); //will wait for infinite time
 
   ROS_INFO("Action server started, sending goal.");
+  ROS_INFO("Looking for object %s \n", object_id.c_str());
+
   // send a goal to the action
   singleview_object_recognizer::CheckObjectPresenceGoal goal;
   goal.object_id = object_id;
