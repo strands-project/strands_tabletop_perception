@@ -1,12 +1,14 @@
 <launch>
 
 	<arg name="topic" default="/head_xtion/depth/points" />
-	<arg name="models_dir" default="/home/strands/models/OBJ_SEARCH_DEMO_ModelDatabase" />
-	<arg name="training_dir" default="/home/strands/models/OBJ_SEARCH_DEMO_Trained" />
+	<!-- <arg name="models_dir" default="/home/strands/models/OBJ_SEARCH_DEMO_ModelDatabase" />
+	<arg name="training_dir" default="/home/strands/models/OBJ_SEARCH_DEMO_Trained" />-->
+	<arg name="models_dir" default="/home/lars/tmp/CatQSR_ObjSet1_ModelDatabase" />
+	<arg name="training_dir" default="/home/lars/tmp/trained_catqsr_objset1" />
 	<arg name="descriptor_name" default="esf" />
 	<arg name="nn" default="50" />
 	<arg name="chop_z" default="2.0" />
-	<arg name="seg_type" default="1" /> <!-- use '2' for simulation, because it can handle unorganized point clouds --> 
+	<arg name="seg_type" default="2" /> <!-- use '2' for simulation, because it can handle unorganized point clouds --> 
 
 	<arg name="segmenation_models_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.model.txt" />
 	<arg name="segmentation_scaling_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.scalingparams.txt" />
