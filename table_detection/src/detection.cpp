@@ -4,10 +4,15 @@
 
 #include "primitive_extraction/Primitive.h"
 #include "primitive_extraction/PrimitiveArray.h"
+#include "primitives_to_tables/PrimitivesToTables.h"
+#include "table_detection/DetectTables.h"
+#include "primitive_extraction/ExtractPrimitives.h"
 
 #include <Eigen/Dense>
 
 ros::Publisher pub;
+ros::ServiceClient table_client;
+ros::ServiceClient primitive_client;
 double min_height;
 double max_height;
 double max_angle;
@@ -33,14 +38,15 @@ double compute_plane_area(std::vector<geometry_msgs::Point>& hull)
     return area;
 }
 
-void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
+void detect_tables(primitive_extraction::PrimitiveArray& tables,
+                   std::vector<size_t> indices,
+                   const primitive_extraction::PrimitiveArray& primitives)
 {
-    size_t n = msg->primitives.size();
-    primitive_extraction::PrimitiveArray tables;
-    tables.camera_frame = msg->camera_frame;
+    tables.camera_frame = primitives.camera_frame;
+    size_t n = primitives.primitives.size();
     
     for (size_t i = 0; i < n; ++i) {
-        primitive_extraction::Primitive p = msg->primitives[i];
+        primitive_extraction::Primitive p = primitives.primitives[i];
         
         // check normal
         double alpha = acos(fabs(p.params[4]));
@@ -82,9 +88,46 @@ void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
         }
         
         tables.primitives.push_back(p);
+        indices.push_back(i);
+    }
+}
+
+void callback(const primitive_extraction::PrimitiveArray::ConstPtr& msg)
+{
+    primitive_extraction::PrimitiveArray tables;
+    std::vector<size_t> indices;
+    detect_tables(tables, indices, *msg);
+    pub.publish(tables);
+}
+
+bool service_callback(table_detection::DetectTables::Request& req,
+                      table_detection::DetectTables::Response& res) // primitive_array input, table_ids return
+{
+    // get the primitives through service call
+    primitive_extraction::ExtractPrimitives primitive_srv;
+    primitive_srv.request.pointcloud = req.pointcloud;
+    if (!primitive_client.call(primitive_srv)) {
+        ROS_ERROR("Failed to call primitive service.");
     }
     
-    pub.publish(tables);
+    // detect the tables among the primitives
+    primitive_extraction::PrimitiveArray table_primitives;
+    std::vector<size_t> indices;
+    detect_tables(table_primitives, indices, primitive_srv.response.primitives);
+    
+    // call service to add to database
+    primitives_to_tables::PrimitivesToTables table_srv;
+    table_srv.request.primitives = table_primitives;
+    if (!table_client.call(table_srv)) {
+        ROS_ERROR("Failed to call table service.");
+    }
+    
+    // assign the results
+    res.tables = table_srv.response.tables;
+    res.indices.resize(table_srv.response.tables.size());
+    for (size_t i = 0; i < table_srv.response.tables.size(); ++i) {
+        res.indices[i] = primitive_srv.response.indices[indices[i]];
+    }
 }
 
 int main(int argc, char** argv)
@@ -105,6 +148,9 @@ int main(int argc, char** argv)
 	std::string output;
 	pn.param<std::string>("output", output, std::string("/table_detection/table_primitives"));
 	pub = n.advertise<primitive_extraction::PrimitiveArray>(output, 1);
+	ros::ServiceServer service = n.advertiseService("detect_tables", &service_callback);
+	table_client = n.serviceClient<primitives_to_tables::PrimitivesToTables>("primitives_to_tables");
+	primitive_client = n.serviceClient<primitive_extraction::ExtractPrimitives>("extract_primitives");
     
     ros::spin();
     

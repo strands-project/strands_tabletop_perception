@@ -1,11 +1,15 @@
-import time
+import rospy
 import copy
 import numpy as np
 
 from mongo import MongoDocument, MongoTransformable, MongoConnection
 from geometry import Pose
-from identification import ObjectIdentifcation
-        
+from identification import ObjectIdentification
+from observation import Observation,  MessageStoreObject
+from exceptions import StateException
+
+from ros_datacentre.message_store import MessageStoreProxy
+
 class Object(MongoDocument):
     def __init__(self, mongo=None):
         super(Object, self).__init__()
@@ -17,36 +21,46 @@ class Object(MongoDocument):
         self._bounding_box = None #BBoxArray(bbox)
         self._observations = None
         
-        self._life_start = time.time()
+        self._life_start = rospy.Time.now().to_time()
         self._life_end = None
         
         self.identifications = {}
-        self.identification = ObjectIdentifcation()
+        self.identification = ObjectIdentification()
         
-        p = Pose.create_zero()
-        self._poses = [p] 
-        self._pose = p
+        self._msg_store_objects =  [] # a list of object IDs (strings) 
+
+        self._observations =  [] # a list of observation objects
+        
+        self._poses = [] 
         
     # TODO: properies for all, remove MongoDocument?
     
     @property
     def pose(self):
-        return copy.deepcopy(self._pose)
+        if len(self._poses) < 1:
+            raise StateException("NOPOSE")
+        return copy.deepcopy(self._poses[-1])
     
     @property
     def position(self):
-        return copy.deepcopy(self._pose['position'])
+        if len(self._poses) < 1:
+            raise StateException("NOPOSE")
+        return copy.deepcopy(self._poses[-1]['position'])
     
     @property
     def quaternion(self):
-        return copy.deepcopy(self._pose['quaternion'])
+        if len(self._poses) < 1:
+            raise StateException("NOPOSE")
+        return copy.deepcopy(self._poses[-1]['quaternion'])
     
     @property
     def pose_homog_transform(self):
-        return self._pose.as_homog_matrix
+        if len(self._poses) < 1:
+            raise StateException("NOPOSE")
+        return self._poses[-1].as_homog_matrix
         
     def cut(self):
-        self._life_end = time.time()
+        self._life_end = rospy.Time.now().to_time()
     
     def cut_all_children(self):
         for i in self._children:
@@ -76,7 +90,16 @@ class Object(MongoDocument):
         p = copy.deepcopy(pose)
         self._poses.append(p) #[str(p)] = p
         self._poses = self._poses #force mongo update
-        self._pose = p
+        
+    def add_observation(self, observation):
+        assert isinstance(observation,  Observation)
+        self._observations.append(observation)
+        self._observations =  self._observations
+        
+    def add_msg_store(self, message):
+        assert isinstance(message, MessageStoreObject)
+        self._msg_store_objects.append(message)
+        self._msg_store_objects = self._msg_store_objects
         
     def get_identification(self, classifier_id=None):
         if classifier_id is None:
@@ -90,6 +113,15 @@ class Object(MongoDocument):
         #self._children.append(child_object.get_name)
         # have to recreate to catch in setattr
         self._children+=[child_object.name]
+
+    def get_message_store_messages(self):
+        msgs = []
+        proxy = MessageStoreProxy()
+        for msg in self._msg_store_objects:
+            proxy.database =  msg.database
+            proxy.collection =  msg.collection
+            msgs.append(proxy.query_id(msg.obj_id, msg.typ))
+        return msgs
         
     @classmethod
     def _mongo_encode(cls, class_object):
@@ -106,9 +138,17 @@ class Object(MongoDocument):
     
         
 class World(object):
-    def __init__(self, database_name, server_host="localhost",
-                 server_port=62345):
+    def __init__(self, database_name='world_state', server_host=None,
+                 server_port=None):
         self._mongo = MongoConnection(database_name, server_host, server_port)
+
+    def does_object_exist(self, object_name):
+        result = self._mongo.database.Objects.find(
+            {"__pyobject_class_type": Object.get_pyoboject_class_string(),
+             'key': object_name,})
+
+        return result.count() == 1
+
     
     def get_object(self, object_name):  
         result = self._mongo.database.Objects.find(
@@ -140,3 +180,18 @@ class World(object):
              'key': obj.name, })
 
 
+    def get_objects_of_type(self, ob_type, min_confidence=None):
+        if min_confidence is None:
+            result = self._mongo.database.Objects.find(
+                {"__pyobject_class_type": Object.get_pyoboject_class_string(),
+                 'identification.class_type': ob_type,})
+        else:
+            raise NotImplementedError("TODO: implement confidence check.")
+        
+        objs = []
+        for r in result:
+            r._connect(self._mongo)
+            objs.append(r)
+        return objs
+    
+    

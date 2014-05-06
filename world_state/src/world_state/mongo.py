@@ -2,8 +2,10 @@ import json
 import pymongo
 import numpy as np
 import importlib
-import time
+import rospy
 import copy
+
+import rospy
 
 def load_class(full_class_string):
     """
@@ -19,7 +21,12 @@ def load_class(full_class_string):
     return getattr(module, class_str)
 
 class MongoConnection(object):
-    def __init__(self, database_name="world_state", server="localhost", port=62345):
+    def __init__(self, database_name="world_state", server=None, port=None):
+        if server is None:
+            server = rospy.get_param("datacentre_host")
+        if port is None:
+            port = rospy.get_param("datacentre_port")
+            
         self.client = pymongo.MongoClient(server, port)
         self.database = self.client[database_name]
         
@@ -87,7 +94,8 @@ class Keyed(object):
         return n
     
     def __create_unique_name(self):
-        self.key = self.__rebase(int(time.time() * 1000000),
+        t = rospy.Time.now()
+        self.key = self.__rebase(int(t.secs * 1000000 + t.nsecs),
                       'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
                       '1234567890')
 

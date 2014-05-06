@@ -1,22 +1,19 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(table_detection)
+project(known_table_locator)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  primitive_extraction
-  roscpp
-  message_generation
-  primitives_to_tables
+  geometry_msgs
+  rospy
   sensor_msgs
-  strands_perception_msgs
+  std_msgs
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(Eigen REQUIRED)
-include_directories(${Eigen_INCLUDE_DIRS})
+
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -55,10 +52,11 @@ include_directories(${Eigen_INCLUDE_DIRS})
 # )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  DetectTables.srv
-)
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -68,13 +66,10 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs  # Or other packages containing msgs
-  sensor_msgs
-  strands_perception_msgs
-  primitive_extraction
-)
+# generate_messages(
+#   DEPENDENCIES
+#   geometry_msgs#   sensor_msgs#   std_msgs
+# )
 
 ###################################
 ## catkin specific configuration ##
@@ -87,8 +82,8 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES table_detection
-   CATKIN_DEPENDS primitive_extraction roscpp message_runtime primitives_to_tables sensor_msgs strands_perception_msgs
+#  LIBRARIES known_table_locator
+#  CATKIN_DEPENDS geometry_msgs rospy sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
 
@@ -104,21 +99,21 @@ include_directories(
 )
 
 ## Declare a cpp library
-# add_library(table_detection
-#   src/${PROJECT_NAME}/table_detection.cpp
+# add_library(known_table_locator
+#   src/${PROJECT_NAME}/known_table_locator.cpp
 # )
 
 ## Declare a cpp executable
-add_executable(detection src/detection.cpp)
+# add_executable(known_table_locator_node src/known_table_locator_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(detection primitive_extraction_generate_messages_cpp primitives_to_tables_generate_messages_cpp table_detection_generate_messages_cpp)
+# add_dependencies(known_table_locator_node known_table_locator_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(detection
-  ${catkin_LIBRARIES}
-)
+# target_link_libraries(known_table_locator_node
+#   ${catkin_LIBRARIES}
+# )
 
 #############
 ## Install ##
@@ -135,7 +130,7 @@ target_link_libraries(detection
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS table_detection table_detection_node
+# install(TARGETS known_table_locator known_table_locator_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -160,7 +155,7 @@ target_link_libraries(detection
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_table_detection.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_known_table_locator.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

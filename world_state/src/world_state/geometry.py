@@ -1,6 +1,7 @@
-import time
+import rospy
 from mongo import MongoTransformable
 import numpy as np
+from geometry_msgs.msg import PoseStamped, Pose, PoseWithCovariance
 
 class Point(MongoTransformable):
     def __init__(self, x=0, y=0, z=0):
@@ -21,11 +22,12 @@ class Quaternion(MongoTransformable):
         
 class Pose(MongoTransformable):
     def __init__(self, position=None, quaternion=None):
-        self.stamp = time.time()
+        self.stamp = rospy.Time.now().to_time()
+        self.ros_frame_id = ""
         if position is not None:
-            self.postion = copy.deepcopy(position)
+            self.position = copy.deepcopy(position)
         else:
-            self.postion = Point()
+            self.position = Point()
             
         if quaternion is not None:
             self.quaternion = copy.deepcopy(quaternion)
@@ -37,6 +39,25 @@ class Pose(MongoTransformable):
         p = cls() #Point(0, 0, 0), Quaternion(0, 0, 0, 1))
         if timestamp is not None:
             p.stamp = timestamp
+        return p
+    
+    @classmethod
+    def from_ros_msg(cls, ros_msg):
+        #assert (isinstance(ros_msg, Pose) or isinstance(ros_msg, PoseStamped)
+                #or isinstance(ros_msg, PoseWithCovariance))
+        pose = ros_msg
+        p = cls()
+        if hasattr(pose, "pose"):
+            p.stamp = pose.header.stamp.to_time()
+            p.ros_frame_id = pose.header.ros_frame_id
+            pose = pose.pose
+        p.position.x = pose.position.x
+        p.position.y = pose.position.y
+        p.position.z = pose.position.z
+        p.quaternion.x = pose.orientation.x
+        p.quaternion.y = pose.orientation.y
+        p.quaternion.z = pose.orientation.z
+        p.quaternion.w = pose.orientation.w
         return p
     
     def __str__(self):

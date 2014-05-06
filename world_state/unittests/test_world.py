@@ -3,9 +3,16 @@
 import sys
 import unittest
 from world_state.state import World, Object
-from world_state.identification import ObjectIdentifcation
+from world_state.identification import ObjectIdentification
+import rospy
+
 
 class TestWorld(unittest.TestCase):
+    def setUp(self):
+        try:
+            rospy.init_node("testing_world", anonymous=True)
+        except rospy.ROSException, e:
+            pass # Already a node? 
 
     def test_world_add_object(self):
         w = World("world_state")
@@ -14,7 +21,7 @@ class TestWorld(unittest.TestCase):
         name = obj.name
         obj = w.get_object(obj.name)
         obj.add_identification("TableDetection",
-                               ObjectIdentifcation({'Table': 0.2,
+                               ObjectIdentification({'Table': 0.2,
                                                     'Football': 0.3}))
         
         

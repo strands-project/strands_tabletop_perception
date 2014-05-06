@@ -5,7 +5,7 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS segmentation_srv_definitions roscpp rospy sensor_msgs std_msgs)
+find_package(catkin REQUIRED COMPONENTS segmentation_srv_definitions roscpp rospy sensor_msgs std_msgs strandsv4r tf)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 find_package(PCL REQUIRED)
@@ -34,7 +34,7 @@ find_package(PCL REQUIRED)
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES grasping_recognition_master
-   CATKIN_DEPENDS segmentation_srv_definitions
+   CATKIN_DEPENDS segmentation_srv_definitions strandsv4r
 #  DEPENDS system_lib
 )
 
@@ -62,8 +62,8 @@ add_executable(pcl_object_segmenter_demo src/test.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(pcl_object_segmenter_service ${catkin_EXPORTED_TARGETS})
-add_dependencies(pcl_object_segmenter_demo ${catkin_EXPORTED_TARGETS})
+add_dependencies(pcl_object_segmenter_service ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(pcl_object_segmenter_demo ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 #message(STATUS "V4R_LIBRARIES:" ${V4R_LIB_DIR})
 #message(STATUS "V4R_INCLUDES:" ${V4R_INCLUDE_DIR})

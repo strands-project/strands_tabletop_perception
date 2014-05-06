@@ -11,6 +11,7 @@
 #include "segmentation_srv_definitions/segment.h"
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl_conversions.h>
+#include <pcl/console/parse.h>
 
 class SOCDemo
 {
@@ -55,16 +56,16 @@ class SOCDemo
     void
     callService (const sensor_msgs::PointCloud2::ConstPtr& msg)
     {
-      if( (service_calls_ % (30 * 5)) == 0)
-      {
         std::cout << "going to call service..." << std::endl;
-        ros::ServiceClient client = n_.serviceClient<segmentation_srv_definitions::segment>("object_segmenter");
+        ros::ServiceClient client = n_.serviceClient<segmentation_srv_definitions::segment>("/object_segmenter_service/object_segmenter");
         segmentation_srv_definitions::segment srv;
         srv.request.cloud = *msg;
+
+        std::cout << msg->width << " " << msg->height << std::endl;
         if (client.call(srv))
         {
           std::cout << "Number of clusters:" << static_cast<int>(srv.response.clusters_indices.size()) << std::endl;
-          pcl::PointCloud<pcl::PointXYZRGB>::Ptr scene (new pcl::PointCloud<pcl::PointXYZRGB>);
+          pcl::PointCloud<pcl::PointXYZ>::Ptr scene (new pcl::PointCloud<pcl::PointXYZ>);
 	      pcl::fromROSMsg (*msg, *scene); 
 	      
 	      pcl::PointCloud<pcl::PointXYZRGB>::Ptr scene_labels (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -98,17 +99,11 @@ class SOCDemo
           
 	      vis_->spin();
 	      vis_->removeAllPointClouds();
-/*          for(size_t i=0; i < srv.response.categories_found.size(); i++)
-          {
-            std::cout << "   => " << srv.response.categories_found[i] << std::endl;
-          }*/
         }
         else
         {
         	std::cout << "Call did not succeed" << std::endl;
         }
-      }
-      service_calls_++;
     }
 
   public:
@@ -121,6 +116,7 @@ class SOCDemo
 
     bool initialize(int argc, char ** argv)
     {
+      pcl::console::parse_argument (argc, argv, "-camera_topic", camera_topic_);
       checkKinect();
       vis_.reset (new pcl::visualization::PCLVisualizer ("segmenter visualization"));
       vis_->createViewPort(0,0,0.5,1,v1_);
