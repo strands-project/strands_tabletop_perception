@@ -39,7 +39,7 @@ double compute_plane_area(std::vector<geometry_msgs::Point>& hull)
 }
 
 void detect_tables(primitive_extraction::PrimitiveArray& tables,
-                   std::vector<size_t> indices,
+                   std::vector<size_t>& indices,
                    const primitive_extraction::PrimitiveArray& primitives)
 {
     tables.camera_frame = primitives.camera_frame;

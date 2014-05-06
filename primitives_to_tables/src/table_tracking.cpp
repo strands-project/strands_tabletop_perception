@@ -5,8 +5,7 @@
 
 using namespace Eigen;
 
-table_tracking::table_tracking(ros::NodeHandle& n) : message_store(n, "/message_store",
-"message_store", "tables")
+table_tracking::table_tracking(ros::NodeHandle& n) : message_store(n, "tables")
 {
     message_store.query<strands_perception_msgs::Table>(tables);
     Vector2d mid;
