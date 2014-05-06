@@ -326,6 +326,7 @@ private:
           //select table plane based on the angle to the ground and the height
           faat_pcl::PlaneModel<PointT> selected_plane;
           float max_height = 0.f;
+          bool good_plane_found = false;
 
           for(size_t i=0; i < planes_found.size(); i++)
           {
@@ -356,6 +357,7 @@ private:
                           //select this plane as table
                           max_height = h;
                           selected_plane = plane;
+                          good_plane_found = true;
                       }
 
                       /*std::stringstream p_name;
@@ -365,6 +367,19 @@ private:
                       vis.spin();*/
                   }
               }
+          }
+
+          if(!good_plane_found)
+          {
+              //No table was found in the scene.
+              PCL_WARN("No plane found with appropiate properties\n");
+              indices.resize(0);
+              table_plane = Eigen::Vector4f (std::numeric_limits<float>::quiet_NaN(),
+                                             std::numeric_limits<float>::quiet_NaN(),
+                                             std::numeric_limits<float>::quiet_NaN(),
+                                             std::numeric_limits<float>::quiet_NaN());
+
+              return;
           }
 
           table_plane = Eigen::Vector4f (selected_plane.coefficients_.values[0], selected_plane.coefficients_.values[1],
