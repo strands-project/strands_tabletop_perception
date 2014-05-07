@@ -30,10 +30,10 @@ class ViewPlanning(smach.State):
 
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted', 'action_completed'],
-                             input_keys=['table_area'],
-                             output_keys=['pose_output','view_list', 'action_completed', 'current_view', 'num_of_views'])
+                             input_keys=['table_area', 'table'],
+                             output_keys=['pose_output', 'table', 'view_list', 'action_completed', 'current_view', 'num_of_views'])
 
-
+        
 
         rospy.wait_for_service('nav_goals')
         try:
@@ -174,7 +174,7 @@ class ViewPlanning(smach.State):
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
-
+       
         userdata.current_view = self.current_pose_idx
         userdata.num_of_views = len(self.agenda)
         

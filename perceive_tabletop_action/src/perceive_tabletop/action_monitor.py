@@ -23,7 +23,7 @@ class ActionMonitor(smach.State):
         smach.State.__init__(self,
                              outcomes=['succeeded','action_in_progress', 'aborted', 'preempted', 'error'],
                              input_keys=['action_completed', 'table_id'],
-                             output_keys=['action_completed', 'table_area'],
+                             output_keys=['action_completed', 'table_area', 'table'],
                              )
 
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
@@ -50,17 +50,19 @@ class ActionMonitor(smach.State):
             if not self._world.does_object_exist(userdata.table_id):
                 rospy.logerr("Object suplied (%s) does not exist"%userdata.table_id)
                 return 'error'
+            
             table =  self._world.get_object(userdata.table_id)
             if table.identification.class_type[0] != "Table":
                 rospy.logerr("Object suplied (%s) is not a table!"%userdata.table_id)
                 return 'error'
             
             tbl_msgs = table.get_message_store_messages(Table._type)
-            print tbl_msgs
-            print
+
             if len(tbl_msgs) < 1:
                 rospy.logerr("Table suplied has no ROS Table message associated!")
                 return 'error'
+            
+            userdata.table =  table
             table =  tbl_msgs[0]
             print table
 
@@ -89,7 +91,7 @@ class ActionMonitor(smach.State):
         if userdata.action_completed == True:
             rospy.loginfo('Action completed')
             userdata.action_completed = False
-            return 'aborted' #'succeeded'
+            return 'succeeded'
 
         rospy.loginfo('Action in progress')
         return 'action_in_progress'
