@@ -62,7 +62,8 @@ class PerceiveTabletopSM(smach.StateMachine):
                                    transitions={'succeeded': 'succeeded',
                                                 'action_in_progress':'ViewPlanning',
                                                 'aborted':'aborted',
-                                                'preempted':'preempted'},
+                                                'preempted':'preempted',
+                                                'error': 'aborted',},
                                    remapping={'obj_list':'sm_obj_list' #  ,
                                               }) #'action_completed':'sm_action_completed'
 
