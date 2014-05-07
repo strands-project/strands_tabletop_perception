@@ -7,8 +7,12 @@
 	<arg name="training_dir" default="/home/lars/tmp/trained_catqsr_objset1" />
 	<arg name="descriptor_name" default="esf" />
 	<arg name="nn" default="50" />
-	<arg name="chop_z" default="2.0" />
-	<arg name="seg_type" default="2" /> <!-- use '2' for simulation, because it can handle unorganized point clouds --> 
+
+	<arg name="chop_z" default="2.5" />
+	<arg name="seg_type" default="4" /> 
+	<arg name="camera_frame" default="/head_xtion_depth_optical_frame" /> 
+	<arg name="base_frame" default="/base_footprint" /> 
+	<arg name="min_cluster_size" default="100" /> 
 
 	<arg name="segmenation_models_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.model.txt" />
 	<arg name="segmentation_scaling_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.scalingparams.txt" />
@@ -27,6 +31,9 @@
 	<node pkg="pcl_object_segmenter" type="pcl_object_segmenter_service" name="object_segmenter_service" output="screen" >
 		<param name="seg_type" value="$(arg seg_type)" type="int"/>
 		<param name="chop_z" value="$(arg chop_z)" type="double"/>
+		<param name="camera_frame" value="$(arg camera_frame)" type="string"/>
+		<param name="base_frame" value="$(arg base_frame)" type="string"/>
+		<param name="min_cluster_size" value="$(arg min_cluster_size)" type="int"/>
 	</node>
 	<!-- segmentation service -->
 	<!--<node pkg="object_rgbd_segmenter" type="object_rgbd_segmenter_service" name="object_segmenter_service" output="screen" >
