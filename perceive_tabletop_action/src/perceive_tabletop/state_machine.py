@@ -86,10 +86,13 @@ class PerceiveTabletopSM(smach.StateMachine):
                                                                #result_cb = move_base_result_cb,
                                                                input_keys = ['pose_input'],
                                                                exec_timeout = MOVE_BASE_EXEC_TIMEOUT,
-                                                               preempt_timeout = MOVE_BASE_PREEMPT_TIMEOUT
+                                                               preempt_timeout = MOVE_BASE_PREEMPT_TIMEOUT,
+                                                               result_cb=navigation_result_cb,
+                                                               outcomes = ['succeeded','aborted','viewpoint_failed','preempted']
                                                                ),
                                    transitions={'succeeded':'Perception',
                                                 'aborted':'aborted',
+                                                'viewpoint_failed':'ViewPlanning',
                                                 'preempted':'preempted'},
                                    remapping={'pose_input':'sm_pose_data'},
                                    )
@@ -100,4 +103,12 @@ class PerceiveTabletopSM(smach.StateMachine):
                                    remapping={'view_list':'sm_view_list',
                                               'obj_list':'sm_obj_list'}
                                    )
+def navigation_result_cb(userdata, status, result):
+    rospy.loginfo("Monitored navigation result: %i (SUCCEEDED=0, BUMPER_FAILURE=1, LOCAL_PLANNER_FAILURE=2, GLOBAL_PLANNER_FAILURE=3, PREEMPTED=4)", result.sm_outcome)
+    if result.sm_outcome == MonitoredNavigationResult.GLOBAL_PLANNER_FAILURE:
+        rospy.loginfo("Skipping current viewpoint...")
+        return 'viewpoint_failed' 
+    
+    
 
+    
