@@ -122,7 +122,7 @@ class Object(MongoDocument):
                 continue
             proxy.database =  msg.database
             proxy.collection =  msg.collection
-            msgs.append(proxy.query_id(msg.obj_id, msg.typ))
+            msgs.append(proxy.query_id(msg.obj_id, msg.typ)[0])
         return msgs
         
     @classmethod
