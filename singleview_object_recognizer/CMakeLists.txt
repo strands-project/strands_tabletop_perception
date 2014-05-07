@@ -5,7 +5,7 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions strandsv4r genmsg actionlib_msgs actionlib flir_pantilt_d46)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions strandsv4r genmsg actionlib_msgs actionlib scitos_ptu)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
@@ -55,7 +55,7 @@ generate_messages(DEPENDENCIES actionlib_msgs)
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES grasping_recognition_master
-  CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strandsv4r flir_pantilt_d46
+  CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strandsv4r scitos_ptu
 #  DEPENDS system_lib
 )
 

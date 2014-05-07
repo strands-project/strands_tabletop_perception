@@ -4,10 +4,10 @@
   <param name="robot" type="string" value="$(arg robot)" />    
 
 
-  <param name="num_of_nav_goals" type="int" value="100" />  
-  <param name="num_of_trajectories" type="int" value="100" />  
+  <param name="num_of_nav_goals" type="int" value="200" />  
+  <param name="num_of_trajectories" type="int" value="50" />  
 
-  <param name="min_radius" type="double" value="0.40" />  
-  <param name="max_radius" type="double" value="2.0" />  
+  <param name="min_radius" type="double" value="0.7" />  
+  <param name="max_radius" type="double" value="2.5" />  
   
 </launch>
