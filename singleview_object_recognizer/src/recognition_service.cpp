@@ -70,6 +70,8 @@ private:
   int v1_,v2_, v3_;
   ros::ServiceServer recognize_;
   ros::NodeHandle n_;
+  int cg_size_;
+
 #ifdef SOC_VISUALIZE
   boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
 #endif
@@ -109,7 +111,10 @@ private:
     go->setRequiresNormals(false);
     go->setInitialStatus(false);
     go->setIgnoreColor(false);
-    go->setColorSigma(color_sigma);
+    //go->setColorSigma(color_sigma);
+    go->setColorSigma(0.5f, 0.5f);
+    go->setHistogramSpecification(true);
+    go->setVisualizeGoCues(0);
     go->setUseSuperVoxels(false);
 
     typename pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT>(*scene));
@@ -353,6 +358,7 @@ public:
     do_sift_ = true;
     do_ourcvfh_ = false;
     icp_iterations_ = 0;
+    cg_size_ = 7;
 
 #ifdef SOC_VISUALIZE
     vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
@@ -402,7 +408,7 @@ public:
                                                                                                new faat_pcl::GraphGeometricConsistencyGrouping<
                                                                                                    PointT, PointT>);
 
-    gcg_alg->setGCThreshold (5);
+    gcg_alg->setGCThreshold (cg_size_);
     gcg_alg->setGCSize (0.015);
     gcg_alg->setRansacThreshold (0.015);
     gcg_alg->setUseGraph (true);
