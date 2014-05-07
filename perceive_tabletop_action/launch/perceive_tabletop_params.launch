@@ -7,7 +7,10 @@
   <param name="num_of_nav_goals" type="int" value="200" />  
   <param name="num_of_trajectories" type="int" value="50" />  
 
-  <param name="min_radius" type="double" value="0.7" />  
+  <param name="min_radius" type="double" value="0.4" />  
   <param name="max_radius" type="double" value="2.5" />  
+
+  <param name="coverage_total" type="double" value="0.8" />  
+  <param name="coverage_avg" type="double" value="3.0" />  
   
 </launch>
