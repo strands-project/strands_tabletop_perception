@@ -31,10 +31,17 @@ void create_tables(std::vector<strands_perception_msgs::Table>& tables,
             table.tabletop.points[j].z = primitive.points[j].z;
         }
         // check overlap, possibly merging with previous tables
-        t->add_detected_table(table);
+        //t->add_detected_table(table);
         // if merged, that will be the table published
-        pub.publish(table); // always publish detected tables
+        //pub.publish(table); // always publish detected tables
         tables[i] = table;
+    }
+    
+    t->add_detected_tables(tables);
+    for (size_t i = 0; i < tables.size(); ++i) {
+        pub.publish(tables[i]);
+        ros::Duration d(0.01);
+        d.sleep();
     }
 }
 
