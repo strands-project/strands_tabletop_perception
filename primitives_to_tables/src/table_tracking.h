@@ -29,6 +29,7 @@ private:
     void convex_hull(geometry_msgs::Polygon& res, const Eigen::Vector2d& c, const std::vector<Eigen::Vector2d, Eigen::aligned_allocator<Eigen::Vector2d> >& p);
     //void rectify_orientation(const Eigen::Vector2d& c, geometry_msgs::Polygon& p);
     void rectify_orientation(strands_perception_msgs::Table& table);
+    std::string new_table_id();
 public:
     void add_detected_tables(std::vector<strands_perception_msgs::Table>& t);
     bool add_detected_table(strands_perception_msgs::Table& table);

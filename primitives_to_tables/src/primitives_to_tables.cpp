@@ -40,6 +40,8 @@ void create_tables(std::vector<strands_perception_msgs::Table>& tables,
     t->add_detected_tables(tables);
     for (size_t i = 0; i < tables.size(); ++i) {
         pub.publish(tables[i]);
+        ros::Duration d(0.01);
+        d.sleep();
     }
 }
 

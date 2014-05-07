@@ -328,6 +328,18 @@ void table_tracking::add_detected_tables(std::vector<strands_perception_msgs::Ta
     }
 }
 
+std::string table_tracking::new_table_id()
+{
+    int maxval = 0;
+    for (size_t i = 0; i < tables.size(); ++i) {
+        int val = boost::lexical_cast<int>(tables[i]->table_id.substr(5));
+        if (val > maxval) {
+            maxval = val;
+        }
+    }
+    return boost::lexical_cast<std::string>(maxval+1);
+}
+
 // add a detected table into the database, either by identifying it with a
 // previous table or by creating a new table instance. tables are merged
 // if they are overlapping, incoming message is modified to reflect update
@@ -357,7 +369,8 @@ bool table_tracking::add_detected_table(strands_perception_msgs::Table& table)
         return false;
     }
     //centers.push_back(mid);
-    table.table_id = std::string("table") + boost::lexical_cast<std::string>(tables.size());
+    //table.table_id = std::string("table") + boost::lexical_cast<std::string>(tables.size());
+    table.table_id = std::string("table") + new_table_id();
     tables.push_back(boost::shared_ptr<strands_perception_msgs::Table>(new strands_perception_msgs::Table(table)));
     //Insert something with a name
     message_store.insertNamed(table.table_id, table);
