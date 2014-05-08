@@ -5,7 +5,9 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions strandsv4r genmsg actionlib_msgs actionlib flir_pantilt_d46)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
+                                        strandsv4r genmsg actionlib_msgs actionlib
+                                        flir_pantilt_d46 ros_datacentre_msgs ros_datacentre_cpp_client)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
@@ -54,14 +56,14 @@ generate_messages(DEPENDENCIES actionlib_msgs)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-#  LIBRARIES grasping_recognition_master
-  CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strandsv4r flir_pantilt_d46
-#  DEPENDS system_lib
+   CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strandsv4r flir_pantilt_d46 ros_datacentre_msgs ros_datacentre_cpp_client
 )
 
 ###########
 ## Build ##
 ###########
+
+add_definitions(-std=c++0x)
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
@@ -71,10 +73,6 @@ include_directories(include
 )
 
 set(incs include/pcl_conversions.h include/segmenter.h)
-## Declare a cpp library
-# add_library(grasping_recognition_master
-#   src/${PROJECT_NAME}/grasping_recognition_master.cpp
-# )
 
 ## Declare a cpp executable
 add_executable(recognition_service src/recognition_service.cpp ${incs})

@@ -6,6 +6,14 @@
 #include <singleview_object_recognizer/CheckObjectPresenceAction.h>
 #include <recognition_srv_definitions/recognize.h>
 #include <flir_pantilt_d46/PtuGotoAction.h>
+#include "ros_datacentre/message_store.h"
+#include "ros_datacentre_msgs/StringPairList.h"
+#include <std_msgs/Int32.h>
+
+using namespace std_msgs;
+using namespace ros_datacentre;
+using namespace ros_datacentre_msgs;
+using namespace std;
 
 class CheckObjectPresenceAction
 {
@@ -68,6 +76,7 @@ public:
     bool finished_before_timeout = ptu.waitForResult(ros::Duration(30.0));
     if (!finished_before_timeout)
       ROS_ERROR("Failed to move the PTU.");
+
     // TODO: now our own action should actually terminate with failure
 
     //get point cloud
@@ -126,6 +135,34 @@ public:
     ROS_INFO("%s: Succeeded", action_name_.c_str());
     as_->setSucceeded(result_);
 
+    //log point cloud, result and object_id
+    ros_datacentre::MessageStoreProxy messageStore(nh_, "checkObjectPresence");
+
+    std::vector< std::pair<std::string, std::string> > stored;
+    // now add objects and store ids with the addition of type strings for safety. The types are not necessary unless you want to do some kind of reflection on this data later.
+
+    std_msgs::Int32 found_result;
+    found_result.data = result_.found;
+
+    std_msgs::String object_id_ros_msg;
+    object_id_ros_msg.data = goal->object_id;
+
+    stored.push_back( std::make_pair(get_ros_type(*cloud_), messageStore.insert(*cloud_)) );
+    stored.push_back( std::make_pair(get_ros_type(found_result), messageStore.insert(found_result)) );
+    stored.push_back( std::make_pair(get_ros_type(object_id_ros_msg), messageStore.insert(object_id_ros_msg)) );
+
+    StringPairList spl;
+    for(auto & pair : stored) {
+        spl.pairs.push_back(ros_datacentre::makePair(pair.first, pair.second));
+    }
+
+    // and add some descriptive information
+    mongo::BSONObjBuilder metaBuilder;
+    metaBuilder.append("description", "checkObjectPresence result");
+    metaBuilder.append("result_time", mongo::Date_t(ros::Time::now().toSec() * 1000));
+
+    // and store
+    messageStore.insert(spl, metaBuilder.obj());
   }
 };
 
