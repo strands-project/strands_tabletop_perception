@@ -31,7 +31,8 @@ class Object(MongoDocument):
 
         self._observations =  [] # a list of observation objects
         
-        self._poses = [] 
+        self._poses = []
+        self._point_cloud = None # will be a MessageStoreObject or None
         
     # TODO: properies for all, remove MongoDocument?
     
@@ -63,8 +64,9 @@ class Object(MongoDocument):
         self._life_end = rospy.Time.now().to_time()
     
     def cut_all_children(self):
+        world =  World()
         for i in self._children:
-            World.get_object(i).cut()
+            world.get_object(i).cut()
     
     @property
     def name(self):
