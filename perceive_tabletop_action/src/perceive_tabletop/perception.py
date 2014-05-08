@@ -123,7 +123,6 @@ class PerceptionReal (smach.State):
     """ Perceive the environemt. """
 
     def __init__(self):
-        
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['view_list', 'table'],
@@ -139,6 +138,8 @@ class PerceptionReal (smach.State):
             self.obj_rec = rospy.ServiceProxy('/classifier_service/segment_and_classify', segment_and_classify )
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
+            
+        self._world = World()
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
@@ -166,12 +167,16 @@ class PerceptionReal (smach.State):
 
             userdata.state = 'taking_image'
             
+            # mark previous objects on table as finished
+            userdata.table.cut_all_children()
+            
             # make an observation, kept in the datacentre
             observation =  Observation.make_observation()
             userdata.table.add_observation(observation)
             pointcloud = observation.get_message('/head_xtion/depth/points')
 
             rospy.loginfo('%i view: call object recognition service',i)
+            userdata.state = 'image_analysis'
             try:
                 obj_rec_resp = self.obj_rec(pointcloud)
             except rospy.ServiceException, e:
@@ -188,22 +193,16 @@ class PerceptionReal (smach.State):
                 userdata.bbox = obj_rec_resp.bbox
                 userdata.obj_list = self.obj_list
 
-                userdata.state = 'image_analysis'
-
-                
                 for j in range(len(objects)):
-
+                    new_object =  self._world.create_object()
+                    new_object._point_cloud =  MessageStoreObject.create(obj_rec_resp.cloud[j])
+                    userdata.table.add_child(new_object)
+                    
                     obj = objects[j]
-                    
-
                     max_idx = obj.confidence.index(max(obj.confidence))
-
                     obj_desc = dict()
-
                     obj_desc['type'] = obj.class_type[max_idx].data.strip('/')
-
                     rospy.loginfo('Object: %s', obj_desc['type'])
-                    
                     self.obj_list.append(obj_desc)
 
 
