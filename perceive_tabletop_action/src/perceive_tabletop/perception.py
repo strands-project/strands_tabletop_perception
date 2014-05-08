@@ -115,18 +115,14 @@ class PerceptionNill(smach.State):
         return 'succeeded'
 
 class PerceptionReal (smach.State):
-
-    """
-    Perceive the environemt.
-
-    """
+    """ Perceive the environemt. """
 
     def __init__(self):
         
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=['view_list'],
-                             output_keys=['state','obj_list','bbox','cloud'])
+                             input_keys=['view_list', 'table'],
+                             output_keys=['state','obj_list','bbox','cloud', 'table'])
 
         self.obj_list = []
         self.active = False
@@ -145,16 +141,12 @@ class PerceptionReal (smach.State):
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
 
-
-
     def callback(self,data):
 
         if self.active == True and self.first_call == True:
             self.first_call = False
             self.got_pointcloud = True
             self.pointcloud = data
-            
-    
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
