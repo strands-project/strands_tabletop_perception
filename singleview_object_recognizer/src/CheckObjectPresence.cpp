@@ -132,9 +132,7 @@ public:
         feedback_.status = "There was an error calling the service\n";
     }
 
-    feedback_.status = "Succeeded";
-    ROS_INFO("%s: Succeeded", action_name_.c_str());
-    as_->setSucceeded(result_);
+    feedback_.status = "Logging data";
 
     //log point cloud, result and object_id
     ros_datacentre::MessageStoreProxy messageStore(nh_, "checkObjectPresence");
@@ -164,6 +162,10 @@ public:
 
     // and store
     messageStore.insert(spl, metaBuilder.obj());
+
+    feedback_.status = "Succeeded";
+    ROS_INFO("%s: Succeeded", action_name_.c_str());
+    as_->setSucceeded(result_);
   }
 };
 
