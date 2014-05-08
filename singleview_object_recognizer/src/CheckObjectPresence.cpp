@@ -5,10 +5,10 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <singleview_object_recognizer/CheckObjectPresenceAction.h>
 #include <recognition_srv_definitions/recognize.h>
-#include <flir_pantilt_d46/PtuGotoAction.h>
 #include "ros_datacentre/message_store.h"
 #include "ros_datacentre_msgs/StringPairList.h"
 #include <std_msgs/Int32.h>
+#include <scitos_ptu/PtuGotoAction.h>
 
 using namespace std_msgs;
 using namespace ros_datacentre;
@@ -65,9 +65,9 @@ public:
 
     //move pan-tilt to goal view
     ROS_INFO("Moving PTU to %f %f", goal->ptu_pan, goal->ptu_tilt);
-    actionlib::SimpleActionClient<flir_pantilt_d46::PtuGotoAction> ptu("/PtuGotoAction", true);
+    actionlib::SimpleActionClient<scitos_ptu::PtuGotoAction> ptu("/PtuGotoAction", true);
     ptu.waitForServer();
-    flir_pantilt_d46::PtuGotoGoal ptuGoal;
+    scitos_ptu::PtuGotoGoal ptuGoal;
     ptuGoal.pan = goal->ptu_pan;
     ptuGoal.tilt = goal->ptu_tilt;
     ptuGoal.pan_vel = 20; // 20 is a reasonable default choice

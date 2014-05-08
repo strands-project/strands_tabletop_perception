@@ -7,10 +7,10 @@ from ros_datacentre.message_store import MessageStoreProxy
 from exceptions import StateException
 
 DEFAULT_TOPICS = [("/amcl_pose", PoseWithCovarianceStamped),
-                  ("/chest_xtion/rgb/image_color", Image), 
-                  ("/chest_xtion/rgb/camera_info", CameraInfo), 
-                  ("/chest_xtion/depth/points", PointCloud2),
-                  ("/chest_xtion/depth/camera_info", CameraInfo),
+                  ("/head_xtion/rgb/image_color", Image), 
+                  ("/head_xtion/rgb/camera_info", CameraInfo), 
+                  ("/head_xtion/depth/points", PointCloud2),
+                  ("/head_xtion/depth/camera_info", CameraInfo),
                   ("/ptu/state", JointState)]
 
 class MessageStoreObject(mongo.MongoTransformable):

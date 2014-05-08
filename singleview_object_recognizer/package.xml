@@ -47,9 +47,10 @@
   <build_depend>strandsv4r</build_depend>
   <build_depend>actionlib</build_depend>
   <build_depend>actionlib_msgs</build_depend>
-  <build_depend>flir_pantilt_d46</build_depend>
   <build_depend>ros_datacentre_msgs</build_depend>
   <build_depend>ros_datacentre_cpp_client</build_depend>
+  <build_depend>scitos_ptu</build_depend>
+
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>tf</run_depend>
@@ -57,10 +58,9 @@
   <run_depend>strandsv4r</run_depend>
   <run_depend>actionlib</run_depend>
   <run_depend>actionlib_msgs</run_depend>
-  <run_depend>flir_pantilt_d46</run_depend>
   <run_depend>ros_datacentre_msgs</run_depend>
   <run_depend>ros_datacentre_cpp_client</run_depend>
-
+  <run_depend>scitos_ptu</run_depend>
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- You can specify that this package is a metapackage here: -->

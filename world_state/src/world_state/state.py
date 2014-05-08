@@ -194,4 +194,15 @@ class World(object):
             objs.append(r)
         return objs
     
-    
+    def get_root_objects(self):
+        """
+        return all objects that have no parent
+        """
+        result = self._mongo.database.Objects.find(
+                {"__pyobject_class_type": Object.get_pyoboject_class_string(),
+                 '_parent': None,})
+        objs = []
+        for r in result:
+            r._connect(self._mongo)
+            objs.append(r)
+        return objs

@@ -56,7 +56,7 @@ private:
             ros::spinOnce ();
             loop_rate.sleep ();
             kinect_trials_++;
-            if(kinect_trials_ >= 5)
+            if(kinect_trials_ >= 30)
             {
                 std::cout << "Kinect is not working..." << std::endl;
                 return;
@@ -127,8 +127,9 @@ private:
     void
     callService (const sensor_msgs::PointCloud2::ConstPtr& msg)
     {
+	  std::cout << "Received point cloud.\n";
         // if any service is not available, wait for 5 sec and check again
-        if( all_required_services_okay_ || ( !all_required_services_okay_ && (service_calls_ % (30 * 5)) == 0))
+        if( all_required_services_okay_ || ( !all_required_services_okay_ && (service_calls_ % (1 * 5)) == 0))
         {
             std::cout << "going to call service..." << std::endl;
 
