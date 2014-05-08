@@ -401,12 +401,12 @@ bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
   ROS_INFO("Started evaluation");
 
   // Get Octomap and extract supporting planes (only once)
-  if (first_call)
-    {
-      first_call = false;
-      octree = retrieve_octree();
-      sp_octree = extract_supporting_planes(octree);
-    }
+  //if (first_call)
+    //{
+  first_call = false;
+  octree = retrieve_octree();
+  sp_octree = extract_supporting_planes(octree);
+  //	}
   
   std::vector<OcTreeKey> keys; 
   std::map<int,int> key_idx_count;
