@@ -32,7 +32,7 @@ class Observation(mongo.MongoTransformable):
         self._messages = {}
     
     @classmethod    
-    def make_observation(cls, topics):
+    def make_observation(cls, topics=DEFAULT_TOPICS):
         """
         topics: list of tuples (topic_name,topic_type)
         """
