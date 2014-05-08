@@ -9,6 +9,11 @@ from sensor_msgs.msg import *
 
 from classifier_srv_definitions.srv import segment_and_classify
 
+from world_state.observation import MessageStoreObject, Observation
+from world_state.identification import ObjectIdentification
+from world_state.state import World, Object
+
+
 class PerceptionSim(smach.State):
     """
     Perceive the environemt.
@@ -125,13 +130,7 @@ class PerceptionReal (smach.State):
                              output_keys=['state','obj_list','bbox','cloud', 'table'])
 
         self.obj_list = []
-        self.active = False
-        self.first_call = False
-
-        rospy.Subscriber("/head_xtion/depth/points", PointCloud2, self.callback)
-        #rospy.Subscriber("/camera/depth_registered/points", PointCloud2, self.callback)
-
-
+       
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
 
         rospy.wait_for_service('/classifier_service/segment_and_classify')
@@ -141,20 +140,12 @@ class PerceptionReal (smach.State):
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
 
-    def callback(self,data):
-
-        if self.active == True and self.first_call == True:
-            self.first_call = False
-            self.got_pointcloud = True
-            self.pointcloud = data
-
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
-
+        rospy.loginfo("Updating info for table %s", userdata.table.name)
         self.obj_list = []
 
-        i = 1
-        for view in userdata.view_list:
+        for i, view in enumerate(userdata.view_list):
 
             rospy.loginfo('%i view: set PTU to %s',i,view)
 
@@ -173,24 +164,16 @@ class PerceptionReal (smach.State):
             
             rospy.loginfo('%i view: receive point cloud',i)
 
-            self.got_pointcloud = False
-            self.active = True
-            self.first_call = True
-
             userdata.state = 'taking_image'
-
-            while not self.got_pointcloud:
-                rospy.sleep(0.5)
-                rospy.loginfo("Waiting for pointcloud")
             
-            # wait for some time to read once from the topic and store it onto self.pointcloud
-            # TODO: replace with a service call
-
-            self.active = False
+            # make an observation, kept in the datacentre
+            observation =  Observation.make_observation()
+            userdata.table.add_observation(observation)
+            pointcloud = observation.get_message('/head_xtion/depth/points')
 
             rospy.loginfo('%i view: call object recognition service',i)
             try:
-                obj_rec_resp = self.obj_rec(self.pointcloud)
+                obj_rec_resp = self.obj_rec(pointcloud)
             except rospy.ServiceException, e:
                 rospy.logerr("Service call failed: %s" % e)
 
@@ -223,9 +206,6 @@ class PerceptionReal (smach.State):
                     
                     self.obj_list.append(obj_desc)
 
-            i = i + 1
-            
-        
 
         return 'succeeded'
 
