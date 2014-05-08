@@ -40,7 +40,7 @@ public:
     as_.reset(new actionlib::SimpleActionServer<singleview_object_recognizer::CheckObjectPresenceAction>
             (nh_, name, boost::bind(&CheckObjectPresenceAction::executeCB, this, _1), false));
     //as_.registerGoalCallback(boost::bind(&CheckObjectPresenceAction::executeCB, this, _1));
-    topic_ = "/camera/depth_registered/points";
+    topic_ = "/head_xtion/depth_registered/points";
     as_->start();
     ROS_INFO("Action server started %s\n", name.c_str());
   }
@@ -65,13 +65,14 @@ public:
 
     //move pan-tilt to goal view
     ROS_INFO("Moving PTU to %f %f", goal->ptu_pan, goal->ptu_tilt);
-    actionlib::SimpleActionClient<scitos_ptu::PtuGotoAction> ptu("/PtuGotoAction", true);
+    actionlib::SimpleActionClient<scitos_ptu::PtuGotoAction> ptu("/SetPTUState", true);
     ptu.waitForServer();
+    ROS_INFO("PTU server is active\n");
     scitos_ptu::PtuGotoGoal ptuGoal;
     ptuGoal.pan = goal->ptu_pan;
     ptuGoal.tilt = goal->ptu_tilt;
     ptuGoal.pan_vel = 20; // 20 is a reasonable default choice
-    ptuGoal.tilt = 20; // 20 is a reasonable default choice
+    ptuGoal.tilt_vel = 20; // 20 is a reasonable default choice
     ptu.sendGoal(ptuGoal);
     bool finished_before_timeout = ptu.waitForResult(ros::Duration(30.0));
     if (!finished_before_timeout)
