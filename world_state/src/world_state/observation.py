@@ -43,7 +43,6 @@ class TransformationStore(object):
         # subscribe to tf and store transforms
         slf = cls()
         slf._max_buffer = max_buffer
-        rospy.loginfo("Going to subscribe")
         slf._sub =  rospy.Subscriber("/tf", tf2_msgs.msg.TFMessage, slf.cb)
         slf._lively = True
         return slf
@@ -131,6 +130,7 @@ class Observation(mongo.MongoTransformable):
             collection=message_proxy.collection,
             obj_id=msg_id,
             typ=tf_data._type)
+        rospy.loginfo("TF size: %dK" % (len(tf_data.msg)/1024) )
         return observation
     
     def get_message(self, topic):
