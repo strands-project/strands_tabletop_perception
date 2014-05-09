@@ -2,6 +2,7 @@ import rospy
 from mongo import MongoTransformable
 import numpy as np
 from geometry_msgs.msg import PoseStamped, Pose, PoseWithCovariance
+import copy
 
 class Point(MongoTransformable):
     def __init__(self, x=0, y=0, z=0):
