@@ -1,6 +1,10 @@
 import mongo
 import rospy
-import tf
+import tf, tf2_msgs.msg
+import cPickle as pickle
+import zlib
+from collections import deque
+
 from sensor_msgs.msg import Image, PointCloud2, CameraInfo, JointState
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from ros_datacentre.message_store import MessageStoreProxy
@@ -12,6 +16,49 @@ DEFAULT_TOPICS = [("/amcl_pose", PoseWithCovarianceStamped),
                   ("/head_xtion/depth/points", PointCloud2),
                   ("/head_xtion/depth/camera_info", CameraInfo),
                   ("/ptu/state", JointState)]
+
+class TransformationStore(object):
+    """
+    Subscribes to /TF, stores transforms, pickleable for datacentre, turns into
+    transformer when needed
+    """
+    def __init__(self):
+        self._tranformations = deque([])
+        self._lively = False
+        self._max_buffer = 10
+
+    def cb(self, transforms):
+        time_window = rospy.Duration(self._max_buffer)
+        for transform in transforms.transforms:
+            #rospy.loginfo("Got transform: %s - > %s"% ( transform.header.frame_id, transform.child_frame_id))
+            if len(self._tranformations) > 2:
+                l =  self._tranformations.popleft()
+                if (transform.header.stamp -  l.header.stamp) < time_window:
+                    self._tranformations.appendleft(l)
+            self._tranformations.append(transform)
+
+    @classmethod
+    def create_live(cls, max_buffer=10.0):
+        # subscribe to tf and store transforms
+        slf = cls()
+        slf._max_buffer = max_buffer
+        rospy.loginfo("Going to subscribe")
+        slf._sub =  rospy.Subscriber("/tf", tf2_msgs.msg.TFMessage, slf.cb)
+        slf._lively = True
+        return slf
+    
+    def pickle(self):
+        if self._lively:
+            self._lively = False
+            self._sub.unregister()
+            del self._sub
+        return zlib.compress(pickle.dumps(self, protocol=pickle.HIGHEST_PROTOCOL))
+    
+    @classmethod
+    def unpickle(self, pickle_string):
+        return pickle.loads(zlib.decompress(pickle_string))
+        
+        
 
 class MessageStoreObject(mongo.MongoTransformable):
     def __init__(self,  database="message_store", collection="message_store",
