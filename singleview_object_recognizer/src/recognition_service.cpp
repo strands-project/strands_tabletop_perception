@@ -38,6 +38,9 @@
 #include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
 
 #define USE_SIFT_GPU 
+
+bool USE_SEGMENTATION_ = false;
+
 //#define SOC_VISUALIZE
 
 struct camPosConstraints
@@ -152,25 +155,30 @@ private:
         planes_found = mps.getModels();
     }
 
-    std::vector<pcl::PointIndices> indices;
-    Eigen::Vector4f table_plane;
-    doSegmentation<PointT>(scene, normal_cloud, indices, table_plane);
-
-    std::vector<int> indices_above_plane;
-    for (int k = 0; k < scene->points.size (); k++)
+    if(USE_SEGMENTATION_)
     {
-        Eigen::Vector3f xyz_p = scene->points[k].getVector3fMap ();
-        if (!pcl_isfinite (xyz_p[0]) || !pcl_isfinite (xyz_p[1]) || !pcl_isfinite (xyz_p[2]))
-            continue;
+        std::vector<pcl::PointIndices> indices;
+        Eigen::Vector4f table_plane;
+        doSegmentation<PointT>(scene, normal_cloud, indices, table_plane);
 
-        float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
-        if (val >= 0.01)
-            indices_above_plane.push_back (static_cast<int> (k));
+        std::vector<int> indices_above_plane;
+        for (int k = 0; k < scene->points.size (); k++)
+        {
+            Eigen::Vector3f xyz_p = scene->points[k].getVector3fMap ();
+            if (!pcl_isfinite (xyz_p[0]) || !pcl_isfinite (xyz_p[1]) || !pcl_isfinite (xyz_p[2]))
+                continue;
+
+            float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
+            if (val >= 0.01)
+                indices_above_plane.push_back (static_cast<int> (k));
+        }
+
+        multi_recog_->setSegmentation(indices);
+        multi_recog_->setIndices(indices_above_plane);
+
     }
 
     multi_recog_->setSceneNormals(normal_cloud);
-    multi_recog_->setSegmentation(indices);
-    multi_recog_->setIndices(indices_above_plane);
     multi_recog_->setInputCloud (scene);
     {
         pcl::ScopeTime ttt ("Recognition");
@@ -209,6 +217,11 @@ private:
             plane_id << "plane_" << kk;
             model_ids.push_back(plane_id.str());
         }
+    }
+
+    if(model_ids.size() == 0)
+    {
+        return false;
     }
 
     go->setObjectIds(model_ids);
@@ -467,7 +480,7 @@ public:
       multi_recog_->addRecognizer (cast_recog);
     }
 
-    if(do_ourcvfh_)
+    if(do_ourcvfh_ && USE_SEGMENTATION_)
     {
       boost::shared_ptr<faat_pcl::rec_3d_framework::PartialPCDSource<pcl::PointXYZRGBNormal, pcl::PointXYZRGB> >
                           source (

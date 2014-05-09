@@ -31,7 +31,11 @@
 #include <pcl/features/normal_3d_omp.h>
 #include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
 
-//#include<pcl/visualization/pcl_visualizer.h>
+//#define DEBUG_WITH_VIS 1
+#ifdef DEBUG_WITH_VIS
+    #include<pcl/visualization/pcl_visualizer.h>
+#endif
+
 #include<pcl/common/transforms.h>
 
 
@@ -49,6 +53,7 @@ private:
   float max_angle_plane_to_ground_;
   float table_range_min_, table_range_max_;
   int min_cluster_size_;
+  int MAX_VERTICAL_PLANE_SIZE_;
 
   void
   getBaseCameraTransform (Eigen::Matrix4f & trans)
@@ -90,7 +95,8 @@ private:
     {
 
 
-      /*std::cout << xyz_points->points.size() << std::endl;
+#ifdef DEBUG_WITH_VIS
+      std::cout << xyz_points->points.size() << std::endl;
       pcl::visualization::PCLVisualizer vis("cloud for segmentation");
       int v1,v2;
       vis.createViewPort(0,0,0.5,1,v1);
@@ -98,7 +104,8 @@ private:
       vis.addPointCloud<PointT>(xyz_points, "cloud", v1);
       vis.addCoordinateSystem(0.3, v1);
       vis.addCoordinateSystem(0.3, v2);
-      vis.spin();*/
+      vis.spin();
+#endif
 
       if (seg == 0)
       {
@@ -304,24 +311,27 @@ private:
           mps.segment();
           planes_found = mps.getModels();
 
-          if(planes_found.size() == 0 && xyz_points->isOrganized())
+          /*if(planes_found.size() == 0 && xyz_points->isOrganized())
+          //if(true || planes_found.size() == 0 && xyz_points->isOrganized())
           {
               PCL_WARN("No planes found, doing segmentation with standard method\n");
               mps.segment(true);
               planes_found = mps.getModels();
-          }
+          }*/
 
           std::cout << "Number of planes:" << planes_found.size() << std::endl;
 
           Eigen::Matrix4f transform;
           getBaseCameraTransform(transform);
 
-          /*typename pcl::PointCloud<PointT>::Ptr cloud_trans(new pcl::PointCloud<PointT>);
+#ifdef DEBUG_WITH_VIS
+          typename pcl::PointCloud<PointT>::Ptr cloud_trans(new pcl::PointCloud<PointT>);
           pcl::transformPointCloud(*xyz_points, *cloud_trans, transform);
 
           pcl::visualization::PointCloudColorHandlerCustom<PointT> handler(cloud_trans, 255, 0, 0);
           vis.addPointCloud(cloud_trans, handler, "cloud_transformed", v2);
-          vis.spin();*/
+          vis.spin();
+#endif
 
           //select table plane based on the angle to the ground and the height
           faat_pcl::PlaneModel<PointT> selected_plane;
@@ -338,7 +348,7 @@ private:
               plane_normal.normalize();
 
               float angle = pcl::rad2deg(acos(plane_normal.dot(Eigen::Vector3f::UnitZ())));
-
+              //std::cout << "angle:" << angle << std::endl;
               if(angle < max_angle_plane_to_ground_)
               {
                   //select a point on the plane and transform it to check the height relative to the ground
@@ -359,14 +369,33 @@ private:
                           selected_plane = plane;
                           good_plane_found = true;
                       }
+                  }
+              }
+              else if(angle > 85 && angle < 95)
+              {
+                  //std::cout << "vertical plane, check if its big enough" << std::endl;
+                  //std::cout << plane.plane_cloud_->points.size() << std::endl;
 
-                      /*std::stringstream p_name;
+                  int size_plane = static_cast<int>(plane.plane_cloud_->points.size());
+                  if(size_plane > MAX_VERTICAL_PLANE_SIZE_)
+                  {
+                      for(size_t k=0; k < plane.inliers_.indices.size(); k++)
+                      {
+                          xyz_points->points[plane.inliers_.indices[k]].x =
+                          xyz_points->points[plane.inliers_.indices[k]].y =
+                          xyz_points->points[plane.inliers_.indices[k]].z = std::numeric_limits<float>::quiet_NaN();
+                      }
+
+#ifdef DEBUG_WITH_VIS
+                      std::stringstream p_name;
                       p_name << "plane" << i;
                       pcl::visualization::PointCloudColorHandlerRandom<PointT> handler(plane.plane_cloud_);
                       vis.addPointCloud<PointT>(plane.plane_cloud_, handler, p_name.str(), v1);
-                      vis.spin();*/
+                      vis.spin();
+#endif
                   }
               }
+
           }
 
           if(!good_plane_found)
@@ -585,7 +614,7 @@ public:
     table_range_min_ = 0.6f;
     table_range_max_ = 1.2f;
     min_cluster_size_ = 500;
-
+    MAX_VERTICAL_PLANE_SIZE_ = 5000;
   }
 
   void
@@ -599,6 +628,7 @@ public:
     n_->getParam ( "camera_frame", camera_frame_ );
     n_->getParam ( "base_frame", base_frame_ );
     n_->getParam ( "min_cluster_size", min_cluster_size_ );
+    n_->getParam ( "max_vertical_plane_size", MAX_VERTICAL_PLANE_SIZE_ );
 
     segment_ = n_->advertiseService ("object_segmenter", &PCLSegmenterService::segment, this);
     std::cout << "Ready to get service calls..." << chop_at_z_ << " " << seg_type_ << std::endl;

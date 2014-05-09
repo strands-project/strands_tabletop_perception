@@ -5,7 +5,15 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <singleview_object_recognizer/CheckObjectPresenceAction.h>
 #include <recognition_srv_definitions/recognize.h>
+#include "ros_datacentre/message_store.h"
+#include "ros_datacentre_msgs/StringPairList.h"
+#include <std_msgs/Int32.h>
 #include <scitos_ptu/PtuGotoAction.h>
+
+using namespace std_msgs;
+using namespace ros_datacentre;
+using namespace ros_datacentre_msgs;
+using namespace std;
 
 class CheckObjectPresenceAction
 {
@@ -32,7 +40,7 @@ public:
     as_.reset(new actionlib::SimpleActionServer<singleview_object_recognizer::CheckObjectPresenceAction>
             (nh_, name, boost::bind(&CheckObjectPresenceAction::executeCB, this, _1), false));
     //as_.registerGoalCallback(boost::bind(&CheckObjectPresenceAction::executeCB, this, _1));
-    topic_ = "/camera/depth_registered/points";
+    topic_ = "/head_xtion/depth_registered/points";
     as_->start();
     ROS_INFO("Action server started %s\n", name.c_str());
   }
@@ -57,17 +65,19 @@ public:
 
     //move pan-tilt to goal view
     ROS_INFO("Moving PTU to %f %f", goal->ptu_pan, goal->ptu_tilt);
-    actionlib::SimpleActionClient<scitos_ptu::PtuGotoAction> ptu("/PtuGotoAction", true);
+    actionlib::SimpleActionClient<scitos_ptu::PtuGotoAction> ptu("/SetPTUState", true);
     ptu.waitForServer();
+    ROS_INFO("PTU server is active\n");
     scitos_ptu::PtuGotoGoal ptuGoal;
     ptuGoal.pan = goal->ptu_pan;
     ptuGoal.tilt = goal->ptu_tilt;
     ptuGoal.pan_vel = 20; // 20 is a reasonable default choice
-    ptuGoal.tilt = 20; // 20 is a reasonable default choice
+    ptuGoal.tilt_vel = 20; // 20 is a reasonable default choice
     ptu.sendGoal(ptuGoal);
     bool finished_before_timeout = ptu.waitForResult(ros::Duration(30.0));
     if (!finished_before_timeout)
       ROS_ERROR("Failed to move the PTU.");
+
     // TODO: now our own action should actually terminate with failure
 
     //get point cloud
@@ -122,10 +132,40 @@ public:
         feedback_.status = "There was an error calling the service\n";
     }
 
+    feedback_.status = "Logging data";
+
+    //log point cloud, result and object_id
+    ros_datacentre::MessageStoreProxy messageStore(nh_, "checkObjectPresence");
+
+    std::vector< std::pair<std::string, std::string> > stored;
+    // now add objects and store ids with the addition of type strings for safety. The types are not necessary unless you want to do some kind of reflection on this data later.
+
+    std_msgs::Int32 found_result;
+    found_result.data = result_.found;
+
+    std_msgs::String object_id_ros_msg;
+    object_id_ros_msg.data = goal->object_id;
+
+    stored.push_back( std::make_pair(get_ros_type(*cloud_), messageStore.insert(*cloud_)) );
+    stored.push_back( std::make_pair(get_ros_type(found_result), messageStore.insert(found_result)) );
+    stored.push_back( std::make_pair(get_ros_type(object_id_ros_msg), messageStore.insert(object_id_ros_msg)) );
+
+    StringPairList spl;
+    for(auto & pair : stored) {
+        spl.pairs.push_back(ros_datacentre::makePair(pair.first, pair.second));
+    }
+
+    // and add some descriptive information
+    mongo::BSONObjBuilder metaBuilder;
+    metaBuilder.append("description", "checkObjectPresence result");
+    metaBuilder.append("result_time", mongo::Date_t(ros::Time::now().toSec() * 1000));
+
+    // and store
+    messageStore.insert(spl, metaBuilder.obj());
+
     feedback_.status = "Succeeded";
     ROS_INFO("%s: Succeeded", action_name_.c_str());
     as_->setSucceeded(result_);
-
   }
 };
 
