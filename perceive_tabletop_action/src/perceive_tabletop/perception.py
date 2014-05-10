@@ -9,9 +9,11 @@ from sensor_msgs.msg import *
 
 from classifier_srv_definitions.srv import segment_and_classify
 
-from world_state.observation import MessageStoreObject, Observation
+from world_state.observation import MessageStoreObject, Observation, TransformationStore
 from world_state.identification import ObjectIdentification
 from world_state.state import World, Object
+from world_state.report import PointcloudVisualiser
+import world_state.geometry as geometry
 
 
 class PerceptionSim(smach.State):
@@ -140,6 +142,7 @@ class PerceptionReal (smach.State):
             rospy.logerr("Service call failed: %s" % e)
             
         self._world = World()
+        self._pcv = PointcloudVisualiser()
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
@@ -174,6 +177,7 @@ class PerceptionReal (smach.State):
             observation =  Observation.make_observation()
             userdata.table.add_observation(observation)
             pointcloud = observation.get_message('/head_xtion/depth/points')
+            tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
 
             rospy.loginfo('%i view: call object recognition service',i)
             userdata.state = 'image_analysis'
@@ -184,6 +188,16 @@ class PerceptionReal (smach.State):
 
             objects = obj_rec_resp.class_results
 
+            depth_to_world = tf.lookupTransform("/map", pointcloud.header.frame_id, 
+                                                pointcloud.header.stamp)
+            print depth_to_world
+            depth_to_world = geometry.Pose(geometry.Point(*(depth_to_world[0])),
+                                           geometry.Quaternion(*(depth_to_world[1])))
+
+
+            world_to_table = userdata.table.pose
+            
+            self._pcv.clear()
             if len(objects) == 0:
                 rospy.loginfo("%i view: nothing perceived",i)
             else:
@@ -192,19 +206,27 @@ class PerceptionReal (smach.State):
                 userdata.cloud = obj_rec_resp.cloud
                 userdata.bbox = obj_rec_resp.bbox
                 userdata.obj_list = self.obj_list
-
                 for j in range(len(objects)):
+                    world_cloud = geometry.transform_PointCloud2(obj_rec_resp.cloud[j],
+                                                                 depth_to_world,
+                                                                 "/map")
+                    self._pcv.add_cloud(world_cloud)
+                    
                     new_object =  self._world.create_object()
-                    new_object._point_cloud =  MessageStoreObject.create(obj_rec_resp.cloud[j])
+                    new_object._point_cloud =  MessageStoreObject.create(world_cloud)
+                    position = geometry.Point.from_ros_point32(obj_rec_resp.centroid).transform(world_cloud)
+                    new_object.add_pose(geometry.Pose(position)) # no orientation
                     userdata.table.add_child(new_object)
+
                     
                     obj = objects[j]
                     max_idx = obj.confidence.index(max(obj.confidence))
                     obj_desc = dict()
                     obj_desc['type'] = obj.class_type[max_idx].data.strip('/')
+                    
                     rospy.loginfo('Object: %s', obj_desc['type'])
                     self.obj_list.append(obj_desc)
-
+            self._pcv.publish()
 
         return 'succeeded'
 
