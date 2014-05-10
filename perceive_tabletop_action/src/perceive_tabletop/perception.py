@@ -12,7 +12,7 @@ from classifier_srv_definitions.srv import segment_and_classify
 from world_state.observation import MessageStoreObject, Observation, TransformationStore
 from world_state.identification import ObjectIdentification
 from world_state.state import World, Object
-from world_state.report import PointcloudVisualiser
+from world_state.report import PointCloudVisualiser
 import world_state.geometry as geometry
 
 import numpy as np
@@ -144,7 +144,7 @@ class PerceptionReal (smach.State):
             rospy.logerr("Service call failed: %s" % e)
             
         self._world = World()
-        self._pcv = PointcloudVisualiser()
+        self._pcv = PointCloudVisualiser()
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
@@ -242,6 +242,13 @@ class PerceptionReal (smach.State):
                     new_object.add_observation(observation) 
                     userdata.table.add_child(new_object)
 
+                    # The classification
+                    classification = {}
+                    for cl, conf in zip(obj_rec_resp.class_results[j].class_type,
+                                        obj_rec_resp.class_results[j].confidence):
+                        classification[cl.data.strip('/')] = conf
+                    new_object.add_identification("SingleViewClassifier",
+                                                  ObjectIdentification(classification))
                     
                     obj = objects[j]
                     max_idx = obj.confidence.index(max(obj.confidence))
