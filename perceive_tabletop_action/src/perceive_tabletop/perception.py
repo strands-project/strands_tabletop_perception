@@ -216,6 +216,7 @@ class PerceptionReal (smach.State):
                     new_object._point_cloud =  MessageStoreObject.create(world_cloud)
                     position = geometry.Point.from_ros_point32(obj_rec_resp.centroid).transform(world_cloud)
                     new_object.add_pose(geometry.Pose(position)) # no orientation
+                    new_object.add_observation(observation) 
                     userdata.table.add_child(new_object)
 
                     
