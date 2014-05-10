@@ -89,8 +89,9 @@ class MessageStoreObject(mongo.MongoTransformable):
     
     @classmethod
     def create(cls, ros_msg, database="message_store", collection="ws_observations"):
-        proxy = MessageStoreProxy(database, collection)
+        proxy = MessageStoreProxy(database=database, collection=collection)
         o_id = proxy.insert(ros_msg)
+        print o_id
         return cls(database, collection, o_id, ros_msg._type)
     
 
