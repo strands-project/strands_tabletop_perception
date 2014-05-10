@@ -127,7 +127,7 @@ class ViewPlanning(smach.State):
                                            nav_goals_eval_resp.coverage_idx)
             
             while not self.got_current_pose:
-                rospy.info("Waiting for current pose from amcl")
+                rospy.loginfo("Waiting for current pose from amcl")
             
             vp_trajectory = plan_views(self.current_pose, viewpoints, self.num_of_trajectories, len(viewpoints))
             
