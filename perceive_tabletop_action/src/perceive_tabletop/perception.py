@@ -15,6 +15,8 @@ from world_state.state import World, Object
 from world_state.report import PointcloudVisualiser
 import world_state.geometry as geometry
 
+import numpy as np
+
 
 class PerceptionSim(smach.State):
     """
@@ -131,7 +133,7 @@ class PerceptionReal (smach.State):
                              output_keys=['state','obj_list','bbox','cloud', 'table'])
 
         self.obj_list = []
-       
+        print "!*" * 200
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
 
         rospy.wait_for_service('/classifier_service/segment_and_classify')
@@ -193,9 +195,9 @@ class PerceptionReal (smach.State):
             print depth_to_world
             depth_to_world = geometry.Pose(geometry.Point(*(depth_to_world[0])),
                                            geometry.Quaternion(*(depth_to_world[1])))
-
-
-            world_to_table = userdata.table.pose
+            table_to_world = userdata.table.pose
+            depth_to_table = np.dot(np.linalg.inv(table_to_world.as_homog_matrix()),
+                                    depth_to_world.as_homog_matrix() )
             
             self._pcv.clear()
             if len(objects) == 0:
@@ -207,15 +209,36 @@ class PerceptionReal (smach.State):
                 userdata.bbox = obj_rec_resp.bbox
                 userdata.obj_list = self.obj_list
                 for j in range(len(objects)):
-                    world_cloud = geometry.transform_PointCloud2(obj_rec_resp.cloud[j],
-                                                                 depth_to_world,
-                                                                 "/map")
-                    self._pcv.add_cloud(world_cloud)
-                    
+                    self._pcv.add_cloud(obj_rec_resp.cloud[j])
                     new_object =  self._world.create_object()
-                    new_object._point_cloud =  MessageStoreObject.create(world_cloud)
-                    position = geometry.Point.from_ros_point32(obj_rec_resp.centroid).transform(world_cloud)
-                    new_object.add_pose(geometry.Pose(position)) # no orientation
+                    
+                    # The position (centroid)
+                    print "=" * 10, "\n", obj_rec_resp.centroid[j]
+                    position = geometry.Point.from_ros_point32(obj_rec_resp.centroid[j])
+                    print "-" * 10, "\n", position
+                    position.transform(depth_to_table)
+                    print "-" * 10, "\n", position
+                    pose = geometry.Pose(position)
+                    new_object.add_pose(pose) # no orientation
+
+                    depth_to_object = np.dot(np.linalg.inv(pose.as_homog_matrix()), depth_to_table)
+                    
+                    # The point cloud
+                    cloud = geometry.transform_PointCloud2(obj_rec_resp.cloud[j],
+                                                                 depth_to_object,
+                                                                 "/map")
+                    #self._pcv.add_cloud(cloud)
+                    new_object._point_cloud =  MessageStoreObject.create(cloud)
+                    
+                    # The bounding box
+                    bbox_array =  []
+                    for pt in obj_rec_resp.bbox[j].point:
+                        p =  geometry.Point.from_ros_point32(pt)
+                        p.transform(depth_to_object)
+                        bbox_array.append([p.x, p.y, p.z])
+                    bbox = geometry.BBoxArray(bbox_array)
+                    new_object._bounding_box = bbox
+ 
                     new_object.add_observation(observation) 
                     userdata.table.add_child(new_object)
 
