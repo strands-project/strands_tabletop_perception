@@ -66,8 +66,9 @@ class Object(MongoDocument):
     
     def cut_all_children(self):
         world =  World()
-        for i in self._children:
-            world.get_object(i).cut()
+        children = world.get_children(self.name, {'_life_end': None,})
+        for i in children:
+            i.cut()
     
     @property
     def name(self):
@@ -110,12 +111,12 @@ class Object(MongoDocument):
         return self.identifications[classifier_id][-1]
     
     def get_children_names(self):
-        return copy.copy(self._children)
+        return copy.copy(self._children)  
     
     def add_child(self, child_object):
         #self._children.append(child_object.get_name)
         # have to recreate to catch in setattr
-        assert child_object._parent is None) # otherwise dual parentage is ok?
+        assert child_object._parent is None # otherwise dual parentage is ok?
         child_object._parent = self.name
         self._children+=[child_object.name]
 
@@ -148,6 +149,7 @@ class World(object):
     def __init__(self, database_name='world_state', server_host=None,
                  server_port=None):
         self._mongo = MongoConnection(database_name, server_host, server_port)
+        
 
     def does_object_exist(self, object_name):
         result = self._mongo.database.Objects.find(
@@ -208,6 +210,20 @@ class World(object):
         result = self._mongo.database.Objects.find(
                 {"__pyobject_class_type": Object.get_pyoboject_class_string(),
                  '_parent': None,})
+        objs = []
+        for r in result:
+            r._connect(self._mongo)
+            objs.append(r)
+        return objs
+    
+     
+    def get_children(self, parent, condition=None):
+        """ Get the actual children objects given the condition """
+        q = {'_parent': parent,
+             "__pyobject_class_type": Object.get_pyoboject_class_string(),
+              }
+        q.update(condition)
+        result = self._mongo.database.Objects.find(q)
         objs = []
         for r in result:
             r._connect(self._mongo)
