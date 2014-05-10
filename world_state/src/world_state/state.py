@@ -33,6 +33,7 @@ class Object(MongoDocument):
         
         self._poses = []
         self._point_cloud = None # will be a MessageStoreObject or None
+        self._bounding_box = None
         
     # TODO: properies for all, remove MongoDocument?
     
@@ -114,6 +115,8 @@ class Object(MongoDocument):
     def add_child(self, child_object):
         #self._children.append(child_object.get_name)
         # have to recreate to catch in setattr
+        assert child_object._parent is None) # otherwise dual parentage is ok?
+        child_object._parent = self.name
         self._children+=[child_object.name]
 
     def get_message_store_messages(self, typ=None):
