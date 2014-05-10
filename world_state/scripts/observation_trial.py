@@ -2,7 +2,7 @@
 import rospy
 from world_state.state import World, Object
 from world_state.identification import ObjectIdentification
-from world_state.observation import MessageStoreObject, Observation, DEFAULT_TOPICS
+from world_state.observation import TransformationStore, MessageStoreObject, Observation, DEFAULT_TOPICS
 from world_state.geometry import Pose
 from sensor_msgs.msg import Image, PointCloud2
 
@@ -24,8 +24,13 @@ if __name__ == '__main__':
     ob = w.create_object()
     observation = Observation.make_observation(DEFAULT_TOPICS)
     ob.add_observation(observation)
+    print ob.name
     
-    image =  observation.get_message("/chest_xtion/rgb/image_color")
+    tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
+
+
+    print tf.lookupTransform("/map", "/head_xtion_rgb_optical_frame", rospy.Time(0))
+    print tf.lookupTransform("/map", "/head_xtion_rgb_optical_frame",
+                             observation.get_message("/head_xtion/rgb/camera_info").header.stamp)
     
-    pub.publish(image)
     
