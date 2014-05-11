@@ -1,9 +1,14 @@
 import mongo
 import rospy
-import tf
+import tf, tf2_msgs.msg
+import cPickle as pickle
+import zlib
+from collections import deque
+
 from sensor_msgs.msg import Image, PointCloud2, CameraInfo, JointState
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from ros_datacentre.message_store import MessageStoreProxy
+from ros_datacentre_msgs.msg import SerialisedMessage
 from exceptions import StateException
 
 DEFAULT_TOPICS = [("/amcl_pose", PoseWithCovarianceStamped),
@@ -12,6 +17,62 @@ DEFAULT_TOPICS = [("/amcl_pose", PoseWithCovarianceStamped),
                   ("/head_xtion/depth/points", PointCloud2),
                   ("/head_xtion/depth/camera_info", CameraInfo),
                   ("/ptu/state", JointState)]
+
+class TransformationStore(object):
+    """
+    Subscribes to /TF, stores transforms, pickleable for datacentre, turns into
+    transformer when needed
+    """
+    def __init__(self):
+        self._transformations = deque([])
+        self._lively = False
+        self._max_buffer = 10
+
+    def cb(self, transforms):
+        time_window = rospy.Duration(self._max_buffer)
+        for transform in transforms.transforms:
+            #rospy.loginfo("Got transform: %s - > %s"% ( transform.header.frame_id, transform.child_frame_id))
+            if self._max_buffer > 0 and len(self._transformations) > 2:
+                l =  self._transformations.popleft()
+                if (transform.header.stamp -  l.header.stamp) < time_window:
+                    self._transformations.appendleft(l)
+            self._transformations.append(transform)
+
+    @classmethod
+    def create_live(cls, max_buffer=10.0):
+        # subscribe to tf and store transforms
+        slf = cls()
+        slf._max_buffer = max_buffer
+        slf._sub =  rospy.Subscriber("/tf", tf2_msgs.msg.TFMessage, slf.cb)
+        slf._lively = True
+        return slf
+    
+    def pickle(self):
+        if self._lively:
+            self._lively = False
+            self._sub.unregister()
+            del self._sub
+        return zlib.compress(pickle.dumps(self, protocol=pickle.HIGHEST_PROTOCOL))
+    
+    def pickle_to_msg(self):
+        s = SerialisedMessage()
+        s.msg =  self.pickle()
+        s.type = "zlibed_pickled_tf"
+        return s
+    
+    @staticmethod
+    def msg_to_transformer(msg):
+        t = tf.TransformerROS()
+        transforms = TransformationStore.unpickle(msg.msg)
+        for transform in transforms._transformations:
+            t.setTransform(transform)
+        return t
+    
+    @classmethod
+    def unpickle(self, pickle_string):
+        return pickle.loads(zlib.decompress(pickle_string))
+        
+        
 
 class MessageStoreObject(mongo.MongoTransformable):
     def __init__(self,  database="message_store", collection="message_store",
@@ -25,6 +86,14 @@ class MessageStoreObject(mongo.MongoTransformable):
         proxy = MessageStoreProxy(database=self.database,
                                   collection=self.collection)
         return proxy.query_id(self.obj_id, self.typ)[0]
+    
+    @classmethod
+    def create(cls, ros_msg, database="message_store", collection="ws_observations"):
+        proxy = MessageStoreProxy(database=database, collection=collection)
+        o_id = proxy.insert(ros_msg)
+        print o_id
+        return cls(database, collection, o_id, ros_msg._type)
+    
 
 class Observation(mongo.MongoTransformable):
     def __init__(self):
@@ -32,13 +101,14 @@ class Observation(mongo.MongoTransformable):
         self._messages = {}
     
     @classmethod    
-    def make_observation(cls, topics):
+    def make_observation(cls, topics=DEFAULT_TOPICS):
         """
         topics: list of tuples (topic_name,topic_type)
         """
         observation = cls()
         message_proxy = MessageStoreProxy(collection="ws_observations")
-        transforms = tf.TransformListener()
+        transforms = TransformationStore.create_live()
+        rospy.sleep(0.5)
         for topic_name, topic_type in topics:
             rospy.loginfo("Aquiring message on %s [%s]"%(topic_name, topic_type._type))
             try:
@@ -52,6 +122,16 @@ class Observation(mongo.MongoTransformable):
                 collection=message_proxy.collection,
                 obj_id=msg_id,
                 typ=msg._type)
+            
+        rospy.sleep(0.5)
+        tf_data =  transforms.pickle_to_msg()
+        msg_id = message_proxy.insert(tf_data)
+        observation._messages["/tf"]  = MessageStoreObject(
+            database=message_proxy.database,
+            collection=message_proxy.collection,
+            obj_id=msg_id,
+            typ=tf_data._type)
+        rospy.loginfo("TF size: %dK" % (len(tf_data.msg)/1024) )
         return observation
     
     def get_message(self, topic):
