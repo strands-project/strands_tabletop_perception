@@ -38,7 +38,8 @@ public:
     as_.reset(new actionlib::SimpleActionServer<singleview_object_recognizer::CheckObjectPresenceAction>
             (nh_, name, boost::bind(&CheckObjectPresenceAction::executeCB, this, _1), false));
 
-    nh_.param ("camera_topic", topic_, "/head_xtion/depth_registered/points");
+    std::string topic_default = "/head_xtion/depth_registered/points";
+    nh_.param ("camera_topic", topic_, topic_default);
 
     as_->start();
     ROS_INFO("Action server started %s\n", name.c_str());
