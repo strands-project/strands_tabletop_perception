@@ -36,6 +36,9 @@ def generate_report(t, parent_object=None):
             print "-> -> ", o2.name, " ==> ", o2.identification.class_type
 
 def create_table_observation_image(table_name, observation_timestamp):
+    """
+    returns numpy/opencv image
+    """
     # what objects existed on the table at this timestamp..
     w = World()
     table =  w.get_object(table_name)
@@ -81,8 +84,9 @@ def create_table_observation_image(table_name, observation_timestamp):
         cv2.putText(rgb_image,  classification, (contour[0][0][0], contour[0][0][1]),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, colours[j%len(colours)], 2)
         
-    cv2.imshow('image', rgb_image)
-    cv2.waitKey(0)
+#    cv2.imshow('image', rgb_image)
+#    cv2.waitKey(30)
+    return rgb_image
         
     
 def get_image_contour(camera_info, pointcloud, pt_meld=1):
