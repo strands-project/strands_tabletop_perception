@@ -11,7 +11,6 @@
 #include "sensor_msgs/PointCloud2.h"
 #include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/console/parse.h>
 #include <pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
 #include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
@@ -66,13 +65,13 @@ private:
   std::string training_dir_ourcvfh_;
   bool do_sift_;
   bool do_ourcvfh_;
-  float chop_at_z_;
+  double chop_at_z_;
   int icp_iterations_;
   std::vector<std::string> text_3d_;
   boost::shared_ptr<faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT> > multi_recog_;
   int v1_,v2_, v3_;
   ros::ServiceServer recognize_;
-  ros::NodeHandle n_;
+  boost::shared_ptr<ros::NodeHandle> n_;
   int cg_size_;
 
 #ifdef SOC_VISUALIZE
@@ -124,7 +123,7 @@ private:
     if(chop_at_z_ > 0)
     {
         pcl::PassThrough<PointT> pass_;
-        pass_.setFilterLimits (0.f, chop_at_z_);
+        pass_.setFilterLimits (0.f, static_cast<float>(chop_at_z_));
         pass_.setFilterFieldName ("z");
         pass_.setInputCloud (scene);
         pass_.setKeepOrganized (true);
@@ -367,7 +366,7 @@ public:
   Recognizer ()
   {
     //default values
-    chop_at_z_ = 1.f;
+    chop_at_z_ = 1.5;
     do_sift_ = true;
     do_ourcvfh_ = false;
     icp_iterations_ = 0;
@@ -385,14 +384,15 @@ public:
   initialize (int argc, char ** argv)
   {
 
-    pcl::console::parse_argument (argc, argv, "-models_dir", models_dir_);
-    pcl::console::parse_argument (argc, argv, "-training_dir_sift", training_dir_sift_);
-    pcl::console::parse_argument (argc, argv, "-recognizer_structure_sift", sift_structure_);
-    pcl::console::parse_argument (argc, argv, "-training_dir_ourcvfh", training_dir_ourcvfh_);
-    pcl::console::parse_argument (argc, argv, "-chop_z", chop_at_z_);
-    pcl::console::parse_argument (argc, argv, "-icp_iterations", icp_iterations_);
-    pcl::console::parse_argument (argc, argv, "-do_sift", do_sift_);
-    pcl::console::parse_argument (argc, argv, "-do_ourcvfh", do_ourcvfh_);
+      n_.reset( new ros::NodeHandle ( "~" ) );
+      n_->getParam ( "models_dir", models_dir_);
+      n_->getParam ( "training_dir_sift", training_dir_sift_);
+      n_->getParam ( "recognizer_structure_sift", sift_structure_);
+      n_->getParam ( "training_dir_ourcvfh", training_dir_ourcvfh_);
+      n_->getParam ( "chop_z", chop_at_z_ );
+      n_->getParam ( "icp_iterations", icp_iterations_);
+      n_->getParam ( "do_sift", do_sift_);
+      n_->getParam ( "do_ourcvfh", do_ourcvfh_);
 
     if (models_dir_.compare ("") == 0)
     {
@@ -589,7 +589,7 @@ public:
     multi_recog_->setICPIterations(icp_iterations_);
     multi_recog_->initialize();
 
-    recognize_ = n_.advertiseService ("mp_recognition", &Recognizer::recognize, this);
+    recognize_ = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
     std::cout << "Ready to get service calls..." << std::endl;
     ros::spin ();
   }
