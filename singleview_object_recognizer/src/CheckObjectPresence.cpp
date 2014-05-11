@@ -29,18 +29,17 @@ protected:
   ros::Subscriber sub_;
   sensor_msgs::PointCloud2ConstPtr cloud_;
   bool got_cloud_;
-  std::string topic_;
+  std::string topic_;  
 
 public:
     
-  CheckObjectPresenceAction(std::string name):
-    //as_(nh_, name, boost::bind(&CheckObjectPresenceAction::executeCB, this, _1), false),
-    action_name_(name)
+  CheckObjectPresenceAction(std::string name)
   {
     as_.reset(new actionlib::SimpleActionServer<singleview_object_recognizer::CheckObjectPresenceAction>
             (nh_, name, boost::bind(&CheckObjectPresenceAction::executeCB, this, _1), false));
-    //as_.registerGoalCallback(boost::bind(&CheckObjectPresenceAction::executeCB, this, _1));
-    topic_ = "/head_xtion/depth_registered/points";
+
+    nh_.getParam ("camera_topic", topic_);
+
     as_->start();
     ROS_INFO("Action server started %s\n", name.c_str());
   }
@@ -74,6 +73,7 @@ public:
       {
         ROS_ERROR("Failed to move the PTU.");
         feedback_.status = "Unable to move PTU";
+        as_->publishFeedback(feedback_);
         result_.found = 0;
         as_->setAborted(result_);
       }
@@ -94,6 +94,8 @@ public:
 
     //get point cloud
     feedback_.status = "Getting cloud";
+    as_->publishFeedback(feedback_);
+
     ros::Subscriber sub_pc = nh_.subscribe (topic_, 1, &CheckObjectPresenceAction::getCloud, this);
     ros::Rate loop_rate (0.5);
 
@@ -114,6 +116,7 @@ public:
 
     //call recognition service
     feedback_.status = "Calling service";
+    as_->publishFeedback(feedback_);
     ros::ServiceClient client = nh_.serviceClient<recognition_srv_definitions::recognize>("/recognition_service/mp_recognition");
     recognition_srv_definitions::recognize srv;
     srv.request.cloud = *cloud_;
@@ -126,7 +129,8 @@ public:
     if (client.call(srv))
     {
         //parse result checking if the desired goal object is there or not, return true or false
-        feedback_.status = "Parsing results";
+        feedback_.status = "Parsing results from successful recognition service call";
+        as_->publishFeedback(feedback_);
 
         std::cout << "Object ids found:" << static_cast<int>(srv.response.ids.size()) << std::endl;
 
@@ -143,14 +147,17 @@ public:
     }
     else
     {
-	std::cout << "there was an error calling the service" << std::endl;
+        std::cout << "there was an error calling the service" << std::endl;
         feedback_.status = "There was an error calling the service\n";
+        as_->publishFeedback(feedback_);
+
     }
 
     //move pan-tilt to (0,0)
     movePTU(0,0);
 
     feedback_.status = "Logging data";
+    as_->publishFeedback(feedback_);
 
     //log point cloud, result and object_id
     ros_datacentre::MessageStoreProxy messageStore(nh_, "checkObjectPresence");
@@ -184,6 +191,8 @@ public:
     feedback_.status = "Succeeded";
     ROS_INFO("%s: Succeeded", action_name_.c_str());
     as_->setSucceeded(result_);
+    as_->publishFeedback(feedback_);
+
   }
 };
 

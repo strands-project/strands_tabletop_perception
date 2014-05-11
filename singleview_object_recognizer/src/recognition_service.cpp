@@ -37,10 +37,9 @@
 #include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
 
 //#define USE_SIFT_GPU 
+//#define SOC_VISUALIZE
 
 bool USE_SEGMENTATION_ = false;
-
-//#define SOC_VISUALIZE
 
 struct camPosConstraints
 {
@@ -73,6 +72,7 @@ private:
   ros::ServiceServer recognize_;
   boost::shared_ptr<ros::NodeHandle> n_;
   int cg_size_;
+  bool ignore_color_;
 
 #ifdef SOC_VISUALIZE
   boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
@@ -90,8 +90,6 @@ private:
 
     float go_resolution_ = 0.005f;
     bool add_planes = true;
-    float assembled_resolution = 0.003f;
-    float color_sigma = 0.5f;
 
     //initialize go
     boost::shared_ptr<faat_pcl::GlobalHypothesesVerification_1<PointT, PointT> > go (
@@ -103,7 +101,7 @@ private:
     go->setResolution (go_resolution_);
     go->setInlierThreshold (0.01);
     go->setRadiusClutter (0.03f);
-    go->setRegularizer (2);
+    go->setRegularizer (3);
     go->setClutterRegularizer (5);
     go->setDetectClutter (true);
     go->setOcclusionThreshold (0.01f);
@@ -112,8 +110,7 @@ private:
     go->setRadiusNormals(0.02);
     go->setRequiresNormals(false);
     go->setInitialStatus(false);
-    go->setIgnoreColor(false);
-    //go->setColorSigma(color_sigma);
+    go->setIgnoreColor(ignore_color_);
     go->setColorSigma(0.5f, 0.5f);
     go->setHistogramSpecification(true);
     go->setVisualizeGoCues(0);
@@ -146,13 +143,6 @@ private:
     std::vector<faat_pcl::PlaneModel<PointT> > planes_found;
     mps.segment();
     planes_found = mps.getModels();
-
-    if(planes_found.size() == 0 && scene->isOrganized())
-    {
-        PCL_WARN("No planes found, doing segmentation with standard method\n");
-        mps.segment(true);
-        planes_found = mps.getModels();
-    }
 
     if(USE_SEGMENTATION_)
     {
@@ -396,6 +386,7 @@ public:
       n_->getParam ( "icp_iterations", icp_iterations_);
       n_->getParam ( "do_sift", do_sift_);
       n_->getParam ( "do_ourcvfh", do_ourcvfh_);
+      n_->getParam ( "ignore_color", ignore_color_);
 
     if (models_dir_.compare ("") == 0)
     {

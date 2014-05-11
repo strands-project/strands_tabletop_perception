@@ -12,6 +12,7 @@
 	<arg name="icp_iterations" default="10" />
 	<arg name="do_sift" default="true" />
 	<arg name="do_ourcvfh" default="false" />
+	<arg name="ignore_color" default="false" />
 	
 	<!-- recognition service service -->
 	<node pkg="singleview_object_recognizer" type="recognition_service" name="recognition_service" output="screen" >
@@ -22,5 +23,6 @@
 		<param name="do_sift" value="$(arg do_sift)" type="bool"/>
 		<param name="do_ourcvfh" value="$(arg do_ourcvfh)" type="bool"/>
 		<param name="chop_z" value="$(arg chop_z)" type="double"/>
+		<param name="ignore_color" value="$(arg ignore_color)" type="bool"/>
 	</node>
 </launch>
