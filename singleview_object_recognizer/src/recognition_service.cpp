@@ -99,7 +99,7 @@ private:
     go->setSmoothSegParameters(0.1, 0.035, 0.005);
     //go->setRadiusNormals(0.03f);
     go->setResolution (go_resolution_);
-    go->setInlierThreshold (0.01);
+    go->setInlierThreshold (0.015);
     go->setRadiusClutter (0.03f);
     go->setRegularizer (3);
     go->setClutterRegularizer (5);
@@ -110,7 +110,7 @@ private:
     go->setRadiusNormals(0.02);
     go->setRequiresNormals(false);
     go->setInitialStatus(false);
-    go->setIgnoreColor(ignore_color_);
+    go->setIgnoreColor(true);
     go->setColorSigma(0.5f, 0.5f);
     go->setHistogramSpecification(true);
     go->setVisualizeGoCues(0);
@@ -363,7 +363,7 @@ public:
     do_sift_ = true;
     do_ourcvfh_ = false;
     icp_iterations_ = 0;
-    cg_size_ = 7;
+    cg_size_ = 5;
 
 #ifdef SOC_VISUALIZE
     vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
