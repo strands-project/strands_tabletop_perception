@@ -1,4 +1,9 @@
 <launch>
+    <arg name="machine" default="localhost" />
+	<arg name="user" default="" />
+
+    <machine name="$(arg machine)" address="$(arg machine)" env-loader="/opt/strands/strands_catkin_ws/devel/env.sh" user="$(arg user)" default="true"/>
+
 	<arg name="models_dir" default="" />
 	<arg name="training_dir_sift" default="" />
 	<arg name="recognizer_structure_sift" default="" />
@@ -9,7 +14,7 @@
 	<arg name="do_ourcvfh" default="false" />
 	
 	<!-- recognition service service -->
-	<node pkg="singlview_object_recognizer" type="recognition_service" name="recognition_service" output="screen" >
+	<node pkg="singleview_object_recognizer" type="recognition_service" name="recognition_service" output="screen" >
 		<param name="models_dir" value="$(arg models_dir)" type="string"/>
 		<param name="training_dir_sift" value="$(arg training_dir_sift)" type="string"/>
 		<param name="recognizer_structure_sift" value="$(arg recognizer_structure_sift)" type="string"/>
