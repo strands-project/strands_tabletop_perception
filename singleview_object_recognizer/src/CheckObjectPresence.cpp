@@ -114,7 +114,7 @@ public:
 
     //call recognition service
     feedback_.status = "Calling service";
-    ros::ServiceClient client = nh_.serviceClient<recognition_srv_definitions::recognize>("mp_recognition");
+    ros::ServiceClient client = nh_.serviceClient<recognition_srv_definitions::recognize>("/recognition_service/mp_recognition");
     recognition_srv_definitions::recognize srv;
     srv.request.cloud = *cloud_;
 
@@ -143,6 +143,7 @@ public:
     }
     else
     {
+	std::cout << "there was an error calling the service" << std::endl;
         feedback_.status = "There was an error calling the service\n";
     }
 
