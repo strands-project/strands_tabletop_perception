@@ -57,6 +57,32 @@ public:
       got_cloud_ = true;
   }
 
+  void movePTU(float pan, float tilt)
+  {
+      ROS_INFO("Moving PTU to %f %f", pan, tilt);
+      actionlib::SimpleActionClient<scitos_ptu::PtuGotoAction> ptu("/SetPTUState", true);
+      ptu.waitForServer();
+      ROS_INFO("PTU server is active\n");
+      scitos_ptu::PtuGotoGoal ptuGoal;
+      ptuGoal.pan = pan;
+      ptuGoal.tilt = tilt;
+      ptuGoal.pan_vel = 20; // 20 is a reasonable default choice
+      ptuGoal.tilt_vel = 20; // 20 is a reasonable default choice
+      ptu.sendGoal(ptuGoal);
+      bool finished_before_timeout = ptu.waitForResult(ros::Duration(30.0));
+      if (!finished_before_timeout)
+      {
+        ROS_ERROR("Failed to move the PTU.");
+        feedback_.status = "Unable to move PTU";
+        result_.found = 0;
+        as_->setAborted(result_);
+      }
+      else
+      {
+          ROS_DEBUG("Managed to move PTU\n");
+      }
+  }
+
   void executeCB(const singleview_object_recognizer::CheckObjectPresenceGoalConstPtr &goal)
   {
     // helper variables
@@ -64,21 +90,7 @@ public:
     result_.found = 0;
 
     //move pan-tilt to goal view
-    ROS_INFO("Moving PTU to %f %f", goal->ptu_pan, goal->ptu_tilt);
-    actionlib::SimpleActionClient<scitos_ptu::PtuGotoAction> ptu("/SetPTUState", true);
-    ptu.waitForServer();
-    ROS_INFO("PTU server is active\n");
-    scitos_ptu::PtuGotoGoal ptuGoal;
-    ptuGoal.pan = goal->ptu_pan;
-    ptuGoal.tilt = goal->ptu_tilt;
-    ptuGoal.pan_vel = 20; // 20 is a reasonable default choice
-    ptuGoal.tilt_vel = 20; // 20 is a reasonable default choice
-    ptu.sendGoal(ptuGoal);
-    bool finished_before_timeout = ptu.waitForResult(ros::Duration(30.0));
-    if (!finished_before_timeout)
-      ROS_ERROR("Failed to move the PTU.");
-
-    // TODO: now our own action should actually terminate with failure
+    movePTU(goal->ptu_pan, goal->ptu_tilt);
 
     //get point cloud
     feedback_.status = "Getting cloud";
@@ -97,6 +109,8 @@ public:
         ROS_INFO("Trying to get cloud from topic: %s\n", topic_.c_str());
         loop_rate.sleep ();
     }
+
+    ROS_DEBUG("Got cloud, going to call service\n");
 
     //call recognition service
     feedback_.status = "Calling service";
@@ -131,6 +145,9 @@ public:
     {
         feedback_.status = "There was an error calling the service\n";
     }
+
+    //move pan-tilt to (0,0)
+    movePTU(0,0);
 
     feedback_.status = "Logging data";
 

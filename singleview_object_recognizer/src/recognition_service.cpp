@@ -189,6 +189,8 @@ private:
     boost::shared_ptr < std::vector<ModelTPtr> > models = multi_recog_->getModels ();
     boost::shared_ptr < std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > > transforms = multi_recog_->getTransforms ();
 
+    ROS_DEBUG("Number of recognition hypotheses %d\n", static_cast<int>(models->size()));
+
     std::vector<typename pcl::PointCloud<PointT>::ConstPtr> aligned_models;
     aligned_models.resize (models->size ());
     std::vector<std::string> model_ids;
@@ -220,6 +222,7 @@ private:
 
     if(model_ids.size() == 0)
     {
+        ROS_DEBUG("No models to verify, returning.\n");
         return false;
     }
 
