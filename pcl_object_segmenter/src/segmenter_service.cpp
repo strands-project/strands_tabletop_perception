@@ -56,7 +56,7 @@ private:
   int MAX_VERTICAL_PLANE_SIZE_;
 
   void
-  getBaseCameraTransform (Eigen::Matrix4f & trans)
+  getBaseCameraTransform (Eigen::Matrix<float, 4, 4, Eigen::RowMajor> & trans)
   {
     tf::StampedTransform tf_transform;
     tf::TransformListener tf_listener;
@@ -91,7 +91,7 @@ private:
   template<typename PointT>
     void
     doSegmentation (typename pcl::PointCloud<PointT>::Ptr & xyz_points, pcl::PointCloud<pcl::Normal>::Ptr & normal_cloud,
-                    std::vector<pcl::PointIndices> & indices, Eigen::Vector4f & table_plane, int seg = 0)
+                    std::vector<pcl::PointIndices> & indices, Eigen::Vector4f & table_plane, int seg, std::vector<float> &supplied_transform)
     {
 
 
@@ -294,8 +294,16 @@ private:
 
           //use the robot pose to find horizontal planes
 
-          Eigen::Matrix4f transform;
-          getBaseCameraTransform(transform);
+		  Eigen::Matrix<float, 4, 4, Eigen::RowMajor> transform;
+		  if (supplied_transform.size() == 16) { // we got a transform supplied already
+			std::cout << "A transform was supplied, not using ROS TF" << std::endl;
+			for (unsigned int i=0;i<16;i++) {
+			  *(transform.data()+i) = supplied_transform[i];
+			}
+			  
+		  } else {
+			getBaseCameraTransform(transform);
+		  }
 
           std::cout << "Got camera transform" << std::endl;
 
@@ -615,7 +623,7 @@ private:
 
     std::vector<pcl::PointIndices> indices;
     Eigen::Vector4f table_plane;
-    doSegmentation<PointT>(scene, normal_cloud, indices, table_plane, seg_type_);
+    doSegmentation<PointT>(scene, normal_cloud, indices, table_plane, seg_type_, req.transform);
 
     for(size_t i=0; i < indices.size(); i++)
     {
