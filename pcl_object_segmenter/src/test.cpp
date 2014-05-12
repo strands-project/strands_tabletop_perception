@@ -34,7 +34,7 @@ class SOCDemo
     checkKinect ()
     {
       ros::Subscriber sub_pc = n_.subscribe (camera_topic_, 1, &SOCDemo::checkCloudArrive, this);
-      ros::Rate loop_rate (1);
+      ros::Rate loop_rate (0.5);
       kinect_trials_ = 0;
       while (!KINECT_OK_ && ros::ok ())
       {
@@ -58,6 +58,8 @@ class SOCDemo
     {
         std::cout << "going to call service..." << std::endl;
         ros::ServiceClient client = n_.serviceClient<segmentation_srv_definitions::segment>("/object_segmenter_service/object_segmenter");
+        client.waitForExistence();
+
         segmentation_srv_definitions::segment srv;
         srv.request.cloud = *msg;
 
@@ -70,6 +72,10 @@ class SOCDemo
 	      
 	      pcl::PointCloud<pcl::PointXYZRGB>::Ptr scene_labels (new pcl::PointCloud<pcl::PointXYZRGB>);
 	      pcl::copyPointCloud(*scene, *scene_labels);
+          for(size_t i=0; i < scene_labels->points.size(); i++)
+          {
+              scene_labels->points[i].r = scene_labels->points[i].g = scene_labels->points[i].b = 255;
+          }
 	      
 	      	std::vector<uint32_t> label_colors_;
             int max_label = srv.response.clusters_indices.size();

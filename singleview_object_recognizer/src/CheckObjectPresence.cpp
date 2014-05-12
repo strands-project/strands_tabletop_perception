@@ -42,7 +42,7 @@ public:
     nh_.param ("camera_topic", topic_, topic_default);
 
     as_->start();
-    ROS_INFO("Action server started %s\n", name.c_str());
+    ROS_INFO("Action server started %s %s\n", name.c_str(), topic_.c_str());
   }
 
   ~CheckObjectPresenceAction(void)
@@ -57,7 +57,7 @@ public:
       got_cloud_ = true;
   }
 
-  void movePTU(float pan, float tilt)
+  bool movePTU(float pan, float tilt)
   {
       ROS_INFO("Moving PTU to %f %f", pan, tilt);
       actionlib::SimpleActionClient<scitos_ptu::PtuGotoAction> ptu("/SetPTUState", true);
@@ -77,10 +77,12 @@ public:
         as_->publishFeedback(feedback_);
         result_.found = 0;
         as_->setAborted(result_);
+        return false;
       }
       else
       {
           ROS_DEBUG("Managed to move PTU\n");
+          return true;
       }
   }
 
@@ -91,7 +93,8 @@ public:
     result_.found = 0;
 
     //move pan-tilt to goal view
-    movePTU(goal->ptu_pan, goal->ptu_tilt);
+    if(!movePTU(goal->ptu_pan, goal->ptu_tilt))
+        return;
 
     //get point cloud
     feedback_.status = "Getting cloud";
