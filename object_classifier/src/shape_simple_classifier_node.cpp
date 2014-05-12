@@ -220,6 +220,7 @@ class ShapeClassifier
       ros::ServiceClient segmentation_client = n_->serviceClient<segmentation_srv_definitions::segment>("/object_segmenter_service/object_segmenter");
       segmentation_srv_definitions::segment seg_srv;
       seg_srv.request.cloud = req.cloud;
+      seg_srv.request.transform = req.transform;
       if (segmentation_client.call(seg_srv))
       {
           std::cout << "Number of clusters:" << static_cast<int>(seg_srv.response.clusters_indices.size()) << std::endl;
