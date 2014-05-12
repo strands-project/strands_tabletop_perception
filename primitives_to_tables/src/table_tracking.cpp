@@ -360,6 +360,7 @@ bool table_tracking::add_detected_table(strands_perception_msgs::Table& table)
         //union_convex_hull(p, mid, table.tabletop, centers[i], tables[i]->tabletop);
         union_convex_hull(p, table.pose, table.tabletop, tables[i]->pose, tables[i]->tabletop);
         tables[i]->tabletop = p;
+        tables[i]->topological_node = table.topological_node;
         //compute_center_of_mass(mid, table.tabletop);
         compute_center_of_mass(*tables[i]);
         //centers[i] = mid;
