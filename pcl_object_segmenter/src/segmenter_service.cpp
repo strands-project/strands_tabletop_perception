@@ -95,18 +95,6 @@ private:
     {
 
 
-#ifdef DEBUG_WITH_VIS
-      std::cout << xyz_points->points.size() << std::endl;
-      pcl::visualization::PCLVisualizer vis("cloud for segmentation");
-      int v1,v2;
-      vis.createViewPort(0,0,0.5,1,v1);
-      vis.createViewPort(0.5,0,1,1,v2);
-      vis.addPointCloud<PointT>(xyz_points, "cloud", v1);
-      vis.addCoordinateSystem(0.3, v1);
-      vis.addCoordinateSystem(0.3, v2);
-      vis.spin();
-#endif
-
       if (seg == 0)
       {
         int num_plane_inliers = 1000;
@@ -291,7 +279,26 @@ private:
       }
       else if(seg == 4)
       {
+
+#ifdef DEBUG_WITH_VIS
+      std::cout << xyz_points->points.size() << std::endl;
+      pcl::visualization::PCLVisualizer vis("cloud for segmentation");
+      int v1,v2;
+      vis.createViewPort(0,0,0.5,1,v1);
+      vis.createViewPort(0.5,0,1,1,v2);
+      vis.addPointCloud<PointT>(xyz_points, "cloud", v1);
+      vis.addCoordinateSystem(0.3, v1);
+      vis.addCoordinateSystem(0.3, v2);
+      vis.spinOnce();
+#endif
+
           //use the robot pose to find horizontal planes
+
+          Eigen::Matrix4f transform;
+          getBaseCameraTransform(transform);
+
+          std::cout << "Got camera transform" << std::endl;
+
           std::cout << "is organized:" << xyz_points->isOrganized() << std::endl;
 
           pcl::PointCloud<pcl::Normal>::Ptr normal_cloud (new pcl::PointCloud<pcl::Normal>);
@@ -306,10 +313,12 @@ private:
           mps.setMinPlaneInliers(1000);
           mps.setResolution(0.003f);
           mps.setNormals(normal_cloud);
-          mps.setMergePlanes(false);
+          mps.setMergePlanes(true);
           std::vector<faat_pcl::PlaneModel<PointT> > planes_found;
           mps.segment();
           planes_found = mps.getModels();
+
+          std::cout << "Number of planes:" << planes_found.size() << std::endl;
 
           /*if(planes_found.size() == 0 && xyz_points->isOrganized())
           //if(true || planes_found.size() == 0 && xyz_points->isOrganized())
@@ -317,12 +326,9 @@ private:
               PCL_WARN("No planes found, doing segmentation with standard method\n");
               mps.segment(true);
               planes_found = mps.getModels();
-          }*/
+          }
 
-          std::cout << "Number of planes:" << planes_found.size() << std::endl;
-
-          Eigen::Matrix4f transform;
-          getBaseCameraTransform(transform);
+          std::cout << "Number of planes:" << planes_found.size() << std::endl;*/
 
 #ifdef DEBUG_WITH_VIS
           typename pcl::PointCloud<PointT>::Ptr cloud_trans(new pcl::PointCloud<PointT>);
@@ -331,6 +337,24 @@ private:
           pcl::visualization::PointCloudColorHandlerCustom<PointT> handler(cloud_trans, 255, 0, 0);
           vis.addPointCloud(cloud_trans, handler, "cloud_transformed", v2);
           vis.spin();
+
+          if(xyz_points->isOrganized())
+          {
+              //visualize detected planes
+              for(size_t kk=0; kk < planes_found.size(); kk++)
+              {
+                std::stringstream pname;
+                pname << "plane_" << kk;
+
+                pcl::visualization::PointCloudColorHandlerRandom<PointT> scene_handler(planes_found[kk].plane_cloud_);
+                vis.addPointCloud<PointT> (planes_found[kk].plane_cloud_, scene_handler, pname.str(), v1);
+
+                pname << "chull";
+                vis.addPolygonMesh (*planes_found[kk].convex_hull_, pname.str(), v1);
+              }
+
+              vis.spin();
+          }
 #endif
 
           //select table plane based on the angle to the ground and the height
