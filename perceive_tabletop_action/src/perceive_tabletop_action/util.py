@@ -1,4 +1,5 @@
 from world_state.state import World
+import rospy
 
 def get_table(table_name):
     world = World()
@@ -20,4 +21,4 @@ def get_node_for_table(table_name):
     table = get_table(table_name)
     if table is None:
         return 
-    return table.topological_node
+    return table._msg_store_objects[0].retrieve().topological_node
