@@ -184,7 +184,7 @@ class PerceptionReal (smach.State):
             rospy.loginfo('%i view: call object recognition service',i)
             userdata.state = 'image_analysis'
             try:
-                obj_rec_resp = self.obj_rec(pointcloud)
+                obj_rec_resp = self.obj_rec(pointcloud, [])
             except rospy.ServiceException, e:
                 rospy.logerr("Service call failed: %s" % e)
 
