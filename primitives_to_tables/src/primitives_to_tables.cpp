@@ -62,7 +62,6 @@ bool service_callback(primitives_to_tables::PrimitivesToTables::Request& req,
 
 void topological_node_cb(const std_msgs::String::ConstPtr& msg) {
     closest_node=std::string(msg->data);
-	std::cout << "Closest node: " << closest_node << std::endl;
 }
 
 int main(int argc, char** argv)
