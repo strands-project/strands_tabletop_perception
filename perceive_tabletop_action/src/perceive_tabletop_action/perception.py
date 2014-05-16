@@ -12,7 +12,7 @@ from classifier_srv_definitions.srv import segment_and_classify
 from world_state.observation import MessageStoreObject, Observation, TransformationStore
 from world_state.identification import ObjectIdentification
 from world_state.state import World, Object
-from world_state.report import PointCloudVisualiser
+from world_state.report import PointCloudVisualiser, create_robblog
 import world_state.geometry as geometry
 
 import numpy as np
@@ -257,6 +257,7 @@ class PerceptionReal (smach.State):
                     
                     rospy.loginfo('Object: %s', obj_desc['type'])
                     self.obj_list.append(obj_desc)
+                create_robblog(userdata.table.name, rospy.Time.now().to_time())
             self._pcv.publish()
 
         return 'succeeded'
