@@ -257,7 +257,7 @@ class PerceptionReal (smach.State):
                     
                     rospy.loginfo('Object: %s', obj_desc['type'])
                     self.obj_list.append(obj_desc)
-                create_robblog(userdata.table.name, rospy.Time.now().to_time())
+            create_robblog(userdata.table.name, rospy.Time.now().to_time())
             self._pcv.publish()
 
         return 'succeeded'
