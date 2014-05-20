@@ -14,9 +14,10 @@ from geometry_msgs.msg import Polygon
 from geometry_msgs.msg import Point32
 from geometry_msgs.msg import Pose
 
-from perceive_tabletop.action_monitor import ActionMonitor
-from perceive_tabletop.view_planning  import ViewPlanning
-from perceive_tabletop.perception     import *
+from perceive_tabletop_action.action_monitor import ActionMonitor
+from perceive_tabletop_action.view_planning  import ViewPlanning
+#from perceive_tabletop.perception     import *
+import perceive_tabletop_action.perception as percept
 
 import numpy
 import tf
@@ -50,7 +51,8 @@ class PerceiveTabletopSM(smach.StateMachine):
         robot = rospy.get_param('robot', 'real')
 
         if robot == 'real':
-            self._perception = PerceptionReal()
+            reload (percept)
+            self._perception = percept.PerceptionReal()
         elif robot == 'nill':
             self._perception = PerceptionNill()
         else: # 'sim'

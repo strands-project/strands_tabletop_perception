@@ -9,7 +9,7 @@ import actionlib
 #from smach_ros import ActionServerWrapper
 
 from  perceive_tabletop_action.msg import *
-from  perceive_tabletop.state_machine import PerceiveTabletopSM
+from  perceive_tabletop_action.state_machine import PerceiveTabletopSM
 
 _EPSILON = 0.0001
 
