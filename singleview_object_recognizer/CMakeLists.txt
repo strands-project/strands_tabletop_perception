@@ -95,6 +95,7 @@ target_link_libraries(recognition_service
 
 target_link_libraries(checkObjectPresence
    ${catkin_LIBRARIES}
+   ${PCL_LIBRARIES}
 )
 
 target_link_libraries(checkObjectPresence_client
