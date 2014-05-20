@@ -9,6 +9,8 @@
 #include "ros_datacentre_msgs/StringPairList.h"
 #include <std_msgs/Int32.h>
 #include <scitos_ptu/PtuGotoAction.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl_conversions.h>
 
 using namespace std_msgs;
 using namespace ros_datacentre;
@@ -30,7 +32,7 @@ protected:
   sensor_msgs::PointCloud2ConstPtr cloud_;
   bool got_cloud_;
   std::string topic_;  
-
+  bool with_ptu_;
 public:
     
   CheckObjectPresenceAction(std::string name)
@@ -38,11 +40,14 @@ public:
     as_.reset(new actionlib::SimpleActionServer<singleview_object_recognizer::CheckObjectPresenceAction>
             (nh_, name, boost::bind(&CheckObjectPresenceAction::executeCB, this, _1), false));
 
-    std::string topic_default = "/head_xtion/depth_registered/points";
+    //std::string topic_default = "/head_xtion/depth_registered/points";
+    std::string topic_default = "/camera/depth_registered/points";
     nh_.param ("camera_topic", topic_, topic_default);
 
     as_->start();
     ROS_INFO("Action server started %s %s\n", name.c_str(), topic_.c_str());
+
+    with_ptu_ = true;
   }
 
   ~CheckObjectPresenceAction(void)
@@ -88,13 +93,19 @@ public:
 
   void executeCB(const singleview_object_recognizer::CheckObjectPresenceGoalConstPtr &goal)
   {
+
+    //with_ptu_ = false;
+
     // helper variables
     got_cloud_ = false;
     result_.found = 0;
 
     //move pan-tilt to goal view
-    if(!movePTU(goal->ptu_pan, goal->ptu_tilt))
-        return;
+    if(with_ptu_)
+    {
+        if(!movePTU(goal->ptu_pan, goal->ptu_tilt))
+            return;
+    }
 
     //get point cloud
     feedback_.status = "Getting cloud";
@@ -157,14 +168,32 @@ public:
 
     }
 
-    //move pan-tilt to (0,0)
-    movePTU(0,0);
+    if(with_ptu_)
+    {
+        //move pan-tilt to (0,0)
+        movePTU(0,0);
+    }
 
     feedback_.status = "Logging data";
     as_->publishFeedback(feedback_);
 
+    std::stringstream cloud_name, result_name;
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr scene (new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::fromROSMsg (*cloud_, *scene);
+
+    std::time_t result = std::time(NULL);
+    cloud_name << "cloud_" << std::asctime(std::localtime(&result)) << ".pcd";
+    result_name << "result_" << std::asctime(std::localtime(&result)) << ".txt";
+
+    pcl::io::savePCDFileBinary(cloud_name.str(), *scene);
+
+    std::ofstream outputFile(result_name.str().c_str());
+    outputFile << goal->object_id << "\t" << result_.found << std::endl;
+    outputFile.close();
+
     //log point cloud, result and object_id
-    ros_datacentre::MessageStoreProxy messageStore(nh_, "checkObjectPresence");
+    /*ros_datacentre::MessageStoreProxy messageStore(nh_, "checkObjectPresence");
 
     std::vector< std::pair<std::string, std::string> > stored;
     // now add objects and store ids with the addition of type strings for safety. The types are not necessary unless you want to do some kind of reflection on this data later.
@@ -190,7 +219,8 @@ public:
     metaBuilder.append("result_time", mongo::Date_t(ros::Time::now().toSec() * 1000));
 
     // and store
-    messageStore.insert(spl, metaBuilder.obj());
+    messageStore.insert(spl, metaBuilder.obj());*/
+
 
     feedback_.status = "Succeeded";
     ROS_INFO("%s: Succeeded", action_name_.c_str());
