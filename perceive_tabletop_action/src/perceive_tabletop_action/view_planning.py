@@ -83,6 +83,8 @@ class ViewPlanning(smach.State):
 
             coverage_total = float(rospy.get_param('coverage_total', '0.8'))
             coverage_avg = float(rospy.get_param('coverage_avg', '2.0'))
+
+            max_viewpoints = int(rospy.get_param('max_viewpoints', '10'))
             
             # TODO: compute area in proximity to table given table_pose and table_area
             polygon    = userdata.table_area
@@ -115,7 +117,6 @@ class ViewPlanning(smach.State):
                 points.append(Point32(float(point[0]),float(point[1]),0))
 
             poly = Polygon(points)
-            
 
             # TODO: sample once, order views, use views on agenda (only re-sample if necessary)
             nav_goals_resp = self.nav_goals(self.num_of_nav_goals, min_radius, poly)
@@ -137,8 +138,12 @@ class ViewPlanning(smach.State):
             self.delete_markers()            
             markerArray = MarkerArray()
 
+            
+            num_of_viewpoints = min(len(vp_trajectory),max_viewpoints)
 
-            for i in range(0,len(vp_trajectory)):
+            rospy.loginfo('Planned viewpoints: %i', num_of_viewpoints);
+
+            for i in range(0, num_of_viewpoints):
                 
                 self.agenda.append(vp_trajectory[i].get_pose())
                 self.create_marker(markerArray,
@@ -150,7 +155,7 @@ class ViewPlanning(smach.State):
             rospy.loginfo("Coverage - index: %i, total: %f, avg: %f",nav_goals_eval_resp.coverage_idx,
                      nav_goals_eval_resp.coverage_total, nav_goals_eval_resp.coverage_avg)
             
-            rospy.loginfo("len(traj): %i, len(agenda): %i ", len(vp_trajectory), len(self.agenda))
+            rospy.loginfo("len(traj): %i, num_of_viewpoints: %i, len(agenda): %i ", len(vp_trajectory), num_of_viewpoints, len(self.agenda))
 
             self.marker_len =  len(markerArray.markers)
             self.pubmarker.publish(markerArray)
