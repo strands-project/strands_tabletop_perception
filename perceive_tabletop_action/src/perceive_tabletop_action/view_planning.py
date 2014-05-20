@@ -141,6 +141,10 @@ class ViewPlanning(smach.State):
             
             num_of_viewpoints = min(len(vp_trajectory),max_viewpoints)
 
+            if num_of_viewpoints < 1:
+                rospy.logwarn("View planning didn't find not enough views for table. Aborted.")
+                return 'aborted'
+
             rospy.loginfo('Planned viewpoints: %i', num_of_viewpoints);
 
             for i in range(0, num_of_viewpoints):
