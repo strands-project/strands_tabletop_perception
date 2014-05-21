@@ -1,6 +1,6 @@
 <launch>
 
-  <arg name="map" default="/projected_map"/>
+  <arg name="map" default="/move_base/global_costmap/costmap/"/>
 
   <include file="$(find perceive_tabletop_action)/launch/perceive_tabletop_params.launch"/>
 
