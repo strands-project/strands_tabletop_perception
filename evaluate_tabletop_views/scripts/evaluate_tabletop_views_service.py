@@ -66,18 +66,18 @@ def is_inside(p, poly):
 
     return is_odd(num_of_intersections)
 
-def create_viewcone(pose):
+def create_viewcone(pose, viewcone_length, viewcone_width):
 
     (roll,pitch,theta) = euler_from_quaternion([pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w])
   
     ox = pose.position.x
     oy = pose.position.y
 
-    aax = ox + 3.0
-    aay = oy - 1.0
+    aax = ox + viewcone_length
+    aay = oy - viewcone_width/2.0
 
-    bbx = ox + 3.0
-    bby = oy + 1.0
+    bbx = ox + viewcone_length
+    bby = oy + viewcone_width/2.0
   
     ax = cos(theta) * (aax-ox) - sin(theta) * (aay-oy) + ox
     ay = sin(theta) * (aax-ox) + cos(theta) * (aay-oy) + oy 
@@ -98,10 +98,16 @@ class ViewpointEvaluation():
             rospy.init_node('nav_goals_evaluation_service')
             rospy.loginfo("Started nav_goals_evaluation service")
 
+
             # subscribing to a map
             self.map_frame = rospy.get_param('~map_frame', '/map')
             rospy.loginfo("Evaluating goals in %s", self.map_frame)
 
+            self.viewcone_length = rospy.get_param('viewcone_length', '3.0')
+            self.viewcone_width  = rospy.get_param('viewcone_width', '1.0')
+
+            rospy.loginfo("Evaluating viewcones of length: %f, width: %f", self.viewcone_length, self.viewcone_width)
+            
             # setting up the service
             self.ser = rospy.Service('/nav_goals_evaluation', ROINavGoals, self.evaluate)
 
@@ -167,7 +173,7 @@ class ViewpointEvaluation():
                         key_idx_count[len(keys)-1] = 0
                         
                         for i, goal in enumerate(req.goals.poses):
-                            viewcone = create_viewcone(goal)
+                            viewcone = create_viewcone(goal,self.viewcone_length, self.viewcone_width)
                             # test whether voxel is in viewcone
                             p = Point32(pose.position.x,pose.position.y,0)
                             if is_inside(p, viewcone):
