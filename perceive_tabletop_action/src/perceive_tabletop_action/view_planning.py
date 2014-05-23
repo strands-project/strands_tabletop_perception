@@ -121,6 +121,10 @@ class ViewPlanning(smach.State):
             # TODO: sample once, order views, use views on agenda (only re-sample if necessary)
             nav_goals_resp = self.nav_goals(self.num_of_nav_goals, min_radius, poly)
 
+            if len(nav_goals_resp.goals) < 1:
+                rospy.logwarn("View planning could not sample enough views for table. Aborted.")
+                return 'aborted'
+                
             nav_goals_eval_resp = self.nav_goals_eval(nav_goals_resp.goals, polygon, coverage_total, coverage_avg)
 
             viewpoints = create_viewpoints(nav_goals_eval_resp.sorted_goals.poses,
