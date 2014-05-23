@@ -121,7 +121,7 @@ class ViewPlanning(smach.State):
             # TODO: sample once, order views, use views on agenda (only re-sample if necessary)
             nav_goals_resp = self.nav_goals(self.num_of_nav_goals, min_radius, poly)
 
-            if len(nav_goals_resp.goals) < 1:
+            if len(nav_goals_resp.goals.poses) < 1:
                 rospy.logwarn("View planning could not sample enough views for table. Aborted.")
                 return 'aborted'
                 
