@@ -1,0 +1,29 @@
+<launch>
+                <arg name="machine" v	lue="$(arg machine)"/>
+                <arg name="user" value="$(arg user)"/>
+                <arg name="training_dir" value="/media/Data/datasets/my_classifier/my_training_data_3D" />
+                <arg name="trained_dir" value="/media/Data/datasets/my_classifier/training_data_3D" />
+                <arg name="test_dir" value="/media/Data/datasets/my_classifier/my_test_data_3D" />
+                <arg name="force_retrain" value="true" />
+               	<arg name="features_3d" value="8" />
+                <arg name="features_2d" value="0" />
+
+	<arg name="machine" default="localhost" />
+	<arg name="user" default="strands" />
+	<arg name="camera_topic" default="/head_xtion/depth_registered/points" />
+
+	<machine name="$(arg machine)" address="$(arg machine)" env-loader="/opt/strands/strands_catkin_ws/devel/env.sh" user="$(arg user)" default="true"/>
+
+	<!-- recognition service -->
+	<include file="$(find generic_3d_object_classifier)/launch/recognition_service.launch" >
+		<arg name="machine" value="$(arg machine)"/>
+		<arg name="user" value="$(arg user)"/>
+		<arg name="training_dir" value="/media/Data/datasets/my_classifier/my_training_data_3D" />
+		<arg name="trained_dir" value="/media/Data/datasets/my_classifier/training_data_3D" />
+		<arg name="test_dir" value="/media/Data/datasets/my_classifier/my_test_data_3D" />
+		<arg name="force_retrain" value="true" />
+		<arg name="features_3d" value="8" />
+		<arg name="features_2d" value="0" />
+	</include>
+
+</launch>
