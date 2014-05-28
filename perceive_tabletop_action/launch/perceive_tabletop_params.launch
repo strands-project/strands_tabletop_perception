@@ -9,7 +9,7 @@
   <param name="max_radius" type="double" value="1.8" />  
 
   <!--- evaluating viewcones --> 
-  <param name="viewcone_length" type="double" value="2.3" />  
+  <param name="viewcone_length" type="double" value="3.0" />  
   <param name="viewcone_width" type="double" value="2.0" />  
 
   <param name="coverage_total" type="double" value="0.8" />  
