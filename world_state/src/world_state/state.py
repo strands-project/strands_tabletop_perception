@@ -207,14 +207,7 @@ class World(object):
         """
         return all objects that have no parent
         """
-        result = self._mongo.database.Objects.find(
-                {"__pyobject_class_type": Object.get_pyoboject_class_string(),
-                 '_parent': None,})
-        objs = []
-        for r in result:
-            r._connect(self._mongo)
-            objs.append(r)
-        return objs
+        return get_children(None)
     
      
     def get_children(self, parent, condition=None):
