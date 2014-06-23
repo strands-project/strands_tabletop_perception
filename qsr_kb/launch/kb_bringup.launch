@@ -6,7 +6,7 @@
 
   <node name="prolog_http_server" pkg="qsr_kb" type="startserver.sh" args="$(arg PL_PORT) $(arg PL_PASSWORD) $(arg PL_LOGFILE)" output="screen"/>
 
-  <node name="kb_server" pkg="qsr_kb" type="kb.py" output="screen">
+  <node name="kb_server" pkg="qsr_kb" type="qsr_vis.py" output="screen">
     <param name="PL_HOST" value="$(arg PL_HOST)"/>
     <param name="PL_PORT" value="$(arg PL_PORT)"/>
     <param name="PL_PASSWORD" value="$(arg PL_PASSWORD)"/>
