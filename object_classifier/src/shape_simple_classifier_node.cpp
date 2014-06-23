@@ -29,6 +29,8 @@
 #include "std_msgs/String.h"
 #include "std_msgs/Int32MultiArray.h"
 #include "geometry_msgs/Point32.h"
+#include "visualization_msgs/Marker.h"
+#include "visualization_msgs/MarkerArray.h"
 
 class ShapeClassifier
 {
@@ -48,6 +50,7 @@ class ShapeClassifier
     ros::ServiceServer segment_and_classify_service_;
     ros::ServiceServer classify_service_;
     ros::NodeHandle *n_;
+    ros::Publisher vis_pub_, vis_pc_pub_;
 
     bool classify(classifier_srv_definitions::classify::Request & req,
                   classifier_srv_definitions::classify::Response & response)
@@ -55,15 +58,26 @@ class ShapeClassifier
         pcl::fromROSMsg(req.cloud, *frame_);
         classifier_->setInputCloud(frame_);
 
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pClusteredPCl (new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::copyPointCloud(*frame_, *pClusteredPCl);
+        visualization_msgs::MarkerArray markerArray;
+
         for(size_t i=0; i < req.clusters_indices.size(); i++)
         {
           std::vector<int> cluster_indices_int;
           Eigen::Vector4f centroid;
           Eigen::Matrix3f covariance_matrix;
 
+            float r = std::rand() % 255;
+            float g = std::rand() % 255;
+            float b = std::rand() % 255;
+
           for(size_t kk=0; kk < req.clusters_indices[i].data.size(); kk++)
           {
               cluster_indices_int.push_back(static_cast<int>(req.clusters_indices[i].data[kk]));
+                pClusteredPCl->at(req.clusters_indices[i].data[kk]).r = r;
+                pClusteredPCl->at(req.clusters_indices[i].data[kk]).g = g;
+                pClusteredPCl->at(req.clusters_indices[i].data[kk]).b = b;
           }
 
           classifier_->setIndices(cluster_indices_int);
@@ -140,6 +154,30 @@ class ShapeClassifier
           pcl::toROSMsg (*cluster, pc2);
           response.cloud.push_back(pc2);
 
+          // visualize the result as ROS topic
+            visualization_msgs::Marker marker;
+            marker.header.frame_id = "head_xtion_link";
+            marker.header.stamp = ros::Time::now();
+            //marker.header.seq = ++marker_seq_;
+            marker.ns = "object_classification";
+            marker.id = i;
+            marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+            marker.action = visualization_msgs::Marker::ADD;
+            marker.pose.position.x = centroid_ros.x;
+            marker.pose.position.y = centroid_ros.y;
+            marker.pose.position.z = centroid_ros.z;
+            marker.pose.orientation.x = centroid_ros.x;
+            marker.pose.orientation.y = centroid_ros.y;
+            marker.pose.orientation.z = centroid_ros.z;
+            marker.pose.orientation.w = 1.0;
+            marker.scale.z = 0.1;
+            marker.color.a = 1.0;
+            marker.color.r = r/255.f;
+            marker.color.g = g/255.f;
+            marker.color.b = b/255.f;
+            marker.text = categories_[0];
+            markerArray.markers.push_back(marker);
+
           /*boost::shared_ptr<pcl::visualization::PCLVisualizer> vis;
           vis.reset(new pcl::visualization::PCLVisualizer("cluster visualization"));
           vis->addCoordinateSystem(0.2f);
@@ -188,6 +226,11 @@ class ShapeClassifier
 //            }
 //          }
         }
+
+        sensor_msgs::PointCloud2 scenePc2;
+        pcl::toROSMsg (*pClusteredPCl, scenePc2);
+        vis_pc_pub_.publish(scenePc2);
+        vis_pub_.publish( markerArray );
 
         response.clusters_indices = req.clusters_indices;
         return true;
@@ -304,6 +347,8 @@ class ShapeClassifier
 
       segment_and_classify_service_ = n_->advertiseService("segment_and_classify", &ShapeClassifier::segmentAndClassify, this);
       classify_service_ = n_->advertiseService("classify", &ShapeClassifier::classify, this);
+      vis_pub_ = n_->advertise<visualization_msgs::MarkerArray>( "visualization_marker", 0 );
+      vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "clusters", 1 );
       ros::spin();
     }
 };
