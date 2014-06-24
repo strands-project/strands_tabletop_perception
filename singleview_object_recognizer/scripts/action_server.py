@@ -12,6 +12,22 @@ from robblog.msg import RobblogEntry
 from robblog import utils as rb_utils
 from std_msgs.msg import String
 
+from sensor_msgs.msg import Image, PointCloud2, CameraInfo, JointState
+from geometry_msgs.msg import PoseWithCovarianceStamped
+
+from world_state.observation import MessageStoreObject, Observation, TransformationStore
+from world_state.identification import ObjectIdentification
+from world_state.state import World, Object
+
+import cv
+import cv2
+from sensor_msgs.msg import Image, CameraInfo
+from sensor_msgs.msg import PointCloud, PointCloud2
+import sensor_msgs.point_cloud2 as pc2
+from cv_bridge import CvBridge, CvBridgeError
+
+from ros_datacentre.message_store import MessageStoreProxy
+
 class ActionServer(object):
   # create messages that are used to publish feedback/result
   _feedback = CheckObjectPresenceFeedback()
@@ -50,14 +66,23 @@ class ActionServer(object):
     self.send_feedback("Moving PTU to %f,  %f"%(goal.ptu_pan, goal.ptu_tilt))
     self.command_ptu(goal.ptu_pan, goal.ptu_tilt)
     
+    observation =  Observation.make_observation(topics=[("/amcl_pose", PoseWithCovarianceStamped),
+                                                          ("/head_xtion/rgb/image_color", Image), 
+                                                          ("/head_xtion/rgb/camera_info", CameraInfo), 
+                                                          ("/head_xtion/depth_registered/points", PointCloud2),
+                                                          ("/head_xtion/depth/camera_info", CameraInfo),
+                                                          ("/ptu/state", JointState)])
+
     self.send_feedback("Getting pointcloud")
     try:
-      cloud = rospy.wait_for_message("/head_xtion/depth_registered/points", PointCloud2, 5)
+#      cloud = rospy.wait_for_message("/head_xtion/depth_registered/points", PointCloud2, 5)
+      cloud = observation.get_message('/head_xtion/depth_registered/points')
     except:
       self.send_feedback("Failed to get a pointcloud")
       self._result.found = 0
       self._as.set_succeeded(self._result)
       return
+
     
     self.send_feedback("Returning PTU home")
     self.command_ptu(0, 0)
@@ -75,8 +100,26 @@ class ActionServer(object):
 
     rospy.loginfo("Number of objects found: %s"%len(result.ids))
     found = False
+    world = World()
+    objects=""
     for i in result.ids:
       rospy.loginfo(" - found %s"%i.data)
+      objects+="* %s\n"%i.data[:-4]
+      
+      # TODO: Should project all other objects into observation and "kill" if not visible
+      new_object =  world.create_object()
+                    
+      # TODO: store object pose etc
+      
+      # TODO: the classification should include class info
+
+      classification = {}
+      identification = {i.data[:-4]:1}
+      
+      new_object.add_identification("ObjectInstanceRecognition",
+                                    ObjectIdentification(classification, identification))
+      
+
       if i.data == object_searched:
         found = True
         break
@@ -95,13 +138,21 @@ class ActionServer(object):
     except:
       waypoint=String("-")
     title = 'Fire Extinguisher Check'
-    body = 'I checked for `%s` at %s and it was '%(object_searched[:-3],waypoint.data)
+    body = 'I checked for `%s` at %s and it was '%(object_searched[:-4],waypoint.data)
     if found:
       body += '*present*'
     else:
       body += '*not in place*'
-      body += '.'
-      
+    body += '.\n\nHere is an image:\n\n'
+
+    msg_store_blog = MessageStoreProxy(collection='robblog')
+    img = observation.get_message('/head_xtion/rgb/image_color')
+    img_id = msg_store_blog.insert(img)
+    body += '![Image of the location](ObjectID(%s))' % img_id
+    if len(objects)>0:
+      body+='\n\nI found:\n\n'
+      body+=objects
+          
     e = rb_utils.create_timed_entry(title=title, body=body)
     self.blog_msg_store.insert(e)
 
