@@ -1,9 +1,12 @@
 <launch>
 
-  <arg name="map" default="/projected_map"/>
+  <arg name="map" default="/move_base/global_costmap/costmap/"/>
+  <arg name="is_costmap" default="true"/>
+
 
   <include file="$(find nav_goals_generator)/launch/nav_goals_generator.launch">
-    <arg name="map_frame" value="$(arg map)"/>
+    <arg name="map" value="$(arg map)"/>
+    <arg name="is_costmap" value="$(arg is_costmap)"/>
   </include>
 
   <node name="evaluate_tabletop_views" pkg="evaluate_tabletop_views" type="evaluate_tabletop_views_service.py" output="screen">
