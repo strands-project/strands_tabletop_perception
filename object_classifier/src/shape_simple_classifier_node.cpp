@@ -156,7 +156,7 @@ class ShapeClassifier
 
           // visualize the result as ROS topic
             visualization_msgs::Marker marker;
-            marker.header.frame_id = "head_xtion_link";
+            marker.header.frame_id = "head_xtion_depth_optical_frame";
             marker.header.stamp = ros::Time::now();
             //marker.header.seq = ++marker_seq_;
             marker.ns = "object_classification";
@@ -166,15 +166,15 @@ class ShapeClassifier
             marker.pose.position.x = centroid_ros.x;
             marker.pose.position.y = centroid_ros.y;
             marker.pose.position.z = centroid_ros.z;
-            marker.pose.orientation.x = centroid_ros.x;
-            marker.pose.orientation.y = centroid_ros.y;
-            marker.pose.orientation.z = centroid_ros.z;
+            marker.pose.orientation.x = 0;
+            marker.pose.orientation.y = 0;
+            marker.pose.orientation.z = 0;
             marker.pose.orientation.w = 1.0;
             marker.scale.z = 0.1;
             marker.color.a = 1.0;
-            marker.color.r = r/255.f;
-            marker.color.g = g/255.f;
-            marker.color.b = b/255.f;
+            marker.color.r = 0.8*r/255.f;
+            marker.color.g = 0.8*g/255.f;
+            marker.color.b = 0.8*b/255.f;
             marker.text = categories_[0];
             markerArray.markers.push_back(marker);
 
