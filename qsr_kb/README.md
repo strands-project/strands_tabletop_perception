@@ -36,14 +36,21 @@ create_event(EVT,
 
 ## Querying QSRs from the KB and visualise the result
 
+QSRs can be queried using predicates such as *qsr(Rel, Obj1, Obj2, QSR)* and *qsrT(Rel, Cls1, Cls2, QSR)* which use segmented object clusters and object classes (or types) to retrieve QSRs repectively. For more options please refer to the source code in  [qsr.pl](https://github.com/strands-project/strands_tabletop_perception/blob/hydro-devel/qsr_kb/src/qsr.pl).
 
-QSRs can be queried using predicates such as *qsr(Rel, Obj1, Obj2, QSR)* and *qsrT(Rel, Cls1, Cls2, QSR)* which use segmented object clusters and object classes to retrieve QSRs repectively. 
-
-QSRs can be visualized using the *vis(QSRLst)* predicate where QSRLst denotes a list of QSRs.
-
-
+QSRs cannot directly be visualized. Using the *vis(QSRLst)* predicate where QSRLst denotes a list of QSRs they can be *cached for visualisation*. To visualise the different QSRs, one has to iterate over the set of solutions via the *next_vis(X)* predicate (see below).  
 ```
 qsrT(Rel,Cls1,Cls2,QSR), vis([QSR]).
 ```
+
+To visualize the next solution use the following predicate:
+```
+next_vis(X).
+```
+If there is no more solution the predicate will return an empty list and clear the visualization in RVIZ.
+
+The list of *cached* QSRs can be clear using the predicate *new_vis*. 
+
+
 
 
