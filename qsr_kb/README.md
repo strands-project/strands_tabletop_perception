@@ -5,12 +5,12 @@ Knowledge representation of and reasoning about QSRs using SWI-Prolog. Specializ
 ## Starting the KB service
 
 First the knowledge base service has to be started:
-
 ```
 roslaunch qsr_kb kb_bringup.launch
 ```
+(Please note that SWI-Prolog needs to be installed; on Ubuntu run: `sudo apt-get install swi-prolog`)
 
-The knowledge base service provides a simple tell-ask interface to a Prolog engine. Queries and answers are exchanged using a `string`.
+The knowledge base service provides a simple *tell and ask* interface to a Prolog engine. Queries and answers are exchanged using strings.
 
 ## Adding knowledge about QSRs to the KB
 
