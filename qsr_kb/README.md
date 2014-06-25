@@ -1,4 +1,4 @@
-# STRANDS QSR Knowledge representation, reasoning and visualisation 
+# QSR KB and Visualisation 
 
 Knowledge representation of and reasoning about QSRs using SWI-Prolog. Specialized predicades can be used to visualize QSRs in RVIZ.  
 
