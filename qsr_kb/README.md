@@ -32,10 +32,11 @@ create_event(EVT,
                       ['cup', 'Cup', 0.6], ['cup', 'Mouse', 0.2], ['cup', 'Keyboard', 0.2], 
                       ['monitor', 'Keyboard', 0.1], ['monitor', 'Monitor', 0.9], 
                       ['mouse', 'Cup', 0.1], ['mouse', 'Mouse', 0.9]]]],
-             [ [monitor, [[1.0,0.0,0.0],[1,0,0,0]]], 
-               [cup, [[0.5,1.0,0.0],[1,0,0,0]]], 
-               [mouse, [[0.5,-0.5,0.0],[1,0,0,0]]],
-               [keyboard, [[0.0,0.0,0.0],[1,0,0,0]]] ]).
+             % Poses         
+             [ ['monitor', [[1.0,0.0,0.0],[1,0,0,0]]], 
+               ['cup', [[0.5,1.0,0.0],[1,0,0,0]]], 
+               ['mouse', [[0.5,-0.5,0.0],[1,0,0,0]]],
+               ['keyboard', [[0.0,0.0,0.0],[1,0,0,0]]] ]).
 ```
 
 ## Querying QSRs from the KB and visualise the result
