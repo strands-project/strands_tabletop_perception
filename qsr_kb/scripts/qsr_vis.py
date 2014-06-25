@@ -83,7 +83,7 @@ class QSRVis(object):
 
             poses = dict()
             pose = Pose()
-            pose.position.x = 10.0
+            pose.position.x = 1.0
             pose.position.y = 0.0
             poses['monitor'] = pose
             pose = Pose()
@@ -91,12 +91,12 @@ class QSRVis(object):
             pose.position.y = 0.0
             poses['keyboard'] = pose
             pose = Pose()
-            pose.position.x = 5.0
-            pose.position.y = -5.0
+            pose.position.x = 0.5
+            pose.position.y = -0.5
             poses['mouse'] = pose
             pose = Pose()
-            pose.position.x = 5.0
-            pose.position.y = 10.0
+            pose.position.x = 0.5
+            pose.position.y = 1.0
             poses['cup'] = pose
 
             objs = dict()
@@ -134,9 +134,9 @@ class QSRVis(object):
         marker1.header.frame_id = "/map"
         marker1.type = marker1.SPHERE
         marker1.action = marker1.ADD
-        marker1.scale.x = 0.5
-        marker1.scale.y = 0.5
-        marker1.scale.z = 0.5
+        marker1.scale.x = 0.05
+        marker1.scale.y = 0.05
+        marker1.scale.z = 0.05
         marker1.color.a = 1.0
         marker1.color.r = 1.0
         marker1.color.g = 1.0
@@ -152,7 +152,7 @@ class QSRVis(object):
         marker2.type = marker2.TEXT_VIEW_FACING
         marker2.action = marker2.ADD
 
-        marker2.scale.z = 1.0
+        marker2.scale.z = 0.1
 
         marker2.color.a = 1.0
         marker2.color.r = 1.0
@@ -164,7 +164,7 @@ class QSRVis(object):
 
         x = pose.position.x 
         y = pose.position.y 
-        z = pose.position.z + 1.0
+        z = pose.position.z + 0.10
         
         marker2.pose.position.x = x
         marker2.pose.position.y = y
@@ -180,17 +180,17 @@ class QSRVis(object):
         marker1.header.frame_id = "/map"
         marker1.type = marker1.ARROW
         marker1.action = marker1.ADD
-        marker1.scale.x = 0.1
-        marker1.scale.y = 0.5
-        marker1.scale.z = 1.5
+        marker1.scale.x = 0.01
+        marker1.scale.y = 0.05
+        marker1.scale.z = 0.15
         marker1.color.a = 1.0
         marker1.color.r = 0.0
         marker1.color.g = 0.0
         marker1.color.b = 1.0
         marker1.pose.orientation = pose.orientation
         marker1.pose.position = pose.position
-        x = pose2.position.x - pose.position.x - 0.1
-        y = pose2.position.y - pose.position.y - 0.1
+        x = pose2.position.x - pose.position.x 
+        y = pose2.position.y - pose.position.y 
         z = pose2.position.z - pose.position.z 
         marker1.points = [Point(0,0,0) , Point(x,y,z)]
 
@@ -202,7 +202,7 @@ class QSRVis(object):
         marker2.type = marker2.TEXT_VIEW_FACING
         marker2.action = marker2.ADD
 
-        marker2.scale.z = 1.0
+        marker2.scale.z = 0.10
 
         marker2.color.a = 1.0
         marker2.color.r = 0.0
@@ -212,7 +212,7 @@ class QSRVis(object):
 
         x = pose.position.x + (pose2.position.x - pose.position.x) / 2 
         y = pose.position.y + (pose2.position.y - pose.position.y) / 2  
-        z = pose.position.z + (pose2.position.z - pose.position.z) / 2  + 1.0 
+        z = pose.position.z + (pose2.position.z - pose.position.z) / 2  + 0.1 
         
         marker2.pose.position.x = x
         marker2.pose.position.y = y
