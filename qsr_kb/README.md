@@ -17,7 +17,7 @@ The knowledge base service provides a simple *tell and ask* interface to a Prolo
 New perception events with different classifications can be added using the *create_event(Evt,QSRs,Loc,Classifications)* predicate, where *Evt* denotes the event that will be generated, *QSRs* denotes a list of QSRs between segmented object clusters, *Loc* denotes a location where the event occured, and *Classifications* denotes a list of different classifiaction results (incl. probabilities) for all segemented object clusters. 
 ```
 create_event(EVT,
-             % QSRs
+             % QSRs, (Note: object names such as 'keyboard' are only used for a better understanding, there is no meaning attached to them)  
              [['left-of', 'keyboard', 'cup'], ['left-of', 'monitor', 'cup'],
               ['behind', 'keyboard', 'cup'], ['in-front-of', 'monitor', 'cup'],
               ['in-front-of', 'keyboard', 'monitor'], ['right-of', 'cup', 'monitor']],
@@ -34,6 +34,16 @@ create_event(EVT,
                       ['mouse', 'Cup', 0.1], ['mouse', 'Mouse', 0.9]]]]).
 ```
 
-## Querying knowledge about QSRs from the KB and visualise the result.
+## Querying QSRs from the KB and visualise the result
+
+
+QSRs can be queried using predicates such as *qsr(Rel, Obj1, Obj2, QSR)* and *qsrT(Rel, Cls1, Cls2, QSR)* which use segmented object clusters and object classes to retrieve QSRs repectively. 
+
+QSRs can be visualized using the *vis(QSRLst)* predicate where QSRLst denotes a list of QSRs.
+
+
+```
+qsrT(Rel,Cls1,Cls2,QSR), vis([QSR]).
+```
 
 
