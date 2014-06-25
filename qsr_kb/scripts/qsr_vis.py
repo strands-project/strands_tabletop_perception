@@ -54,7 +54,18 @@ class QSRVis(object):
         self.pattern = re.compile('next_vis\((.*)\)')
                
         rospy.spin()
-        
+
+    def prologPose_to_ROSPose(self, ppose):
+        pose = Pose()
+        pose.position.x = ppose[0][0]
+        pose.position.y = ppose[0][1]
+        pose.position.z = ppose[0][2]
+        pose.orientation.w = ppose[1][0]
+        pose.orientation.x = ppose[1][1]
+        pose.orientation.y = ppose[1][2]
+        pose.orientation.z = ppose[1][3]
+        return pose
+
     def handle_query(self, req):
         rospy.loginfo("Query:  %s " % (req.query))
         try:
@@ -81,39 +92,21 @@ class QSRVis(object):
 
             qsr_lst = json_sol[0][qsr_var]
 
-            poses = dict()
-            pose = Pose()
-            pose.position.x = 1.0
-            pose.position.y = 0.0
-            poses['monitor'] = pose
-            pose = Pose()
-            pose.position.x = 0.0
-            pose.position.y = 0.0
-            poses['keyboard'] = pose
-            pose = Pose()
-            pose.position.x = 0.5
-            pose.position.y = -0.5
-            poses['mouse'] = pose
-            pose = Pose()
-            pose.position.x = 0.5
-            pose.position.y = 1.0
-            poses['cup'] = pose
-
             objs = dict()
             i = 0
             j = 0
             for qsr in qsr_lst:
                 if qsr[1][0] not in objs:
                     label = qsr[1][1] if qsr[1][2] == 'None' else  qsr[1][1] + ' (' + qsr[1][2] + ')' 
-                    self.create_obj_marker(obj_markerArray, i, poses[qsr[1][0]], label )
+                    self.create_obj_marker(obj_markerArray, i, self.prologPose_to_ROSPose(qsr[1][3]), label )
                     objs[qsr[1][0]] = qsr[1][0]
                     i += 2
                 if qsr[2][0] not in objs:
                     label = qsr[2][1] if qsr[2][2] == 'None' else  qsr[2][1] + ' (' + qsr[2][2] + ')'
-                    self.create_obj_marker(obj_markerArray, i, poses[qsr[2][0]], label)
+                    self.create_obj_marker(obj_markerArray, i, self.prologPose_to_ROSPose(qsr[2][3]), label)
                     objs[qsr[2][0]] = qsr[2][0]
                     i += 2
-                self.create_rel_marker(rel_markerArray, j, poses[qsr[1][0]], poses[qsr[2][0]], qsr[0])
+                self.create_rel_marker(rel_markerArray, j, self.prologPose_to_ROSPose(qsr[1][3]), self.prologPose_to_ROSPose(qsr[2][3]), qsr[0])
                 j +=2
                 
             self.obj_marker_len =  len(obj_markerArray.markers)

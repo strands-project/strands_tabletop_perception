@@ -7,7 +7,7 @@
 default_classifier('BU').
 %default_classifier('TD').
 
-example1(QSR,LOC,CLASSIFIER_CLASSIFICATION_LST) :-
+example1(QSR,LOC,CLASSIFIER_CLASSIFICATION_LST,POSE) :-
   QSR = [['left-of', keyboard, cup],['left-of', monitor, cup],['behind', keyboard, cup],['in-front-of', monitor, cup], ['in-front-of', keyboard, monitor],['right-of', cup, monitor]],
   LOC = 'table27',
   CLASSIFIER_CLASSIFICATION_LST = [ ['BU', [[keyboard, 'Keyboard', 0.8], [keyboard, 'Monitor', 0.2], 
@@ -18,14 +18,19 @@ example1(QSR,LOC,CLASSIFIER_CLASSIFICATION_LST) :-
                                          [cup, 'Cup', 0.6], [cup, 'Mouse', 0.2],[cup, 'Keyboard', 0.2], 
                                          [monitor, 'Keyboard', 0.1], [monitor, 'Monitor', 0.9],
                                          [mouse, 'Cup', 0.1], [mouse, 'Mouse', 0.9]]
-                                     ]].
+                                     ]],
+   POSE = [ [monitor, [[1.0,0.0,0.0],[1,0,0,0]]], 
+            [cup, [[0.5,1.0,0.0],[1,0,0,0]]], 
+            [mouse, [[0.5,-0.5,0.0],[1,0,0,0]]],
+            [keyboard, [[0.0,0.0,0.0],[1,0,0,0]]] ].
   
 
 
-create_event(EVT, QSR, LOC, CLASSIFIER_CLASSIFICATION_LST) :-
+create_event(EVT, QSR, LOC, CLASSIFIER_CLASSIFICATION_LST, POSE) :-
   create_event(EVT),
   add_qsr(EVT,QSR), 
   add_loc(EVT,LOC),
+  add_pose(EVT,POSE),
   findall(_,(member(X, CLASSIFIER_CLASSIFICATION_LST), add_classification(EVT, X)),_).
 
 create_event(EVT) :-
@@ -39,10 +44,11 @@ add_qsr(EVT,QSR) :-
 add_loc(EVT,LOC) :-
   assertz(at_loc(EVT,LOC)).
 
+add_pose(EVT,POSE) :-
+  findall(_, (member(X,POSE), assertz(pose(EVT,X))), _).
+
 add_classification(EVT, [CLASSIFIER, CLASSIFICATION]) :-
   findall(_, (member([OBJ, C, P], CLASSIFICATION), assertz(obj_class(EVT, CLASSIFIER, OBJ, C, P))), _).
-
-
 
 most_likely_class(OBJ, CLS) :-
   most_recent(EVT),
@@ -91,8 +97,10 @@ qsr(REL, O1, O2, QSR) :-
   most_recent(EVT),
   qsr(EVT, REL, O1, O2, QSR).
 
-qsr(EVT, REL, O1, O2, [EVT, 'None', [REL, O1, O2]]) :-
+qsr(EVT, REL, O1, O2, [EVT, 'None', [REL, O1, O2],[P1, P2]]) :-
   event(EVT),
+  pose(EVT,[O1, P1]),
+  pose(EVT,[O2, P2]),
   qsr(EVT, [REL, O1, O2]).
   %assertz(vis_qsr(EVT, [REL, O1, O2])).
 
@@ -105,11 +113,13 @@ qsrT(CLASSIFIER, REL, C1, C2, QSR) :-
   classifier(EVT, CLASSIFIER),
   qsrT(EVT, CLASSIFIER, REL, C1, C2, QSR).
 
-qsrT(EVT, CLASSIFIER, REL, C1, C2, [EVT, CLASSIFIER, [REL, O1, O2]]) :-
+qsrT(EVT, CLASSIFIER, REL, C1, C2, [EVT, CLASSIFIER, [REL, O1, O2], [P1, P2]]) :-
   event(EVT),
   classifier(EVT, CLASSIFIER),
   obj_cls(CLASSIFIER,O1,C1),
   obj_cls(CLASSIFIER,O2,C2),
+  pose(EVT,[O1, P1]),
+  pose(EVT,[O2, P2]),
   qsr(EVT, [REL, O1, O2]).
   %assertz(vis_qsr(EVT, [REL, O1, O2])).
 
@@ -160,7 +170,7 @@ next_vis_2(QSR_LST) :-
 
 next_vis(QSR_LST) :-  
   next_vis_2(SOL), 
-  findall([R, [O1,T1,CLASSIFIER], [O2,T2,CLASSIFIER]], (member([E, CLASSIFIER, [R,O1,O2]],SOL), translate(E,CLASSIFIER,O1, T1), translate(E,CLASSIFIER,O2,T2)), QSR_LST).
+  findall([R, [O1,T1,CLASSIFIER,P1], [O2,T2,CLASSIFIER,P2]], (member([E, CLASSIFIER, [R,O1,O2],[P1,P2]],SOL), translate(E,CLASSIFIER,O1, T1), translate(E,CLASSIFIER,O2,T2)), QSR_LST).
 
 
 translate(_E, CF, O, O) :-

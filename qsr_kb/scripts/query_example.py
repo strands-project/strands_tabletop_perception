@@ -14,8 +14,8 @@ def make_query(query):
     except rospy.ServiceException, e:
         print "Service call failed: %s"%e
 
-def create_event(relations, location, classifications):
-    return "create_event(EVT," + str(relations) + "," + str(location) + "," + str(classifications) + "), new_vis." 
+def create_event(relations, location, classifications, pose):
+    return "create_event(EVT," + str(relations) + "," + str(location) + "," + str(classifications) + "," + str(pose) + "), new_vis." 
 
 def usage():
     return "%s"%sys.argv[0]
@@ -58,7 +58,13 @@ if __name__ == "__main__":
                                     ['monitor', 'Keyboard', 0.1], ['monitor', 'Monitor', 0.9], 
                                     ['mouse', 'Cup', 0.1], ['mouse', 'Mouse', 0.9]]]]
 
-    query = create_event(rels, loc, cls)
+    # pose [[x,y,z], [w, x, y, z]], ... ]
+    pose = [ ['monitor', [[1.0,0.0,0.0],[1,0,0,0]]], 
+             ['cup', [[0.5,1.0,0.0],[1,0,0,0]]], 
+             ['mouse', [[0.5,-0.5,0.0],[1,0,0,0]]],
+             ['keyboard', [[0.0,0.0,0.0],[1,0,0,0]]] ]
+
+    query = create_event(rels, loc, cls, pose)
     
     print "Loading example: %s"%(query)
     print "Solution: %s"%(make_query(query))
