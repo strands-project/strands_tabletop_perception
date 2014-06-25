@@ -14,7 +14,7 @@ The knowledge base service provides a simple *tell and ask* interface to a Prolo
 
 ## Adding knowledge about QSRs to the KB
 
-New perception events with different classifications can be added using the *create_event(Evt,QSRs,Loc,Classifications)* predicate, where *Evt* denotes the event that will be generated, *QSRs* denotes a list of QSRs between segmented object clusters, *Loc* denotes a location where the event occured, and *Classifications* denotes a list of different classifiaction results (incl. probabilities) for all segemented object clusters. 
+New perception events with different classifications can be added using the *create_event(Evt,QSRs,Loc,Classifications,Poses)* predicate, where *Evt* denotes the event that will be generated, *QSRs* denotes a list of QSRs between segmented object clusters, *Loc* denotes a location where the event occured, *Classifications* denotes a list of different classifiaction results (incl. probabilities) for all segemented object clusters, and *Poses* denotes a list of object poses.
 ```
 create_event(EVT,
              % QSRs, (Note: object names such as 'keyboard' are only used for a better understanding, there is no meaning attached to them)  
@@ -31,7 +31,11 @@ create_event(EVT,
               ['TD', [['keyboard', 'Keyboard', 0.9], ['keyboard', 'Monitor', 0.1], 
                       ['cup', 'Cup', 0.6], ['cup', 'Mouse', 0.2], ['cup', 'Keyboard', 0.2], 
                       ['monitor', 'Keyboard', 0.1], ['monitor', 'Monitor', 0.9], 
-                      ['mouse', 'Cup', 0.1], ['mouse', 'Mouse', 0.9]]]]).
+                      ['mouse', 'Cup', 0.1], ['mouse', 'Mouse', 0.9]]]],
+             [ [monitor, [[1.0,0.0,0.0],[1,0,0,0]]], 
+               [cup, [[0.5,1.0,0.0],[1,0,0,0]]], 
+               [mouse, [[0.5,-0.5,0.0],[1,0,0,0]]],
+               [keyboard, [[0.0,0.0,0.0],[1,0,0,0]]] ]).
 ```
 
 ## Querying QSRs from the KB and visualise the result
