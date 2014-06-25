@@ -17,10 +17,13 @@ The knowledge base service provides a simple *tell and ask* interface to a Prolo
 New perception events with different classifications can be added using the *create_event(Evt,QSRs,Loc,Classifications)* predicate, where *Evt* denotes the event that will be generated, *QSRs* denotes a list of QSRs between segmented object clusters, *Loc* denotes a location where the event occured, and *Classifications* denotes a list of different classifiaction results (incl. probabilities) for all segemented object clusters. 
 ```
 create_event(EVT,
+             % QSRs
              [['left-of', 'keyboard', 'cup'], ['left-of', 'monitor', 'cup'],
               ['behind', 'keyboard', 'cup'], ['in-front-of', 'monitor', 'cup'],
               ['in-front-of', 'keyboard', 'monitor'], ['right-of', 'cup', 'monitor']],
-             'table27', 
+             % Loc
+             'table27',
+             % Classifications (here bottom-up [BU], and top-down [TD])
              [['BU', [['keyboard', 'Keyboard', 0.8], ['keyboard', 'Monitor', 0.2], 
                       ['cup', 'Cup', 0.4], ['cup', 'Mouse', 0.5], ['cup', 'Keyboard', 0.1], 
                       ['monitor', 'Keyboard', 0.1], ['monitor', 'Monitor', 0.9], 
