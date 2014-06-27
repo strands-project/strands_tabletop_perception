@@ -22,6 +22,7 @@ from observation import MessageStoreObject, Observation, TransformationStore
 from ros_datacentre.message_store import MessageStoreProxy
 from robblog.msg import RobblogEntry
 import robblog.utils
+from robblog import utils as rb_utils
 import datetime
 
 def generate_report(t, parent_object=None):
@@ -257,8 +258,8 @@ def get_image_contour(camera_info, pointcloud, pt_meld=1):
 def create_robblog(table_name,  timestamp):
     """ creates a robblog entry for observation at timestamp (or closest)"""
     msg_store_blog = MessageStoreProxy(collection='robblog')
-    entry =  "# Table observation\ntable name: %s\n"
-    e = RobblogEntry(title='Table Observation at ' + datetime.datetime.now().strftime("%I:%M%p"))
+    entry =  "# Table Observation\ntable name: %s\n"
+    e = RobblogEntry(title=datetime.datetime.now().strftime("%H:%M:%S") + ' - Table Observation' )
     e.body = 'I looked at ' + table_name + ' and this is what I found:\n\n'
     img =  create_table_observation_image(table_name, timestamp)
     bridge = CvBridge()
