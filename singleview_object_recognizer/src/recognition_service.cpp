@@ -36,7 +36,7 @@
 #include <boost/lexical_cast.hpp>
 #include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
 
-//#define USE_SIFT_GPU 
+#define USE_SIFT_GPU
 //#define SOC_VISUALIZE
 
 bool USE_SEGMENTATION_ = false;
