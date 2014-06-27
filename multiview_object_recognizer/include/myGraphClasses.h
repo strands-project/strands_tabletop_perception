@@ -53,7 +53,9 @@
 #include <faat_pcl/registration/mv_lm_icp.h>
 #include <faat_pcl/registration/registration_utils.h>
 // #include <faat_pcl/utils/filesystem_utils.h>
+#include <faat_pcl/utils/miscellaneous.h>
 #include <faat_pcl/utils/noise_models.h>
+#include <faat_pcl/utils/noise_model_based_cloud_integration.h>
 #include <faat_pcl/utils/pcl_opencv.h>
 #include <faat_pcl/utils/registration_utils.h>
 
@@ -100,13 +102,14 @@ public:
     boost::shared_ptr< pcl::PointCloud<FeatureT > > pSignatures;
     boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;
     boost::shared_ptr< pcl::PointCloud<pcl::PointXYZRGB> > pKeypoints;
+    std::vector<float> sift_keypoints_scales;
+    pcl::PointIndices keypoints_indices_;
     std::string scene_filename_;
     //std::vector<std::string> model_ids_;
     std::vector<double> modelToViewCost;
     std::vector<Hypothesis> hypothesis;
     std::vector<Hypothesis> hypothesis_single_unverified;
     Eigen::Matrix4f absolute_pose;
-    pcl::PointIndices keypoints_indices_;
     bool has_been_hopped_;
     double cumulative_weight_to_new_vrtx_;
 };
@@ -156,7 +159,6 @@ private:
     Graph grph_, grph_final_;
     std::vector<Edge> edges_, best_edges_;
     std::string topic_, models_dir_, training_dir_;
-    ros::NodeHandle  *n_;
     ros::ServiceClient client_;
     ros::Subscriber sub_joy_, sub_pc_;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr current_cloud_;
@@ -168,7 +170,6 @@ private:
     bool go_3d_;
     std::string input_cloud_dir_;
     int icp_iter_;
-    int mv_keypoints_;
     int opt_type_;
     std::string gt_or_ouput_dir_;
     double chop_at_z_;
@@ -176,6 +177,44 @@ private:
     float icp_max_correspondence_distance_;
     bool do_reverse_hyp_extension;
     pcl::visualization::PCLVisualizer::Ptr vis_;
+    bool scene_to_scene_;
+
+    bool use_unverified_single_view_hypotheses;
+
+    //GO3D parameters
+    float go3d_color_sigma_;
+    float go3d_outlier_regularizer_;
+    float go3d_clutter_regularizer_;
+    float go3d_clutter_radius_;
+    float go3d_inlier_threshold_;
+
+    bool go3d_detect_clutter_;
+    bool go3d_add_planes_;
+    bool go3d_icp_;
+    bool go3d_icp_model_to_scene_;
+    bool go3d_use_supervoxels_;
+
+    float go3d_and_icp_resolution_;
+
+
+    //Noise model parameters
+    float max_angle_;
+    float lateral_sigma_;
+    float nm_integration_min_weight_;
+
+    //Multiview refinement parameters
+    bool mv_icp_;
+    float max_keypoint_dist_mv_;
+    int mv_iterations_;
+    float min_overlap_mv_;
+    int mv_keypoints_;
+    float inlier_threshold_ ;
+    float max_corresp_dist_;
+
+    //Other parameters
+    std::string output_dir_3d_results_;
+
+    bool use_table_plane_;
     
 public:
     multiviewGraph(){
@@ -189,12 +228,51 @@ public:
       chop_at_z_ = 1.5f;
       icp_resolution_ = 0.005f;
       icp_max_correspondence_distance_ = 0.02f;
+      scene_to_scene_ = true;
+
+      use_unverified_single_view_hypotheses = false;
+
+      //GO3D parameters
+      go3d_color_sigma_ = 0.3f;
+      go3d_outlier_regularizer_ = 3.f;
+      go3d_clutter_regularizer_ = 3.f;
+      go3d_clutter_radius_ = 0.04f;
+      go3d_inlier_threshold_ = 0.01f;
+
+      go3d_detect_clutter_ = true;
+      go3d_add_planes_ = false;
+      go3d_icp_ = true;
+      go3d_icp_model_to_scene_ = false;
+      go3d_use_supervoxels_ = true;
+
+      go3d_and_icp_resolution_ = 0.005f;
+
+
+      //Noise model parameters
+      max_angle_ = 70.f;
+      lateral_sigma_ = 0.0015f;
+      nm_integration_min_weight_ = 0.25f;
+
+      //Multiview refinement parameters
+      mv_icp_ = true;
+      max_keypoint_dist_mv_ = 2.5f;
+      mv_iterations_ = 5;
+      min_overlap_mv_ = 0.3f;
+      mv_keypoints_ = 0;
+      inlier_threshold_ = 0.003f;
+      max_corresp_dist_ = 0.01f;
+
+      //Other parameters
+      output_dir_3d_results_ = "";
+
+      use_table_plane_ = true;
     }
+
     void joyCallback ( const scitos_apps_msgs::action_buttons& msg );
     void kinectCallback ( const sensor_msgs::PointCloud2& msg );
     int recognize ( pcl::PointCloud<pcl::PointXYZRGB> &cloud, const std::string scene_name = std::string() );
     void init ( int argc, char **argv );
-    bool calcFeatures ( Vertex &src, Graph &grph );
+    bool calcFeatures(Vertex &src, Graph &grph, bool use_table_plane=true);
     void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, Edge &edge );
 //    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
     void extendHypothesis ( Graph &grph );
@@ -202,7 +280,7 @@ public:
 //    void calcMST ( const std::vector<Edge> &edges, const Graph &grph, std::vector<Edge> &edges_final );
     void createEdgesFromHypothesisMatch ( Graph &grph, std::vector<Edge> &edges );
     void createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges );
-    void calcEdgeWeight (Graph &grph);
+    void calcEdgeWeight (Graph &grph, int max_distance=-1, float z_dist=3.f, float max_overlap=0.75f);
     void outputgraph ( Graph& map, const char* filename );
     std::vector<Vertex> my_node_reader ( std::string filename, Graph &g );
     void createBigPointCloud ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud );

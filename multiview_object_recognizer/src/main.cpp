@@ -9,6 +9,7 @@
  *Command: rosrun visual_recognizer visual_recognizer_node _models_dir_sift:=/home/thomas/willow_dataset/willow_dense_shot30_reduced/ _training_dir:=/home/thomas/willow_dataset/trained_test/ _model_path:=/home/thomas/willow_dataset/models_ml_new/ _icp_iterations:=0 _do_ourcvfh:=false _topic:=/camera/depth_registered/points _visualize_output:=true
  *
  */
+#define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 
 #include <iostream>
 #include "myGraphClasses.h"

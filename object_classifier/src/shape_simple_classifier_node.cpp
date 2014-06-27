@@ -51,6 +51,8 @@ class ShapeClassifier
     ros::ServiceServer classify_service_;
     ros::NodeHandle *n_;
     ros::Publisher vis_pub_, vis_pc_pub_;
+    visualization_msgs::MarkerArray markerArray_;
+    std::string camera_frame_;
 
     bool classify(classifier_srv_definitions::classify::Request & req,
                   classifier_srv_definitions::classify::Response & response)
@@ -60,7 +62,13 @@ class ShapeClassifier
 
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pClusteredPCl (new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::copyPointCloud(*frame_, *pClusteredPCl);
-        visualization_msgs::MarkerArray markerArray;
+
+        for (size_t i=0; i < markerArray_.markers.size(); i++)
+        {
+            markerArray_.markers[i].action = visualization_msgs::Marker::DELETE;
+        }
+        vis_pub_.publish( markerArray_ );
+        markerArray_.markers.clear();
 
         for(size_t i=0; i < req.clusters_indices.size(); i++)
         {
@@ -156,7 +164,7 @@ class ShapeClassifier
 
           // visualize the result as ROS topic
             visualization_msgs::Marker marker;
-            marker.header.frame_id = "head_xtion_depth_optical_frame";
+            marker.header.frame_id = camera_frame_;
             marker.header.stamp = ros::Time::now();
             //marker.header.seq = ++marker_seq_;
             marker.ns = "object_classification";
@@ -175,8 +183,10 @@ class ShapeClassifier
             marker.color.r = 0.8*r/255.f;
             marker.color.g = 0.8*g/255.f;
             marker.color.b = 0.8*b/255.f;
-            marker.text = categories_[0];
-            markerArray.markers.push_back(marker);
+            std::stringstream marker_text;
+            marker_text << categories_[0] << conf_[0];
+            marker.text = marker_text.str();
+            markerArray_.markers.push_back(marker);
 
           /*boost::shared_ptr<pcl::visualization::PCLVisualizer> vis;
           vis.reset(new pcl::visualization::PCLVisualizer("cluster visualization"));
@@ -230,7 +240,7 @@ class ShapeClassifier
         sensor_msgs::PointCloud2 scenePc2;
         pcl::toROSMsg (*pClusteredPCl, scenePc2);
         vis_pc_pub_.publish(scenePc2);
-        vis_pub_.publish( markerArray );
+        vis_pub_.publish( markerArray_ );
 
         response.clusters_indices = req.clusters_indices;
         return true;
@@ -305,7 +315,10 @@ class ShapeClassifier
         n_->getParam ( "nn", NN_ );
         n_->getParam ( "chop_z", chop_at_z_ );
 
-        ROS_INFO("models_dir, training dir, desc:  %s, %s, %s",  models_dir_.c_str(), training_dir_.c_str(), desc_name_.c_str());
+        if(!n_->getParam ( "camera_frame", camera_frame_ ))
+            camera_frame_ = "/head_xtion_depth_optical_frame";
+
+        ROS_INFO("models_dir, training dir, desc, camera_frame:  %s, %s, %s, %s",  models_dir_.c_str(), training_dir_.c_str(), desc_name_.c_str(), camera_frame_.c_str());
 
       if(models_dir_.compare("") == 0)
       {

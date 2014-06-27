@@ -22,6 +22,7 @@
 		<param name="descriptor_name" value="$(arg descriptor_name)" type="string"/>
 		<param name="nn" value="$(arg nn)" type="int"/>
 		<param name="chop_z" value="$(arg chop_z)" type="double"/>
+		<param name="camera_frame" value="$(arg camera_frame)" type="string"/>
 	</node>
 
 	<!-- segmentation service -->
