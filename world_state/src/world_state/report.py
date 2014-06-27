@@ -15,6 +15,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from image_geometry import PinholeCameraModel
 import numpy as np
 import geometry
+from geometry_msgs.msg import Pose
 
 from observation import MessageStoreObject, Observation, TransformationStore
 
@@ -38,7 +39,117 @@ def generate_report(t, parent_object=None):
     for o in objects:
         print "-> ", o.name, " ==> ", o.identification.class_type
         for o2 in [w.get_object(ob) for ob in o.get_children_names()]:
-            print "-> -> ", o2.name, " ==> ", o2.identification.class_type
+            tm1 = datetime.datetime.fromtimestamp(o2._life_start).strftime('%m-%d %H:%M:%S.%f')
+            if o2._life_end is None:
+                tm2 = "0"
+            else:
+                tm2 = datetime.datetime.fromtimestamp(o2._life_end).strftime('%m-%d %H:%M:%S.%f')
+            print "-> -> ", o2.name, "[", tm1, "->", tm2, "]", " ==> ", o2.identification.class_type
+    
+def epoch_to_str_time(epoch):
+    return datetime.datetime.fromtimestamp(epoch).strftime('%Y-%m-%d %H:%M:%S')
+    
+def generate_table_list(parent_object=None):
+    w = World()
+    objects = w.get_objects_of_type("Table")
+    ob_count = 0
+    bugger = 0
+    oblongs = []
+    for o in objects:
+        print "-> ", o.name, " ==> ", o.identification.class_type
+        for ob in o._observations:
+            assert isinstance(ob,  Observation)
+            print "< -- > Observation :", epoch_to_str_time(ob.stamp)
+            children = w.get_children(o.name, {'_observations': {'$elemMatch': {'stamp': ob.stamp}}})
+            ob_count += 1
+            for o2 in children:
+                print "-> -> ", o2.name, " ==> ", o2.identification.class_type
+            print "-" * 20
+            bridge = CvBridge()
+            ob_ok = []
+            for m in ob._messages.keys():
+                msg =  ob.get_message(m)
+                if msg is None:
+                    ob_ok.append(False)
+                else:
+                    ob_ok.append(True)
+            message =  ob.get_message("/head_xtion/rgb/image_color")
+            if message is None:
+                bugger += 1
+                rospy.logerr("table image lost")
+                rospy.logwarn("msg store object: "+str(ob._messages["/head_xtion/rgb/image_color"]))
+                oblongs.append((ob.stamp, ob_ok))
+                continue
+            oblongs.append((ob.stamp, ob_ok))
+            rgb_image = bridge.imgmsg_to_cv2(message)
+            cv2.imshow('image', rgb_image)
+            k = cv2.waitKey(10)
+            print k
+            if k == 98:
+                break
+        
+
+    print "Total table observations:", ob_count
+    print "Buggered: ", bugger
+    
+    oblongs.sort(key=lambda x: x[0])
+    for o in oblongs:
+        print epoch_to_str_time(o[0]), o[1]
+
+def get_tables_list(ignore_non_observed=True):
+    w =  World()
+    objects = w.get_objects_of_type("Table")
+    if ignore_non_observed:
+        return [o.name for o in objects if len(o.get_children_names())>0]
+    else:
+        return [o.name for o in objects]
+
+def get_table_observations(table_name):
+    w =  World()
+    table =  w.get_object(table_name)
+    observations =  []
+    obby = []
+    lst = 0
+    for ob in table._observations:
+        assert isinstance(ob,  Observation)
+        if ob.stamp - lst > 5 * 60 and len(obby) > 0:
+            observations.append(obby)
+            obby = []
+        lst = ob.stamp
+        obby.append((ob.stamp, epoch_to_str_time(ob.stamp)))
+    observations.append(obby)
+    return observations
+
+def get_objects_observed(table_name, observation_stamp):
+    w = World()
+    children = w.get_children(table_name,
+                              {'_observations': {'$elemMatch': {'stamp': observation_stamp}}})
+    return children
+
+
+def get_table_observation_rgb(table_name, observation_timestamp):
+    # what objects existed on the table at this timestamp..
+    w = World()
+    table =  w.get_object(table_name)
+    # children = w.get_children(table_name, {'$and': [
+                                   #{'_life_start': {'$lt': timestamp} },
+                                    #{'$or': [{'_life_end': {'$gt': timestamp}},
+                                            #{'_life_end': None } ]}
+                                    #] })
+    # Which table observation is closest to timestamp
+    if len(table._observations) < 1:
+        raise Exception("Table has no observations")
+    closest =  min([(ob, math.fabs(ob.stamp - observation_timestamp)) for ob in table._observations],
+                   key=lambda x: x[1])
+    rospy.loginfo("Clost observation of table '%s' to time %d was %d"%(table_name,
+                                                                        observation_timestamp,
+                                                                        closest[1]))
+    observation = closest[0]
+    tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
+    camera_info =  observation.get_message("/head_xtion/rgb/camera_info")
+    bridge = CvBridge()
+    rgb_image = bridge.imgmsg_to_cv2(observation.get_message("/head_xtion/rgb/image_color"))
+    return rgb_image
 
 def create_table_observation_image(table_name, observation_timestamp):
     """
@@ -95,6 +206,42 @@ def create_table_observation_image(table_name, observation_timestamp):
 #    cv2.waitKey(30)
     return rgb_image
         
+def get_tabletop_object_clouds(table_name, observation_timestamp):
+    """
+    returns list of sensor_msgs/PointCloud2, in /map frame.
+    """
+    # what objects existed on the table at this timestamp..
+    w = World()
+    table =  w.get_object(table_name)
+
+    # Which table observation is closest to timestamp
+    if len(table._observations) < 1:
+        raise Exception("Table has no observations")
+    closest =  min([(ob, math.fabs(ob.stamp - observation_timestamp)) for ob in table._observations],
+                   key=lambda x: x[1])
+    rospy.loginfo("Clost observation of table '%s' to time %d was %d"%(table_name,
+                                                                        observation_timestamp,
+                                                                        closest[1]))
+    observation = closest[0]
+    tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
+    camera_info =  observation.get_message("/head_xtion/depth/camera_info")
+
+    children = w.get_children(table_name, {'_observations': {'$elemMatch': {'stamp': observation.stamp}}})
+
+    clouds = []
+    for j, c in enumerate(children):
+
+        pointcloud = c._point_cloud.retrieve()
+
+        transform = np.dot(table.pose.as_homog_matrix(), c.pose.as_homog_matrix())
+        rospy.loginfo("Transforming object pointcloud to map")
+        pointcloud_transformed = geometry.transform_PointCloud2(pointcloud,
+                                                                transform,
+                                                                '/map')
+        clouds.append(pointcloud_transformed)
+        
+    return clouds
+        
     
 def get_image_contour(camera_info, pointcloud, pt_meld=1):
     pinhole = PinholeCameraModel()
@@ -120,6 +267,92 @@ def create_robblog(table_name,  timestamp):
     e.body += '![Image of the door](ObjectID(%s))' % img_id
     msg_store_blog.insert(e)
         
+        
+def calculate_qsrs(table_name, timestamp):
+    try:
+        import strands_qsr_learned_qualitators.qualitators as qualitators
+        import strands_qsr_learned_qualitators.geometric_state as gs
+    except:
+        rospy.logerr("strands_qsr repo not on catkin workspace?")
+        return None
+    QUAL_FILE = "/home/chris/iros_tdrc.qsrs"
+    qsrs = qualitators.Qualitators.load_from_disk(QUAL_FILE)
+    print "Loaded ", len(qsrs._qualitators), "qualitators from disk"
+    
+    print timestamp
+    objs = get_objects_observed(table_name, timestamp)
+    print objs
+    geo =  gs.GeometricState("scene")
+    rels = []
+    for o in objs:
+        geo.add_object(o.name, o.identification.class_type[0],
+                       o.position, o.quaternion,
+                       o._bounding_box.points)
+        print "Adding object ", o.name
+        
+    msg_store = MessageStoreProxy(collection='frozen_tables')
+    viewpoints = msg_store.query(Pose._type)
+    for v, m in viewpoints:
+        if m["name"][:-10] == table_name:
+            print "Matched"
+            break
+    else:
+        rospy.logerr("Oh crap, viewpoint does not exist!")
+        return []
+    viewpoint = v
+    
+    for ob1 in geo._objects.keys():
+        # Get camera position in ob1 frame
+        cam_pos = [geo._objects[ob1].position.x - viewpoint.position.x,
+                   geo._objects[ob1].position.y - viewpoint.position.y,
+                   geo._objects[ob1].position.z - viewpoint.position.z]
+        #None
+        for ob2 in geo._objects.keys():
+            if ob1 == ob2:
+                continue
+            print ob1, " - ", ob2
+            delta = [geo._objects[ob2].position.x - geo._objects[ob1].position.x,
+                     geo._objects[ob2].position.y - geo._objects[ob1].position.y,
+                     geo._objects[ob2].position.z - geo._objects[ob1].position.z
+                     ]
+            s1 = geo._objects[ob1].bbox.get_size()
+            s2 = geo._objects[ob2].bbox.get_size()
+            for q in qsrs._qualitators:
+                if q.dimensions == 2:
+                    if q(delta+list(s1)+list(s2), cam_pos):
+                        rels.append([q.name, ob1, ob2])
+        #for q in qual._qualitators:
+            #if q.dimensions == 1:
+                #s1 = geo._objects[ob1].bbox.get_size()
+                #rel_probs.update_probs_new_example(q.name,
+                                                   #(geo._objects[ob1].obj_type, ),
+                                                   #q(geo._objects[ob1].position+list(s1)))
+                
+    
+    #rels = [['left-of', 'keyboard', 'cup'], ['left-of', 'monitor', 'cup'],
+                            #['behind', 'keyboard', 'cup'], ['in-front-of', 'monitor', 'cup'],
+                            #['in-front-of', 'keyboard', 'monitor'], ['right-of', 'cup', 'monitor']]
+
+    loc = table_name
+
+    #cls = [['BU', [['keyboard', 'Keyboard', 0.8], ['keyboard', 'Monitor', 0.2], 
+                                    #['cup', 'Cup', 0.4], ['cup', 'Mouse', 0.5], ['cup', 'Keyboard', 0.1], 
+                                    #['monitor', 'Keyboard', 0.1], ['monitor', 'Monitor', 0.9], 
+                                    #['mouse', 'Cup', 0.9], ['mouse', 'Mouse', 0.1]]], 
+           #['TD', [['keyboard', 'Keyboard', 0.9], ['keyboard', 'Monitor', 0.1], 
+                                    #['cup', 'Cup', 0.6], ['cup', 'Mouse', 0.2], ['cup', 'Keyboard', 0.2], 
+                                    #['monitor', 'Keyboard', 0.1], ['monitor', 'Monitor', 0.9], 
+                                    #['mouse', 'Cup', 0.1], ['mouse', 'Mouse', 0.9]]]]
+
+    ## pose [[x,y,z], [w, x, y, z]], ... ]
+    #pose = [ ['monitor', [[1.0,0.0,0.0],[1,0,0,0]]], 
+             #['cup', [[0.5,1.0,0.0],[1,0,0,0]]], 
+             #['mouse', [[0.5,-0.5,0.0],[1,0,0,0]]],
+             #['keyboard', [[0.0,0.0,0.0],[1,0,0,0]]] ]
+
+    #query = create_event(rels, loc, cls, pose)
+    print "Returning!" * 10
+    return rels
 
 class PointCloudVisualiser(object):
     def __init__(self, topic="pointcloud_visualise"):
