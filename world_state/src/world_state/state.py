@@ -47,13 +47,13 @@ class Object(MongoDocument):
     def position(self):
         if len(self._poses) < 1:
             raise StateException("NOPOSE")
-        return copy.deepcopy(self._poses[-1]['position'])
+        return copy.deepcopy(self._poses[-1].position)
     
     @property
     def quaternion(self):
         if len(self._poses) < 1:
             raise StateException("NOPOSE")
-        return copy.deepcopy(self._poses[-1]['quaternion'])
+        return copy.deepcopy(self._poses[-1].quaternion)
     
     @property
     def pose_homog_transform(self):
