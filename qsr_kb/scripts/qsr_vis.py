@@ -180,7 +180,7 @@ class QSRVis(object):
         marker1.color.r = 0.0
         marker1.color.g = 0.0
         marker1.color.b = 1.0
-        marker1.pose.orientation = pose.orientation
+#        marker1.pose.orientation = pose.orientation
         marker1.pose.position = pose.position
         x = pose2.position.x - pose.position.x 
         y = pose2.position.y - pose.position.y 

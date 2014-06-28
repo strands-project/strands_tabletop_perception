@@ -1,0 +1,144 @@
+$def with (table_name,stamp,nice_stamp,objects,view_no,view_count)
+
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="/static/jquery.min.js"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="/static/bootstrap.min.js"></script>
+    
+
+<script>
+var show_anno = function() {
+    document.getElementById("view_anno").style.display = 'block';
+    document.getElementById("view_raw").style.display = 'none';
+};
+var show_raw = function() {
+    document.getElementById("view_anno").style.display = 'none';
+    document.getElementById("view_raw").style.display = 'block';
+};
+var show_rviz = function() {
+jQuery("#status").load("/show_pointclouds/$table_name/$stamp");
+};
+
+var calc_qsr = function() {
+jQuery("#qsrs").body="Calculating...";
+jQuery("#qsrs").load("/calculate_qsr/$table_name/$stamp");
+//document.getElementById("qsr_text").style.display = 'block';
+document.getElementById("qsr_collapse").style.display = 'block';
+document.getElementById("qsr_prolog").style.display = 'block';
+};
+    
+var visualise_qsr = function() {
+    jQuery.post( '/visualise_qsr', 
+                jQuery('form#prologform').serialize(), function(data) {
+         //... do something with response from server
+         jQuery("#qsrquery").text="Calculating...";
+       },
+       'text' // I expect a JSON response
+    );
+}
+
+</script>
+
+<div class="row">
+    <div class="col-md-1"></div>
+    <div class="col-md-11">
+        <h1>Observation of '$table_name'</h1>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-1">
+    </div>
+    <div class="col-md-5">
+        <!--<div class="row">-->
+            <!--<img id="tableimage" src="/get_img_raw/$table_name/$stamp" />   -->
+        <!--</div>-->
+        <div id="view_raw">
+            <div class="row">
+                <img src="/get_img_raw/$table_name/$stamp" /><br/>
+            </div>
+            <div class="row">
+                <!--<button type="button" onclick="show_anno();" class="btn btn-default">Show Annotations</button>-->
+                <!--<a href="#" onclick="show_anno();">View annotated RGB image</a>-->
+                <p> RGB Image from <i>head_xtion</i> </p>
+            </div>
+        </div>
+        <div id="view_anno" style="display:none">
+            <div class="row" >
+                <img src="/get_img/$table_name/$stamp" /><br/>
+            </div>
+            <div class="row">
+                <!--<button type="button" onclick="show_raw();" class="btn btn-default">Show RAW</button>-->
+                <!--<a href="#" onclick="show_raw();">View raw RGB image</a>-->
+                <p> <i>head_xtion</i> image with objects highlighted </p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="row">   
+            <h4> Scene Details</h4>
+            <ul>
+            <li>Date and Time: $nice_stamp</li>
+            <li>ROS Time: $stamp</li>
+            <li>View $view_no of $view_count in perceive_tabletop_action session</li>
+            </ul>
+        </div>
+        <div class="row">
+            <h4>Objects in Scene</h4>
+            <ul>
+            $for obj in objects:
+                <li>$obj.identification.class_type[0], 
+                confidence=$obj.identification.class_type[1], id=$obj.name</li>
+            </ul>
+        </div>
+        <div class="row">
+            <h4>Visualisations</h4>
+            <button id="vis_btn_show_objs" type="button" onclick="show_rviz();" class="btn btn-default">Show Objects in RViz</button>
+            <button type="button" onclick="show_raw();" class="btn btn-default">Show RAW Image</button>
+            <button type="button" onclick="show_anno();" class="btn btn-default">Show Objects in Image</button>
+        </div>
+        <div class="row">
+            <h4>QSRs</h4>
+            <button type="button" onclick="calc_qsr();" class="btn btn-default">Calculate QSRs</button>
+            <div class="panel panel-default" id="qsr_collapse" style="display:none">
+                <div class="panel-heading">
+                  <h5 class="panel-title">
+                    <a data-toggle="collapse" data-parent="#accordion" 
+                      href="#collapseqsrs">
+                      <div id="qsr_count">QSRs... </div>
+                    </a>
+                  </h5>
+                </div>
+                <div id="collapseqsrs" class="panel-collapse collapse">
+                    <div id="qsrs"></div> 
+                </div>
+          </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-1">
+    </div>
+    
+    <div class="col-md-11">
+        <div id="qsr_prolog" class="row" style="display:none">
+            <div class="col-md-1"></div>
+            <div class="col-md5">
+                <form method="post" action="/visualise_qsr" id="prologform">
+                    <label>QSR Visualisation Query</label><br />
+                    <textarea name="prolog" cols="40" rows="10" placeholder="Prolog query.."></textarea>
+                    <!--<input type="submit" value="Add" />-->
+                </form>
+                <button type="button" onclick="visualise_qsr();" class="btn btn-default">
+                    Execute Query
+                </button>
+                <div id="qsrquery"></div>
+            </div>
+            <div class="col-md5">
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <small id="status">
+    </small>
+</div>

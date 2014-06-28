@@ -47,13 +47,13 @@ class Object(MongoDocument):
     def position(self):
         if len(self._poses) < 1:
             raise StateException("NOPOSE")
-        return copy.deepcopy(self._poses[-1]['position'])
+        return copy.deepcopy(self._poses[-1].position)
     
     @property
     def quaternion(self):
         if len(self._poses) < 1:
             raise StateException("NOPOSE")
-        return copy.deepcopy(self._poses[-1]['quaternion'])
+        return copy.deepcopy(self._poses[-1].quaternion)
     
     @property
     def pose_homog_transform(self):
@@ -207,14 +207,7 @@ class World(object):
         """
         return all objects that have no parent
         """
-        result = self._mongo.database.Objects.find(
-                {"__pyobject_class_type": Object.get_pyoboject_class_string(),
-                 '_parent': None,})
-        objs = []
-        for r in result:
-            r._connect(self._mongo)
-            objs.append(r)
-        return objs
+        return get_children(None)
     
      
     def get_children(self, parent, condition=None):

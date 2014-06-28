@@ -8,6 +8,44 @@ import sensor_msgs.point_cloud2 as pc2
 import math
 from operator import itemgetter
 
+     
+def mat_to_quat(m):
+    """ http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/
+    takes a numpy matrix and gives ROS quaternion"""
+    tr = m[0, 0] + m[1, 1] + m[2, 2]
+
+    if (tr > 0): 
+        S = math.sqrt(tr+1.0) * 2
+        qw = 0.25 * S
+        qx = (m[2, 1] - m[1, 2]) / S
+        qy = (m[0, 2] - m[2, 0]) / S 
+        qz = (m[1, 0] - m[0, 1]) / S 
+    elif ((m[0,0] > m[1,1])&(m[0,0] > m[2,2])):
+        S = math.sqrt(1.0 + m[0,0] - m[1,1] - m[2,2]) * 2
+        qw = (m[2,1] - m[1,2]) / S
+        qx = 0.25 * S
+        qy = (m[0,1] + m[1,0]) / S
+        qz = (m[0,2] + m[2,0]) / S
+    elif (m[1,1] > m[2,2]):
+        S = math.sqrt(1.0 + m[1,1] - m[0,0] - m[2,2]) * 2; 
+        qw = (m[0,2] - m[2,0]) / S;
+        qx = (m[0,1] + m[1,0]) / S; 
+        qy = 0.25 * S;
+        qz = (m[1,2] + m[2,1]) / S; 
+    else:
+        S = math.sqrt(1.0 + m[2,2] - m[0,0] - m[1,1]) * 2; 
+        qw = (m[1,0] - m[0,1]) / S;
+        qx = (m[0,2] + m[2,0]) / S;
+        qy = (m[1,2] + m[2,1]) / S;
+        qz = 0.25 * S;
+        
+    quat =  Quaternion()
+    quat.x = qx
+    quat.y = qy
+    quat.z = qz
+    quat.w = qw
+    return quat
+
 class Point(MongoTransformable):
     def __init__(self, x=0, y=0, z=0):
         self.x = x
@@ -81,6 +119,13 @@ class Pose(MongoTransformable):
         p.quaternion.z = pose.orientation.z
         p.quaternion.w = pose.orientation.w
         return p
+
+    @classmethod
+    def from_homog(cls, homo):
+        quat = mat_to_quat(homo)
+        pos = Point(homo[0, 3], homo[1, 3], homo[2, 3])
+        return cls(pos, quat)
+    
     
     def __str__(self):
         return "{0:d}".format(int(self.stamp*1000))

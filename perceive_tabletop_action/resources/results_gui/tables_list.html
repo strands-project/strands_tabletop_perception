@@ -1,0 +1,15 @@
+$def with (tables)
+
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="static/jquery.min.js"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="static/bootstrap.min.js"></script>
+    
+<h1>Table Observations</h1>
+
+<ul>
+$for table in tables:
+    <li><a href="view_table/$table">$table</a></li>
+</ul>    
+    
+    
