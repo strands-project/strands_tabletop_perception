@@ -94,6 +94,8 @@ class MessageStoreObject(mongo.MongoTransformable):
         print o_id
         return cls(database, collection, o_id, ros_msg._type)
     
+    def __str__(self):
+        return "MessageStoreObject(collection=%s, db=%s, obj_id=%s)" % (self.collection, self.database, self.obj_id)
 
 class Observation(mongo.MongoTransformable):
     def __init__(self):
