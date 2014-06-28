@@ -51,6 +51,7 @@ private:
   std::string camera_frame_;
   std::string base_frame_;
   float max_angle_plane_to_ground_;
+  float sensor_noise_max_;
   float table_range_min_, table_range_max_;
   int min_cluster_size_;
   int MAX_VERTICAL_PLANE_SIZE_;
@@ -102,7 +103,7 @@ private:
         pcl::OrganizedMultiPlaneSegmentation<PointT, pcl::Normal, pcl::Label> mps;
         mps.setMinInliers (num_plane_inliers);
         mps.setAngularThreshold (0.017453 * 10.f); // 2 degrees
-        mps.setDistanceThreshold (0.01); // 1cm
+        mps.setDistanceThreshold (sensor_noise_max_); // 1cm
         mps.setInputNormals (normal_cloud);
         mps.setInputCloud (xyz_points);
 
@@ -116,7 +117,7 @@ private:
         typename pcl::PlaneRefinementComparator<PointT, pcl::Normal, pcl::Label>::Ptr ref_comp (
                                                                                                 new pcl::PlaneRefinementComparator<PointT, pcl::Normal,
                                                                                                     pcl::Label> ());
-        ref_comp->setDistanceThreshold (0.01f, false);
+        ref_comp->setDistanceThreshold (sensor_noise_max_, false);
         ref_comp->setAngularThreshold (0.017453 * 2);
         mps.setRefinementComparator (ref_comp);
         mps.segmentAndRefine (regions, model_coefficients, inlier_indices, labels, label_indices, boundary_indices);
@@ -147,7 +148,7 @@ private:
 
             float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
 
-            if (std::abs (val) > 0.01)
+            if (std::abs (val) > sensor_noise_max_)
             {
               plane_points->points[j].x = std::numeric_limits<float>::quiet_NaN ();
               plane_points->points[j].y = std::numeric_limits<float>::quiet_NaN ();
@@ -224,7 +225,7 @@ private:
 
           float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
 
-          if (val >= 0.01f)
+          if (val >= sensor_noise_max_)
           {
             /*plane_points->points[j].x = std::numeric_limits<float>::quiet_NaN ();
              plane_points->points[j].y = std::numeric_limits<float>::quiet_NaN ();
@@ -267,7 +268,7 @@ private:
         pcl::apps::DominantPlaneSegmentation<PointT> dps;
         dps.setInputCloud (xyz_points);
         dps.setMaxZBounds (3.F);
-        dps.setObjectMinHeight (0.01);
+        dps.setObjectMinHeight (sensor_noise_max_);
         dps.setMinClusterSize (min_cluster_size_);
         dps.setWSize (9);
         dps.setDistanceBetweenClusters (0.03f);
@@ -476,7 +477,7 @@ private:
 
                 float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
 
-                if (val >= 0.01f)
+                if (val >= sensor_noise_max_)
                 {
                   labels->points[j].label = 1;
                   label_indices[0].indices.push_back (j);
@@ -587,7 +588,7 @@ private:
         pcl::apps::DominantPlaneSegmentation<PointT> dps;
         dps.setInputCloud (xyz_points);
         dps.setMaxZBounds (3.F);
-        dps.setObjectMinHeight (0.01);
+        dps.setObjectMinHeight (sensor_noise_max_);
         dps.setMinClusterSize (min_cluster_size_);
         dps.setWSize (9);
         dps.setDistanceBetweenClusters (0.03f);
@@ -646,6 +647,7 @@ public:
     table_range_min_ = 0.6f;
     table_range_max_ = 1.2f;
     min_cluster_size_ = 500;
+    sensor_noise_max_ = 0.01f;
     MAX_VERTICAL_PLANE_SIZE_ = 5000;
   }
 
@@ -660,6 +662,7 @@ public:
     n_->getParam ( "camera_frame", camera_frame_ );
     n_->getParam ( "base_frame", base_frame_ );
     n_->getParam ( "min_cluster_size", min_cluster_size_ );
+    n_->getParam ( "sensor_noise_max", sensor_noise_max_ );
     n_->getParam ( "max_vertical_plane_size", MAX_VERTICAL_PLANE_SIZE_ );
 
     segment_ = n_->advertiseService ("object_segmenter", &PCLSegmenterService::segment, this);

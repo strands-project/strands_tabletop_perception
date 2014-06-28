@@ -1,9 +1,9 @@
 
 <launch>
 
-	<arg name="models_dir" default="/home/hydro-default/data/Cat200_ModelDatabase__small" />
-	<arg name="training_dir" default="/home/hydro-default/data/Cat200_ModelDatabase__small_trained" />
-
+	<arg name="models_dir" default="~/data/Cat200_ModelDatabase__small" />
+	<arg name="training_dir" default="~/data/Cat200_ModelDatabase__small_trained" />
+	
 	<arg name="descriptor_name" default="esf" />
 	<arg name="nn" default="50" />
 	<arg name="chop_z" default="2.5" />
@@ -11,6 +11,7 @@
 	<arg name="camera_frame" default="/head_xtion_depth_optical_frame" /> 
 	<arg name="base_frame" default="/base_footprint" /> 
 	<arg name="min_cluster_size" default="100" /> 
+	<arg name="sensor_noise_max" default="0.01" />
 
 	<arg name="segmenation_models_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.model.txt" />
 	<arg name="segmentation_scaling_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.scalingparams.txt" />
@@ -30,6 +31,7 @@
 		<param name="model_filename" value="$(arg segmenation_models_filename)" type="string"/>
 		<param name="scaling_filename" value="$(arg segmentation_scaling_filename)" type="string"/>
 		<param name="chop_z" value="$(arg chop_z)" type="double"/>
+		<param name="sensor_noise_max" value="$(arg sensor_noise_max)" type="double"/>
 	</node> --> 
 
 	<!-- pcl segmentation Service -->

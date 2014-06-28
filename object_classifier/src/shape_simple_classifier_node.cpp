@@ -63,11 +63,14 @@ class ShapeClassifier
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr pClusteredPCl (new pcl::PointCloud<pcl::PointXYZRGB>());
         pcl::copyPointCloud(*frame_, *pClusteredPCl);
 
+        //clear all data from previous visualization steps and publish empty markers/point cloud
         for (size_t i=0; i < markerArray_.markers.size(); i++)
         {
             markerArray_.markers[i].action = visualization_msgs::Marker::DELETE;
         }
         vis_pub_.publish( markerArray_ );
+        sensor_msgs::PointCloud2 scenePc2;
+        vis_pc_pub_.publish(scenePc2);
         markerArray_.markers.clear();
 
         for(size_t i=0; i < req.clusters_indices.size(); i++)
@@ -237,7 +240,6 @@ class ShapeClassifier
 //          }
         }
 
-        sensor_msgs::PointCloud2 scenePc2;
         pcl::toROSMsg (*pClusteredPCl, scenePc2);
         vis_pc_pub_.publish(scenePc2);
         vis_pub_.publish( markerArray_ );
