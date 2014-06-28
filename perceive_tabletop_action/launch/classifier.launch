@@ -1,8 +1,8 @@
 
 <launch>
 
-	<arg name="models_dir" default="/home/strands/models/CatQSR_ObjSet1_ModelDatabase" />
-	<arg name="training_dir" default="/home/strands/models/CatQSR_ObjSet1_Trained" />
+	<arg name="models_dir" default="/home/hydro-default/data/Cat200_ModelDatabase__small" />
+	<arg name="training_dir" default="/home/hydro-default/data/Cat200_ModelDatabase__small_trained" />
 
 	<arg name="descriptor_name" default="esf" />
 	<arg name="nn" default="50" />
