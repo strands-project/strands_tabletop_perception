@@ -2,6 +2,7 @@ import rospy
 from sensor_msgs.msg import PointCloud2, PointField
 import sensor_msgs.point_cloud2 as pc2
 import math
+import json
 
 from state import World, Object
 
@@ -24,6 +25,8 @@ from robblog.msg import RobblogEntry
 import robblog.utils
 from robblog import utils as rb_utils
 import datetime
+
+import geometry
 
 def generate_report(t, parent_object=None):
     """
@@ -142,7 +145,7 @@ def get_table_observation_rgb(table_name, observation_timestamp):
         raise Exception("Table has no observations")
     closest =  min([(ob, math.fabs(ob.stamp - observation_timestamp)) for ob in table._observations],
                    key=lambda x: x[1])
-    rospy.loginfo("Clost observation of table '%s' to time %d was %d"%(table_name,
+    rospy.loginfo("Closest observation of table '%s' to time %d was %d"%(table_name,
                                                                         observation_timestamp,
                                                                         closest[1]))
     observation = closest[0]
@@ -270,11 +273,19 @@ def create_robblog(table_name,  timestamp):
         
         
 def calculate_qsrs(table_name, timestamp):
+    """
+    calculates qsrs, returns them but also triggers the qsr prolog stuff.
+    """
     try:
         import strands_qsr_learned_qualitators.qualitators as qualitators
         import strands_qsr_learned_qualitators.geometric_state as gs
     except:
         rospy.logerr("strands_qsr repo not on catkin workspace?")
+        return None
+    try:
+        import qsr_kb.srv
+    except:
+        rospy.logerr("qsr_kb package not available?")
         return None
     QUAL_FILE = "/home/chris/iros_tdrc.qsrs"
     qsrs = qualitators.Qualitators.load_from_disk(QUAL_FILE)
@@ -285,6 +296,7 @@ def calculate_qsrs(table_name, timestamp):
     print objs
     geo =  gs.GeometricState("scene")
     rels = []
+    pretty_rels = []
     for o in objs:
         geo.add_object(o.name, o.identification.class_type[0],
                        o.position, o.quaternion,
@@ -304,24 +316,33 @@ def calculate_qsrs(table_name, timestamp):
     
     for ob1 in geo._objects.keys():
         # Get camera position in ob1 frame
-        cam_pos = [geo._objects[ob1].position.x - viewpoint.position.x,
-                   geo._objects[ob1].position.y - viewpoint.position.y,
-                   geo._objects[ob1].position.z - viewpoint.position.z]
-        #None
+        #cam_pos = [geo._objects[ob1].position.x - viewpoint.position.x,
+                   #geo._objects[ob1].position.y - viewpoint.position.y,
+                   #geo._objects[ob1].position.z - viewpoint.position.z]
+        cam_pos = [viewpoint.position.x,
+                   viewpoint.position.y,
+                   viewpoint.position.z]
+        ##None
         for ob2 in geo._objects.keys():
             if ob1 == ob2:
                 continue
             print ob1, " - ", ob2
-            delta = [geo._objects[ob2].position.x - geo._objects[ob1].position.x,
-                     geo._objects[ob2].position.y - geo._objects[ob1].position.y,
-                     geo._objects[ob2].position.z - geo._objects[ob1].position.z
-                     ]
+            delta = [[[geo._objects[ob1].position.x, geo._objects[ob1].position.y, geo._objects[ob1].position.z], ["quaternion?"]],
+                     [[geo._objects[ob2].position.x, geo._objects[ob2].position.y, geo._objects[ob2].position.z], ["quaternion?"]],
+                     ["UNUSED ELEMENT !"]] #geo._objects[ob2].position.x - geo._objects[ob1].position.x,
+                     #geo._objects[ob2].position.y - geo._objects[ob1].position.y,
+                     #geo._objects[ob2].position.z - geo._objects[ob1].position.z
+                     #]
             s1 = geo._objects[ob1].bbox.get_size()
             s2 = geo._objects[ob2].bbox.get_size()
             for q in qsrs._qualitators:
                 if q.dimensions == 2:
+                    print q.name, "? vp=", cam_pos, "; o1=", delta[0][0], "; o2=", delta[1][0]
                     if q(delta+list(s1)+list(s2), cam_pos):
-                        rels.append([q.name, ob1, ob2])
+                        rels.append([str(q.name), str(ob1), str(ob2)])
+                        pretty_rels.append([str(q.name),
+                                            str(geo._objects[ob1].obj_type)+"["+str(ob1)+"]",
+                                            str(geo._objects[ob2].obj_type)+"["+str(ob2)+"]"])
         #for q in qual._qualitators:
             #if q.dimensions == 1:
                 #s1 = geo._objects[ob1].bbox.get_size()
@@ -336,6 +357,17 @@ def calculate_qsrs(table_name, timestamp):
 
     loc = table_name
 
+    cls =  []
+    pose = []
+    w = World()
+    table = w.get_object(table_name)
+    for o in objs:
+        oo = geometry.Pose.from_homog(np.dot(table.pose.as_homog_matrix(), o.pose.as_homog_matrix()))
+        cls.append([str(o.name), str(o.identification.class_type[0]),str(o.identification.class_type[1]) ])
+        pose.append([str(o.name), [[oo.position.x, oo.position.y, oo.position.z],
+                              [oo.quaternion.x, oo.quaternion.y, oo.quaternion.z, oo.quaternion.w]]])
+
+    cls =  [['BU', cls]]
     #cls = [['BU', [['keyboard', 'Keyboard', 0.8], ['keyboard', 'Monitor', 0.2], 
                                     #['cup', 'Cup', 0.4], ['cup', 'Mouse', 0.5], ['cup', 'Keyboard', 0.1], 
                                     #['monitor', 'Keyboard', 0.1], ['monitor', 'Monitor', 0.9], 
@@ -351,9 +383,27 @@ def calculate_qsrs(table_name, timestamp):
              #['mouse', [[0.5,-0.5,0.0],[1,0,0,0]]],
              #['keyboard', [[0.0,0.0,0.0],[1,0,0,0]]] ]
 
-    #query = create_event(rels, loc, cls, pose)
-    print "Returning!" * 10
-    return rels
+    def make_query(query):
+        try:
+            rospy.wait_for_service('qsrvis', 10)
+        except:
+            rospy.logerr("Can't get qsr kb services.")
+            return rels
+        try:
+            swipl = rospy.ServiceProxy('qsrvis', qsr_kb.srv.PrologQuery)
+            resp = swipl(query)
+            return json.loads(resp.solution)
+        except rospy.ServiceException, e:
+            print "Service call failed: %s"%e
+    
+    def create_event(relations, location, classifications, pose):
+        return "create_event(EVT," + str(relations) + "," + str(location) + "," + str(classifications) + "," + str(pose) + "), new_vis." 
+
+
+    query = create_event(rels, loc, cls, pose)
+    make_query(query)
+    
+    return pretty_rels
 
 class PointCloudVisualiser(object):
     def __init__(self, topic="pointcloud_visualise"):
