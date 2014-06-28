@@ -1,0 +1,32 @@
+$def with (table_name, observations)
+
+
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="../static/jquery.min.js"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="../static/bootstrap.min.js"></script>
+
+<h1>Table $table_name</h1>
+
+<h3>Observations</h3>
+
+<div class="panel-group" id="accordion">
+$for n,session in enumerate(observations):
+  <div class="panel panel-default">
+    <div class="panel-heading">
+      <h4 class="panel-title">
+        <a data-toggle="collapse" data-parent="#accordion" 
+          href="#collapse$n">
+          Observation at $session[0][1] 
+        </a>
+      </h4>
+    </div>
+    <div id="collapse$n" class="panel-collapse collapse">
+      <ul>
+        $for obs, observation in enumerate(session):
+            <li>${chr(65+obs)} - <a href="../observation/$table_name/${obs}/${len(session)}/$observation[1]/${'%f'%observation[0]}">$observation[1]</a></li>
+    </ul>
+    </div>
+  </div>
+  
+</div>
