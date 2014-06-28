@@ -30,10 +30,10 @@ class ViewPlanning(smach.State):
 
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted', 'action_completed'],
-                             input_keys=['table_area'],
-                             output_keys=['pose_output','view_list', 'action_completed', 'current_view', 'num_of_views'])
+                             input_keys=['table_area', 'table'],
+                             output_keys=['pose_output', 'table', 'view_list', 'action_completed', 'current_view', 'num_of_views'])
 
-
+        
 
         rospy.wait_for_service('nav_goals')
         try:
@@ -83,6 +83,8 @@ class ViewPlanning(smach.State):
 
             coverage_total = float(rospy.get_param('coverage_total', '0.8'))
             coverage_avg = float(rospy.get_param('coverage_avg', '2.0'))
+
+            max_viewpoints = int(rospy.get_param('max_viewpoints', '10'))
             
             # TODO: compute area in proximity to table given table_pose and table_area
             polygon    = userdata.table_area
@@ -115,11 +117,14 @@ class ViewPlanning(smach.State):
                 points.append(Point32(float(point[0]),float(point[1]),0))
 
             poly = Polygon(points)
-            
 
             # TODO: sample once, order views, use views on agenda (only re-sample if necessary)
             nav_goals_resp = self.nav_goals(self.num_of_nav_goals, min_radius, poly)
 
+            if len(nav_goals_resp.goals.poses) < 1:
+                rospy.logwarn("View planning could not sample enough views for table. Aborted.")
+                return 'aborted'
+                
             nav_goals_eval_resp = self.nav_goals_eval(nav_goals_resp.goals, polygon, coverage_total, coverage_avg)
 
             viewpoints = create_viewpoints(nav_goals_eval_resp.sorted_goals.poses,
@@ -127,7 +132,7 @@ class ViewPlanning(smach.State):
                                            nav_goals_eval_resp.coverage_idx)
             
             while not self.got_current_pose:
-                rospy.info("Waiting for current pose from amcl")
+                rospy.loginfo("Waiting for current pose from amcl")
             
             vp_trajectory = plan_views(self.current_pose, viewpoints, self.num_of_trajectories, len(viewpoints))
             
@@ -137,8 +142,16 @@ class ViewPlanning(smach.State):
             self.delete_markers()            
             markerArray = MarkerArray()
 
+            
+            num_of_viewpoints = min(len(vp_trajectory),max_viewpoints)
 
-            for i in range(0,len(vp_trajectory)):
+            if num_of_viewpoints < 1:
+                rospy.logwarn("View planning didn't find not enough views for table. Aborted.")
+                return 'aborted'
+
+            rospy.loginfo('Planned viewpoints: %i', num_of_viewpoints);
+
+            for i in range(0, num_of_viewpoints):
                 
                 self.agenda.append(vp_trajectory[i].get_pose())
                 self.create_marker(markerArray,
@@ -150,7 +163,7 @@ class ViewPlanning(smach.State):
             rospy.loginfo("Coverage - index: %i, total: %f, avg: %f",nav_goals_eval_resp.coverage_idx,
                      nav_goals_eval_resp.coverage_total, nav_goals_eval_resp.coverage_avg)
             
-            rospy.loginfo("len(traj): %i, len(agenda): %i ", len(vp_trajectory), len(self.agenda))
+            rospy.loginfo("len(traj): %i, num_of_viewpoints: %i, len(agenda): %i ", len(vp_trajectory), num_of_viewpoints, len(self.agenda))
 
             self.marker_len =  len(markerArray.markers)
             self.pubmarker.publish(markerArray)
@@ -174,7 +187,7 @@ class ViewPlanning(smach.State):
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
-
+       
         userdata.current_view = self.current_pose_idx
         userdata.num_of_views = len(self.agenda)
         

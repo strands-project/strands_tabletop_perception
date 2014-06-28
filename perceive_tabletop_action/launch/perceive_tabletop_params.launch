@@ -1,13 +1,22 @@
 <launch>
-
   <arg name="robot" default='real'/> 
   <param name="robot" type="string" value="$(arg robot)" />    
 
+  <!--- sampling viewcones --> 
+  <param name="num_of_nav_goals" type="int" value="200" />  
 
-  <param name="num_of_nav_goals" type="int" value="100" />  
-  <param name="num_of_trajectories" type="int" value="100" />  
+  <!-- min_radius is only used if not sampled from a costmap -->
+  <param name="min_radius" type="double" value="0.0" />  
+  <param name="max_radius" type="double" value="1.8" />  
 
-  <param name="min_radius" type="double" value="0.40" />  
-  <param name="max_radius" type="double" value="2.0" />  
-  
+  <!--- evaluating viewcones --> 
+  <param name="viewcone_length" type="double" value="3" />  
+  <param name="viewcone_width" type="double" value="2.0" />  
+
+  <param name="coverage_total" type="double" value="0.8" />  
+  <param name="coverage_avg" type="double" value="3.0" />  
+
+  <!-- sampling trajectory  -->  
+  <param name="num_of_trajectories" type="int" value="50" />  
+
 </launch>

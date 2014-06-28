@@ -7,11 +7,12 @@
 #include "strands_perception_msgs/Table.h"
 #include "table_tracking.h"
 #include "primitives_to_tables/PrimitivesToTables.h"
-
+#include "std_msgs/String.h"
 #include <Eigen/Dense>
 
 ros::Publisher pub;
 boost::shared_ptr<table_tracking> t; // keeps track of all tables
+std::string closest_node;
 //std::auto_ptr??
 
 void create_tables(std::vector<strands_perception_msgs::Table>& tables,
@@ -30,6 +31,7 @@ void create_tables(std::vector<strands_perception_msgs::Table>& tables,
             table.tabletop.points[j].y = primitive.points[j].y;
             table.tabletop.points[j].z = primitive.points[j].z;
         }
+		table.topological_node = closest_node;
         // check overlap, possibly merging with previous tables
         //t->add_detected_table(table);
         // if merged, that will be the table published
@@ -58,6 +60,10 @@ bool service_callback(primitives_to_tables::PrimitivesToTables::Request& req,
     return true;
 }
 
+void topological_node_cb(const std_msgs::String::ConstPtr& msg) {
+    closest_node=std::string(msg->data);
+}
+
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "primitives_to_tables");
@@ -71,7 +77,8 @@ int main(int argc, char** argv)
 	std::string output;
 	pn.param<std::string>("output", output, std::string("/table_detection/tables"));
 	pub = n.advertise<strands_perception_msgs::Table>(output, 1);
-	
+	ros::Subscriber topo_sub;
+	topo_sub = n.subscribe("/closest_node", 1000, topological_node_cb);
 	ros::ServiceServer service = n.advertiseService("primitives_to_tables", &service_callback);
     
     ros::spin();

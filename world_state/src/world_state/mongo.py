@@ -1,5 +1,6 @@
 import json
 import pymongo
+import pymongo.son_manipulator
 import numpy as np
 import importlib
 import rospy
@@ -27,6 +28,7 @@ class MongoConnection(object):
         if port is None:
             port = rospy.get_param("datacentre_port")
             
+        rospy.loginfo("Connecting to mongo: %s,%s"%(server, port))
         self.client = pymongo.MongoClient(server, port)
         self.database = self.client[database_name]
         

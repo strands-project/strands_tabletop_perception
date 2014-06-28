@@ -11,7 +11,6 @@
 #include "sensor_msgs/PointCloud2.h"
 #include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/console/parse.h>
 #include <pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
 #include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
@@ -37,8 +36,10 @@
 #include <boost/lexical_cast.hpp>
 #include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
 
-#define USE_SIFT_GPU 
+#define USE_SIFT_GPU
 //#define SOC_VISUALIZE
+
+bool USE_SEGMENTATION_ = false;
 
 struct camPosConstraints
 {
@@ -63,13 +64,16 @@ private:
   std::string training_dir_ourcvfh_;
   bool do_sift_;
   bool do_ourcvfh_;
-  float chop_at_z_;
+  double chop_at_z_;
   int icp_iterations_;
   std::vector<std::string> text_3d_;
   boost::shared_ptr<faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT> > multi_recog_;
   int v1_,v2_, v3_;
   ros::ServiceServer recognize_;
-  ros::NodeHandle n_;
+  boost::shared_ptr<ros::NodeHandle> n_;
+  int cg_size_;
+  bool ignore_color_;
+
 #ifdef SOC_VISUALIZE
   boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
 #endif
@@ -86,8 +90,6 @@ private:
 
     float go_resolution_ = 0.005f;
     bool add_planes = true;
-    float assembled_resolution = 0.003f;
-    float color_sigma = 0.5f;
 
     //initialize go
     boost::shared_ptr<faat_pcl::GlobalHypothesesVerification_1<PointT, PointT> > go (
@@ -97,9 +99,9 @@ private:
     go->setSmoothSegParameters(0.1, 0.035, 0.005);
     //go->setRadiusNormals(0.03f);
     go->setResolution (go_resolution_);
-    go->setInlierThreshold (0.01);
+    go->setInlierThreshold (0.015);
     go->setRadiusClutter (0.03f);
-    go->setRegularizer (2);
+    go->setRegularizer (3);
     go->setClutterRegularizer (5);
     go->setDetectClutter (true);
     go->setOcclusionThreshold (0.01f);
@@ -108,15 +110,17 @@ private:
     go->setRadiusNormals(0.02);
     go->setRequiresNormals(false);
     go->setInitialStatus(false);
-    go->setIgnoreColor(false);
-    go->setColorSigma(color_sigma);
+    go->setIgnoreColor(true);
+    go->setColorSigma(0.5f, 0.5f);
+    go->setHistogramSpecification(true);
+    go->setVisualizeGoCues(0);
     go->setUseSuperVoxels(false);
 
     typename pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT>(*scene));
     if(chop_at_z_ > 0)
     {
         pcl::PassThrough<PointT> pass_;
-        pass_.setFilterLimits (0.f, chop_at_z_);
+        pass_.setFilterLimits (0.f, static_cast<float>(chop_at_z_));
         pass_.setFilterFieldName ("z");
         pass_.setInputCloud (scene);
         pass_.setKeepOrganized (true);
@@ -140,32 +144,30 @@ private:
     mps.segment();
     planes_found = mps.getModels();
 
-    if(planes_found.size() == 0 && scene->isOrganized())
+    if(USE_SEGMENTATION_)
     {
-        PCL_WARN("No planes found, doing segmentation with standard method\n");
-        mps.segment(true);
-        planes_found = mps.getModels();
-    }
+        std::vector<pcl::PointIndices> indices;
+        Eigen::Vector4f table_plane;
+        doSegmentation<PointT>(scene, normal_cloud, indices, table_plane);
 
-    std::vector<pcl::PointIndices> indices;
-    Eigen::Vector4f table_plane;
-    doSegmentation<PointT>(scene, normal_cloud, indices, table_plane);
+        std::vector<int> indices_above_plane;
+        for (int k = 0; k < scene->points.size (); k++)
+        {
+            Eigen::Vector3f xyz_p = scene->points[k].getVector3fMap ();
+            if (!pcl_isfinite (xyz_p[0]) || !pcl_isfinite (xyz_p[1]) || !pcl_isfinite (xyz_p[2]))
+                continue;
 
-    std::vector<int> indices_above_plane;
-    for (int k = 0; k < scene->points.size (); k++)
-    {
-        Eigen::Vector3f xyz_p = scene->points[k].getVector3fMap ();
-        if (!pcl_isfinite (xyz_p[0]) || !pcl_isfinite (xyz_p[1]) || !pcl_isfinite (xyz_p[2]))
-            continue;
+            float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
+            if (val >= 0.01)
+                indices_above_plane.push_back (static_cast<int> (k));
+        }
 
-        float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
-        if (val >= 0.01)
-            indices_above_plane.push_back (static_cast<int> (k));
+        multi_recog_->setSegmentation(indices);
+        multi_recog_->setIndices(indices_above_plane);
+
     }
 
     multi_recog_->setSceneNormals(normal_cloud);
-    multi_recog_->setSegmentation(indices);
-    multi_recog_->setIndices(indices_above_plane);
     multi_recog_->setInputCloud (scene);
     {
         pcl::ScopeTime ttt ("Recognition");
@@ -176,6 +178,8 @@ private:
     //transforms models
     boost::shared_ptr < std::vector<ModelTPtr> > models = multi_recog_->getModels ();
     boost::shared_ptr < std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > > transforms = multi_recog_->getTransforms ();
+
+    ROS_DEBUG("Number of recognition hypotheses %d\n", static_cast<int>(models->size()));
 
     std::vector<typename pcl::PointCloud<PointT>::ConstPtr> aligned_models;
     aligned_models.resize (models->size ());
@@ -204,6 +208,12 @@ private:
             plane_id << "plane_" << kk;
             model_ids.push_back(plane_id.str());
         }
+    }
+
+    if(model_ids.size() == 0)
+    {
+        ROS_DEBUG("No models to verify, returning.\n");
+        return false;
     }
 
     go->setObjectIds(model_ids);
@@ -349,10 +359,11 @@ public:
   Recognizer ()
   {
     //default values
-    chop_at_z_ = 1.f;
+    chop_at_z_ = 1.5;
     do_sift_ = true;
     do_ourcvfh_ = false;
     icp_iterations_ = 0;
+    cg_size_ = 5;
 
 #ifdef SOC_VISUALIZE
     vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
@@ -366,14 +377,16 @@ public:
   initialize (int argc, char ** argv)
   {
 
-    pcl::console::parse_argument (argc, argv, "-models_dir", models_dir_);
-    pcl::console::parse_argument (argc, argv, "-training_dir_sift", training_dir_sift_);
-    pcl::console::parse_argument (argc, argv, "-recognizer_structure_sift", sift_structure_);
-    pcl::console::parse_argument (argc, argv, "-training_dir_ourcvfh", training_dir_ourcvfh_);
-    pcl::console::parse_argument (argc, argv, "-chop_z", chop_at_z_);
-    pcl::console::parse_argument (argc, argv, "-icp_iterations", icp_iterations_);
-    pcl::console::parse_argument (argc, argv, "-do_sift", do_sift_);
-    pcl::console::parse_argument (argc, argv, "-do_ourcvfh", do_ourcvfh_);
+      n_.reset( new ros::NodeHandle ( "~" ) );
+      n_->getParam ( "models_dir", models_dir_);
+      n_->getParam ( "training_dir_sift", training_dir_sift_);
+      n_->getParam ( "recognizer_structure_sift", sift_structure_);
+      n_->getParam ( "training_dir_ourcvfh", training_dir_ourcvfh_);
+      n_->getParam ( "chop_z", chop_at_z_ );
+      n_->getParam ( "icp_iterations", icp_iterations_);
+      n_->getParam ( "do_sift", do_sift_);
+      n_->getParam ( "do_ourcvfh", do_ourcvfh_);
+      n_->getParam ( "ignore_color", ignore_color_);
 
     if (models_dir_.compare ("") == 0)
     {
@@ -402,7 +415,7 @@ public:
                                                                                                new faat_pcl::GraphGeometricConsistencyGrouping<
                                                                                                    PointT, PointT>);
 
-    gcg_alg->setGCThreshold (5);
+    gcg_alg->setGCThreshold (cg_size_);
     gcg_alg->setGCSize (0.015);
     gcg_alg->setRansacThreshold (0.015);
     gcg_alg->setUseGraph (true);
@@ -461,7 +474,7 @@ public:
       multi_recog_->addRecognizer (cast_recog);
     }
 
-    if(do_ourcvfh_)
+    if(do_ourcvfh_ && USE_SEGMENTATION_)
     {
       boost::shared_ptr<faat_pcl::rec_3d_framework::PartialPCDSource<pcl::PointXYZRGBNormal, pcl::PointXYZRGB> >
                           source (
@@ -570,7 +583,7 @@ public:
     multi_recog_->setICPIterations(icp_iterations_);
     multi_recog_->initialize();
 
-    recognize_ = n_.advertiseService ("mp_recognition", &Recognizer::recognize, this);
+    recognize_ = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
     std::cout << "Ready to get service calls..." << std::endl;
     ros::spin ();
   }

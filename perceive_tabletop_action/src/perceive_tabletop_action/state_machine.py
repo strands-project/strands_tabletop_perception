@@ -14,9 +14,10 @@ from geometry_msgs.msg import Polygon
 from geometry_msgs.msg import Point32
 from geometry_msgs.msg import Pose
 
-from perceive_tabletop.action_monitor import ActionMonitor
-from perceive_tabletop.view_planning  import ViewPlanning
-from perceive_tabletop.perception     import *
+from perceive_tabletop_action.action_monitor import ActionMonitor
+from perceive_tabletop_action.view_planning  import ViewPlanning
+#from perceive_tabletop.perception     import *
+import perceive_tabletop_action.perception as percept
 
 import numpy
 import tf
@@ -50,7 +51,8 @@ class PerceiveTabletopSM(smach.StateMachine):
         robot = rospy.get_param('robot', 'real')
 
         if robot == 'real':
-            self._perception = PerceptionReal()
+            reload (percept)
+            self._perception = percept.PerceptionReal()
         elif robot == 'nill':
             self._perception = PerceptionNill()
         else: # 'sim'
@@ -62,7 +64,8 @@ class PerceiveTabletopSM(smach.StateMachine):
                                    transitions={'succeeded': 'succeeded',
                                                 'action_in_progress':'ViewPlanning',
                                                 'aborted':'aborted',
-                                                'preempted':'preempted'},
+                                                'preempted':'preempted',
+                                                'error': 'aborted',},
                                    remapping={'obj_list':'sm_obj_list' #  ,
                                               }) #'action_completed':'sm_action_completed'
 
@@ -86,10 +89,13 @@ class PerceiveTabletopSM(smach.StateMachine):
                                                                #result_cb = move_base_result_cb,
                                                                input_keys = ['pose_input'],
                                                                exec_timeout = MOVE_BASE_EXEC_TIMEOUT,
-                                                               preempt_timeout = MOVE_BASE_PREEMPT_TIMEOUT
+                                                               preempt_timeout = MOVE_BASE_PREEMPT_TIMEOUT,
+                                                               result_cb=navigation_result_cb,
+                                                               outcomes = ['succeeded','aborted','viewpoint_failed','preempted']
                                                                ),
                                    transitions={'succeeded':'Perception',
                                                 'aborted':'aborted',
+                                                'viewpoint_failed':'ViewPlanning',
                                                 'preempted':'preempted'},
                                    remapping={'pose_input':'sm_pose_data'},
                                    )
@@ -100,4 +106,12 @@ class PerceiveTabletopSM(smach.StateMachine):
                                    remapping={'view_list':'sm_view_list',
                                               'obj_list':'sm_obj_list'}
                                    )
+def navigation_result_cb(userdata, status, result):
+    rospy.loginfo("Monitored navigation result: %i (SUCCEEDED=0, BUMPER_FAILURE=1, LOCAL_PLANNER_FAILURE=2, GLOBAL_PLANNER_FAILURE=3, PREEMPTED=4)", result.sm_outcome)
+    if result.sm_outcome == MonitoredNavigationResult.GLOBAL_PLANNER_FAILURE:
+        rospy.loginfo("Skipping current viewpoint...")
+        return 'viewpoint_failed' 
+    
+    
 
+    

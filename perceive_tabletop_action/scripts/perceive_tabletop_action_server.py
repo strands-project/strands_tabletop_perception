@@ -9,7 +9,7 @@ import actionlib
 #from smach_ros import ActionServerWrapper
 
 from  perceive_tabletop_action.msg import *
-from  perceive_tabletop.state_machine import PerceiveTabletopSM
+from  perceive_tabletop_action.state_machine import PerceiveTabletopSM
 
 _EPSILON = 0.0001
 
@@ -67,7 +67,11 @@ class PerceiveTabletopActionServer:
                 
             # get current pose form state machine
             self._feedback = perceive_tabletop_action.msg.PerceiveTabletopFeedback()
-            self._feedback.percent_complete = (userdata.current_view / (userdata.num_of_views + _EPSILON)) * 100 
+
+            if userdata.num_of_views == 0:
+                self._feedback.percent_complete = 0
+            else:
+                self._feedback.percent_complete = (float(userdata.current_view) / float(userdata.num_of_views)) * 100 
 
             self._as.publish_feedback(self._feedback)
 

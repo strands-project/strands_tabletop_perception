@@ -31,7 +31,11 @@
 #include <pcl/features/normal_3d_omp.h>
 #include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
 
-//#include<pcl/visualization/pcl_visualizer.h>
+//#define DEBUG_WITH_VIS 1
+#ifdef DEBUG_WITH_VIS
+    #include<pcl/visualization/pcl_visualizer.h>
+#endif
+
 #include<pcl/common/transforms.h>
 
 
@@ -47,11 +51,13 @@ private:
   std::string camera_frame_;
   std::string base_frame_;
   float max_angle_plane_to_ground_;
-  float table_range_min_, table_range_max_;
+  double sensor_noise_max_;
+  double table_range_min_, table_range_max_;
   int min_cluster_size_;
+  int MAX_VERTICAL_PLANE_SIZE_;
 
   void
-  getBaseCameraTransform (Eigen::Matrix4f & trans)
+  getBaseCameraTransform (Eigen::Matrix<float, 4, 4, Eigen::RowMajor> & trans)
   {
     tf::StampedTransform tf_transform;
     tf::TransformListener tf_listener;
@@ -86,19 +92,9 @@ private:
   template<typename PointT>
     void
     doSegmentation (typename pcl::PointCloud<PointT>::Ptr & xyz_points, pcl::PointCloud<pcl::Normal>::Ptr & normal_cloud,
-                    std::vector<pcl::PointIndices> & indices, Eigen::Vector4f & table_plane, int seg = 0)
+                    std::vector<pcl::PointIndices> & indices, Eigen::Vector4f & table_plane, int seg, std::vector<float> &supplied_transform)
     {
 
-
-      /*std::cout << xyz_points->points.size() << std::endl;
-      pcl::visualization::PCLVisualizer vis("cloud for segmentation");
-      int v1,v2;
-      vis.createViewPort(0,0,0.5,1,v1);
-      vis.createViewPort(0.5,0,1,1,v2);
-      vis.addPointCloud<PointT>(xyz_points, "cloud", v1);
-      vis.addCoordinateSystem(0.3, v1);
-      vis.addCoordinateSystem(0.3, v2);
-      vis.spin();*/
 
       if (seg == 0)
       {
@@ -107,7 +103,7 @@ private:
         pcl::OrganizedMultiPlaneSegmentation<PointT, pcl::Normal, pcl::Label> mps;
         mps.setMinInliers (num_plane_inliers);
         mps.setAngularThreshold (0.017453 * 10.f); // 2 degrees
-        mps.setDistanceThreshold (0.01); // 1cm
+        mps.setDistanceThreshold (sensor_noise_max_); // 1cm
         mps.setInputNormals (normal_cloud);
         mps.setInputCloud (xyz_points);
 
@@ -121,7 +117,7 @@ private:
         typename pcl::PlaneRefinementComparator<PointT, pcl::Normal, pcl::Label>::Ptr ref_comp (
                                                                                                 new pcl::PlaneRefinementComparator<PointT, pcl::Normal,
                                                                                                     pcl::Label> ());
-        ref_comp->setDistanceThreshold (0.01f, false);
+        ref_comp->setDistanceThreshold (sensor_noise_max_, false);
         ref_comp->setAngularThreshold (0.017453 * 2);
         mps.setRefinementComparator (ref_comp);
         mps.segmentAndRefine (regions, model_coefficients, inlier_indices, labels, label_indices, boundary_indices);
@@ -152,7 +148,7 @@ private:
 
             float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
 
-            if (std::abs (val) > 0.01)
+            if (std::abs (val) > sensor_noise_max_)
             {
               plane_points->points[j].x = std::numeric_limits<float>::quiet_NaN ();
               plane_points->points[j].y = std::numeric_limits<float>::quiet_NaN ();
@@ -229,7 +225,7 @@ private:
 
           float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
 
-          if (val >= 0.01f)
+          if (val >= sensor_noise_max_)
           {
             /*plane_points->points[j].x = std::numeric_limits<float>::quiet_NaN ();
              plane_points->points[j].y = std::numeric_limits<float>::quiet_NaN ();
@@ -272,7 +268,7 @@ private:
         pcl::apps::DominantPlaneSegmentation<PointT> dps;
         dps.setInputCloud (xyz_points);
         dps.setMaxZBounds (3.F);
-        dps.setObjectMinHeight (0.01);
+        dps.setObjectMinHeight (sensor_noise_max_);
         dps.setMinClusterSize (min_cluster_size_);
         dps.setWSize (9);
         dps.setDistanceBetweenClusters (0.03f);
@@ -284,7 +280,22 @@ private:
       }
       else if(seg == 4)
       {
+
           //use the robot pose to find horizontal planes
+
+		  Eigen::Matrix<float, 4, 4, Eigen::RowMajor> transform;
+		  if (supplied_transform.size() == 16) { // we got a transform supplied already
+			std::cout << "A transform was supplied, not using ROS TF" << std::endl;
+			for (unsigned int i=0;i<16;i++) {
+			  *(transform.data()+i) = supplied_transform[i];
+			}
+			  
+		  } else {
+			getBaseCameraTransform(transform);
+		  }
+
+          std::cout << "Got camera transform" << std::endl;
+
           std::cout << "is organized:" << xyz_points->isOrganized() << std::endl;
 
           pcl::PointCloud<pcl::Normal>::Ptr normal_cloud (new pcl::PointCloud<pcl::Normal>);
@@ -299,33 +310,44 @@ private:
           mps.setMinPlaneInliers(1000);
           mps.setResolution(0.003f);
           mps.setNormals(normal_cloud);
-          mps.setMergePlanes(false);
+          mps.setMergePlanes(true);
           std::vector<faat_pcl::PlaneModel<PointT> > planes_found;
           mps.segment();
           planes_found = mps.getModels();
 
-          if(planes_found.size() == 0 && xyz_points->isOrganized())
+          std::cout << "Number of planes:" << planes_found.size() << std::endl;
+
+          /*if(planes_found.size() == 0 && xyz_points->isOrganized())
+          //if(true || planes_found.size() == 0 && xyz_points->isOrganized())
           {
               PCL_WARN("No planes found, doing segmentation with standard method\n");
               mps.segment(true);
               planes_found = mps.getModels();
           }
 
-          std::cout << "Number of planes:" << planes_found.size() << std::endl;
-
-          Eigen::Matrix4f transform;
-          getBaseCameraTransform(transform);
-
-          /*typename pcl::PointCloud<PointT>::Ptr cloud_trans(new pcl::PointCloud<PointT>);
-          pcl::transformPointCloud(*xyz_points, *cloud_trans, transform);
-
-          pcl::visualization::PointCloudColorHandlerCustom<PointT> handler(cloud_trans, 255, 0, 0);
-          vis.addPointCloud(cloud_trans, handler, "cloud_transformed", v2);
-          vis.spin();*/
+          std::cout << "Number of planes:" << planes_found.size() << std::endl;*/
 
           //select table plane based on the angle to the ground and the height
           faat_pcl::PlaneModel<PointT> selected_plane;
           float max_height = 0.f;
+          size_t max_inliers = 0;
+          bool good_plane_found = false;
+
+#ifdef DEBUG_WITH_VIS
+              std::cout << xyz_points->points.size() << std::endl;
+              pcl::visualization::PCLVisualizer vis("cloud for segmentation");
+              int v1,v2;
+              vis.createViewPort(0,0,0.5,1,v1);
+              vis.createViewPort(0.5,0,1,1,v2);
+              vis.addCoordinateSystem(0.3, v1);
+              vis.addCoordinateSystem(0.3, v2);
+              vis.spinOnce();
+              typename pcl::PointCloud<PointT>::Ptr cloud_trans(new pcl::PointCloud<PointT>);
+              pcl::transformPointCloud(*xyz_points, *cloud_trans, transform);
+
+              pcl::visualization::PointCloudColorHandlerCustom<PointT> handler(cloud_trans, 255, 0, 0);
+              vis.addPointCloud(cloud_trans, handler, "cloud_transformed", v2);
+#endif //DEBUG_WITH_VIS
 
           for(size_t i=0; i < planes_found.size(); i++)
           {
@@ -337,7 +359,7 @@ private:
               plane_normal.normalize();
 
               float angle = pcl::rad2deg(acos(plane_normal.dot(Eigen::Vector3f::UnitZ())));
-
+              std::cout << "Plane " << i << " has an angle:" << angle << std::endl;
               if(angle < max_angle_plane_to_ground_)
               {
                   //select a point on the plane and transform it to check the height relative to the ground
@@ -351,21 +373,99 @@ private:
                   {
                       std::cout << "Horizontal plane with appropiate table height " << h << std::endl;
 
-                      if(h > max_height)
+                      //if(h > max_height)
+                      if(plane.inliers_.indices.size() > max_inliers)
                       {
                           //select this plane as table
-                          max_height = h;
+                          //max_height = h;
+                          max_inliers = plane.inliers_.indices.size();
                           selected_plane = plane;
+                          good_plane_found = true;
                       }
-
-                      /*std::stringstream p_name;
-                      p_name << "plane" << i;
-                      pcl::visualization::PointCloudColorHandlerRandom<PointT> handler(plane.plane_cloud_);
-                      vis.addPointCloud<PointT>(plane.plane_cloud_, handler, p_name.str(), v1);
-                      vis.spin();*/
                   }
               }
+              else if(angle > 85 && angle < 95)
+              {
+                  //std::cout << "vertical plane, check if its big enough" << std::endl;
+                  //std::cout << plane.plane_cloud_->points.size() << std::endl;
+
+                  int size_plane = static_cast<int>(plane.plane_cloud_->points.size());
+                  if(size_plane > MAX_VERTICAL_PLANE_SIZE_)
+                  {
+                      for(size_t k=0; k < plane.inliers_.indices.size(); k++)
+                      {
+                          xyz_points->points[plane.inliers_.indices[k]].x =
+                          xyz_points->points[plane.inliers_.indices[k]].y =
+                          xyz_points->points[plane.inliers_.indices[k]].z = std::numeric_limits<float>::quiet_NaN();
+                      }
+
+#ifdef DEBUG_WITH_VIS_OLD
+                      std::stringstream p_name;
+                      p_name << "plane" << i;
+                      pcl::visualization::PointCloudColorHandlerCustom<PointT> handler(plane.plane_cloud_, 0, 255, 0);
+                      //pcl::visualization::PointCloudColorHandlerRandom<PointT> handler(plane.plane_cloud_);
+                      vis.addPointCloud<PointT>(plane.plane_cloud_, handler, p_name.str(), v1);
+                      vis.spin();
+#endif
+                  }
+              }
+
+              //std::cout << "Plane " << i << " has an angle: " << angle << "; height: " << h << std::endl;
+
+#ifdef DEBUG_WITH_VIS
+              vis.removeAllPointClouds(v1);
+              vis.addPointCloud<PointT>(xyz_points, "cloud", v1);
+              vis.spinOnce();
+
+              if(xyz_points->isOrganized())
+              {
+                    std::stringstream pname;
+                    pname << "plane_" << i;
+
+                    pcl::visualization::PointCloudColorHandlerCustom<PointT> scene_handler(plane.plane_cloud_, 0, 255, 0);
+                    vis.addPointCloud<PointT> (plane.plane_cloud_, scene_handler, pname.str(), v1);
+
+                    pname << "chull";
+                    vis.addPolygonMesh (*plane.convex_hull_, pname.str(), v1);
+              }
+              vis.spin();
+#endif
+
           }
+
+          if(!good_plane_found)
+          {
+              //No table was found in the scene.
+              PCL_WARN("No plane found with appropiate properties\n");
+              indices.resize(0);
+              table_plane = Eigen::Vector4f (std::numeric_limits<float>::quiet_NaN(),
+                                             std::numeric_limits<float>::quiet_NaN(),
+                                             std::numeric_limits<float>::quiet_NaN(),
+                                             std::numeric_limits<float>::quiet_NaN());
+
+              return;
+          }
+
+          std::cout << "I have selected this plane." << std::endl;
+#ifdef DEBUG_WITH_VIS
+              vis.removeAllPointClouds(v1);
+              vis.addPointCloud<PointT>(xyz_points, "cloud", v1);
+              vis.spinOnce();
+
+              if(xyz_points->isOrganized())
+              {
+                    std::stringstream pname;
+                    pname << "selected_plane_";
+
+                    pcl::visualization::PointCloudColorHandlerCustom<PointT> scene_handler(selected_plane.plane_cloud_, 255, 0, 0 );
+                    vis.addPointCloud<PointT> (selected_plane.plane_cloud_, scene_handler, pname.str(), v1);
+
+                    pname << "chull";
+                    vis.addPolygonMesh (*selected_plane.convex_hull_, pname.str(), v1);
+
+                  vis.spin();
+              }
+#endif
 
           table_plane = Eigen::Vector4f (selected_plane.coefficients_.values[0], selected_plane.coefficients_.values[1],
                                          selected_plane.coefficients_.values[2], selected_plane.coefficients_.values[3]);
@@ -400,7 +500,7 @@ private:
 
                 float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
 
-                if (val >= 0.01f)
+                if (val >= sensor_noise_max_)
                 {
                   labels->points[j].label = 1;
                   label_indices[0].indices.push_back (j);
@@ -511,7 +611,7 @@ private:
         pcl::apps::DominantPlaneSegmentation<PointT> dps;
         dps.setInputCloud (xyz_points);
         dps.setMaxZBounds (3.F);
-        dps.setObjectMinHeight (0.01);
+        dps.setObjectMinHeight (sensor_noise_max_);
         dps.setMinClusterSize (min_cluster_size_);
         dps.setWSize (9);
         dps.setDistanceBetweenClusters (0.03f);
@@ -547,7 +647,7 @@ private:
 
     std::vector<pcl::PointIndices> indices;
     Eigen::Vector4f table_plane;
-    doSegmentation<PointT>(scene, normal_cloud, indices, table_plane, seg_type_);
+    doSegmentation<PointT>(scene, normal_cloud, indices, table_plane, seg_type_, req.transform);
 
     for(size_t i=0; i < indices.size(); i++)
     {
@@ -567,10 +667,9 @@ public:
     chop_at_z_ = 2.f;
     seg_type_ = 0;
     max_angle_plane_to_ground_ = 15.f;
-    table_range_min_ = 0.6f;
-    table_range_max_ = 1.2f;
     min_cluster_size_ = 500;
-
+    sensor_noise_max_ = 0.01f;
+    MAX_VERTICAL_PLANE_SIZE_ = 5000;
   }
 
   void
@@ -584,6 +683,25 @@ public:
     n_->getParam ( "camera_frame", camera_frame_ );
     n_->getParam ( "base_frame", base_frame_ );
     n_->getParam ( "min_cluster_size", min_cluster_size_ );
+
+    n_->getParam ( "sensor_noise_max", sensor_noise_max_ );
+
+    if(!n_->getParam ( "table_range_min", table_range_min_ ))
+        table_range_min_ = 0.6f;
+
+    if(!n_->getParam ( "table_range_max", table_range_max_ ))
+            table_range_max_ = 1.2f;
+
+    n_->getParam ( "max_vertical_plane_size", MAX_VERTICAL_PLANE_SIZE_ );
+
+    std::cout << "Started segmentation service with arguments : " << std::endl
+             << "chop_z: " << chop_at_z_ << std::endl
+             << "seg_type: " << seg_type_ << std::endl
+             << "sensor_noise_max_: " << sensor_noise_max_ << std::endl
+             << "table_range_min_: " << table_range_min_ << std::endl
+             << "table_range_min_: " << table_range_min_ << std::endl
+             << "table_range_max_: " << table_range_max_ << std::endl
+             << "min_cluster_size: " << min_cluster_size_ << std::endl;
 
     segment_ = n_->advertiseService ("object_segmenter", &PCLSegmenterService::segment, this);
     std::cout << "Ready to get service calls..." << chop_at_z_ << " " << seg_type_ << std::endl;

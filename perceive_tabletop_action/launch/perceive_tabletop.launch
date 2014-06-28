@@ -1,9 +1,13 @@
 <launch>
 
-  <arg name="map" default="/projected_map"/>
+  <arg name="map" default="/move_base/global_costmap/costmap/"/>
+  <arg name="is_costmap" default="true"/>
+
+  <include file="$(find perceive_tabletop_action)/launch/perceive_tabletop_params.launch"/>
 
   <include file="$(find perceive_tabletop_action)/launch/view_planning.launch">
     <arg name="map" value="$(arg map)"/>
+    <arg name="is_costmap" value="$(arg is_costmap)"/>
   </include>
 
   <node name="perceive_tabletop_action" pkg="perceive_tabletop_action" type="perceive_tabletop_action_server.py" output="screen"/>
