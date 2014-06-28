@@ -38,7 +38,7 @@ private:
     std::vector<std::string> text_3d_;
     boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
     bool do_segmentation_;
-    int table_id_;
+    std::string table_id_;
 
     void
     checkCloudArrive (const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -129,15 +129,16 @@ private:
     void
     callService (const sensor_msgs::PointCloud2::ConstPtr& msg)
     {
-	  std::cout << "Received point cloud.\n";
+      std::cout << "Received point cloud.\n" << std::endl;
         // if any service is not available, wait for 5 sec and check again
         if( all_required_services_okay_ || ( !all_required_services_okay_ && (service_calls_ % (1 * 5)) == 0))
         {
             std::cout << "going to call service..." << std::endl;
 
-            sensor_msgs::PointCloud2::Ptr input_cloud;
-            if(table_id_ != -1)
+            sensor_msgs::PointCloud2::Ptr input_cloud (new sensor_msgs::PointCloud2() );
+            if(table_id_ != "")
             {
+                std::cout << "Calling table segmenter service to remove points not on table " << table_id_ << "." << std::endl;
                 ros::ServiceClient segmentation_client;
                 table_segmentation::SegmentTable segmentation_srv;
                 segmentation_srv.request.cloud = *msg;
@@ -202,7 +203,7 @@ public:
             visualize_output_ = false;
 
         if(!n_->getParam ( "table_id", table_id_ ))
-            table_id_ = -1;
+            table_id_ = "";
 
         checkKinect();
         return KINECT_OK_;
