@@ -1,16 +1,19 @@
 
 <launch>
 
-	<arg name="models_dir" default="/home/strands/models/CatQSR_ObjSet1_ModelDatabase" />
-	<arg name="training_dir" default="/home/strands/models/CatQSR_ObjSet1_Trained" />
+	<arg name="models_dir" default="/media/Data/datasets/my_classifier/Cat200_ModelDatabase__small" />
+	<arg name="training_dir" default="/media/Data/datasets/my_classifier/class_trained" />
 
 	<arg name="descriptor_name" default="esf" />
 	<arg name="nn" default="50" />
 	<arg name="chop_z" default="2.5" />
 	<arg name="seg_type" default="4" /> 
-	<arg name="camera_frame" default="/head_xtion_depth_optical_frame" /> 
+	<arg name="camera_frame" default="/head_xtion_rgb_optical_frame" /> 
 	<arg name="base_frame" default="/base_footprint" /> 
-	<arg name="min_cluster_size" default="100" /> 
+	<arg name="min_cluster_size" default="400" /> 
+	<arg name="sensor_noise_max" default="0.01" />
+	<arg name="table_range_min" default="0.6" />
+	<arg name="table_range_max" default="0.75" />
 
 	<arg name="segmenation_models_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.model.txt" />
 	<arg name="segmentation_scaling_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.scalingparams.txt" />
@@ -22,6 +25,7 @@
 		<param name="descriptor_name" value="$(arg descriptor_name)" type="string"/>
 		<param name="nn" value="$(arg nn)" type="int"/>
 		<param name="chop_z" value="$(arg chop_z)" type="double"/>
+		<param name="camera_frame" value="$(arg camera_frame)" type="string"/>
 	</node>
 
 	<!-- segmentation service -->
@@ -38,5 +42,8 @@
 		<param name="camera_frame" value="$(arg camera_frame)" type="string"/>
 		<param name="base_frame" value="$(arg base_frame)" type="string"/>
 		<param name="min_cluster_size" value="$(arg min_cluster_size)" type="int"/>
+                <param name="sensor_noise_max" value="$(arg sensor_noise_max)" type="double"/>
+                <param name="table_range_min" value="$(arg table_range_min)" type="double" />
+                <param name="table_range_max" value="$(arg table_range_max)" type="double" />
 	</node>
 </launch>
