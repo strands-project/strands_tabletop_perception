@@ -50,21 +50,21 @@ add_pose(EVT,POSE) :-
 add_classification(EVT, [CLASSIFIER, CLASSIFICATION]) :-
   findall(_, (member([OBJ, C, P], CLASSIFICATION), assertz(obj_class(EVT, CLASSIFIER, OBJ, C, P))), _).
 
-most_likely_class(OBJ, CLS) :-
+most_likely_class(OBJ, CLS, PROB) :-
   most_recent(EVT),
   default_classifier(CLASSIFIER),
-  most_likely_class(EVT, CLASSIFIER, OBJ, CLS).
+  most_likely_class(EVT, CLASSIFIER, OBJ, CLS, PROB).
 
-most_likely_class(CLASSIFIER, OBJ, CLS) :-
+most_likely_class(CLASSIFIER, OBJ, CLS, PROB) :-
   most_recent(EVT),
-  most_likely_class(EVT, CLASSIFIER, OBJ, CLS).
+  most_likely_class(EVT, CLASSIFIER, OBJ, CLS, PROB).
 
-most_likely_class(EVT, CLASSIFIER, OBJ, CLS) :-
+most_likely_class(EVT, CLASSIFIER, OBJ, CLS, PROB) :-
   classifier(EVT, CLASSIFIER),
   obj(EVT,OBJ),
   findall([P, OBJ, C], (obj_class(EVT,CLASSIFIER,OBJ,C,P)), Cs),
   sort(Cs, IncCs),
-  reverse(IncCs, [[_,OBJ,CLS] | _ ]).
+  reverse(IncCs, [[PROB,OBJ,CLS] | _ ]).
   
 most_recent(EVT) :- 
   findall([ST, E], (start_time(E,ST)), Es),
@@ -81,7 +81,7 @@ obj_cls(CLASSIFIER, OBJ, CLS) :-
   obj_cls(EVT, CLASSIFIER, OBJ, CLS).
 
 obj_cls(EVT, CLASSIFIER, OBJ, CLS) :-
-  most_likely_class(EVT, CLASSIFIER, OBJ, CLS).
+  most_likely_class(EVT, CLASSIFIER, OBJ, CLS, _).
 
 rel_super_cls(R, RELT) :- 
   member(R, ['left-of', 'right-of', 'behind', 'in-front-of']), 
@@ -103,6 +103,22 @@ qsr(EVT, REL, O1, O2, [EVT, 'None', [REL, O1, O2],[P1, P2]]) :-
   pose(EVT,[O2, P2]),
   qsr(EVT, [REL, O1, O2]).
   %assertz(vis_qsr(EVT, [REL, O1, O2])).
+
+findall_objs(Objs) :- 
+  findall([Obj, Pose, Cls, Prob], (most_recent(EVT),  pose(EVT,[Obj, Pose]), most_likely_class(_, Obj, Cls, Prob)), Objs).
+
+
+
+
+findall_qsrT(REL,Qs) :-
+  nonvar(REL), R = REL, !,
+  findall(Q, qsrT(R,_C1,_C2,Q), Qs).
+
+findall_qsrT(REL, C1, C2, Qs) :-
+  nonvar(REL), nonvar(C1), nonvar(C2),  
+  R = REL, Cls1 = C1, Cls2 = C2, !,
+  findall(Q, qsrT(R,Cls1,Cls2,Q), Qs).
+
 
 qsrT(REL, C1, C2, QSR) :- 
   default_classifier(CLASSIFIER),
