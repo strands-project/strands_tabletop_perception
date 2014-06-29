@@ -5,10 +5,10 @@
 	<arg name="training_dir" default="/media/Data/datasets/my_classifier/class_trained" />
 
 	<arg name="descriptor_name" default="esf" />
-	<arg name="nn" default="50" />
-	<arg name="chop_z" default="2.5" />
-	<arg name="seg_type" default="4" /> 
-	<arg name="camera_frame" default="/head_xtion_rgb_optical_frame" /> 
+	<arg name="nn" default="13" />
+	<arg name="chop_z" default="3.5" />
+	<arg name="seg_type" default="1" /> 
+	<arg name="camera_frame" default="/head_xtion_depth_optical_frame" /> 
 	<arg name="base_frame" default="/base_footprint" /> 
 	<arg name="min_cluster_size" default="400" /> 
 	<arg name="sensor_noise_max" default="0.01" />
