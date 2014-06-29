@@ -8,6 +8,7 @@ from std_msgs.msg import *
 from sensor_msgs.msg import *
 
 from classifier_srv_definitions.srv import segment_and_classify
+from table_segmentation.srv import SegmentTable
 
 from world_state.observation import MessageStoreObject, Observation, TransformationStore
 from world_state.identification import ObjectIdentification
@@ -137,8 +138,10 @@ class PerceptionReal (smach.State):
         self.ptu_cmd = rospy.Publisher('/ptu/cmd', JointState)
 
         rospy.wait_for_service('/classifier_service/segment_and_classify')
+        rospy.wait_for_service('/table_segmentation/segment_table')
 
         try:
+            self.table_seg = rospy.ServiceProxy('/table_segmentation/segment_table', SegmentTable )
             self.obj_rec = rospy.ServiceProxy('/classifier_service/segment_and_classify', segment_and_classify )
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
@@ -184,7 +187,8 @@ class PerceptionReal (smach.State):
             rospy.loginfo('%i view: call object recognition service',i)
             userdata.state = 'image_analysis'
             try:
-                obj_rec_resp = self.obj_rec(pointcloud, [])
+                seged = self.table_seg(pointcloud, userdata.table.name)
+                obj_rec_resp = self.obj_rec(seged, [])
             except rospy.ServiceException, e:
                 rospy.logerr("Service call failed: %s" % e)
 
