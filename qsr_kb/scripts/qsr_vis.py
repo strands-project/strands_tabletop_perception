@@ -52,6 +52,7 @@ class QSRVis(object):
         self.rel_marker_len = 0
 
         self.pattern = re.compile('next_vis\((.*)\)')
+        self.create_pattern = re.compile('.*create_event.*')
                
         rospy.spin()
 
@@ -70,7 +71,7 @@ class QSRVis(object):
         rospy.loginfo("Query:  %s " % (req.query))
         try:
             # create markers
-            self.delete_markers()  
+            self.delete_rel_markers()  
             obj_markerArray = MarkerArray()
             rel_markerArray = MarkerArray()
 
@@ -79,41 +80,64 @@ class QSRVis(object):
             solution = json.dumps(json_sol)
             rospy.loginfo("Solution:  %s " % (solution))
 
+            # Visualize object and probabilities
+            res = self.create_pattern.match(req.query)
+            if res != None:
+                self.delete_obj_markers()  
+                rospy.loginfo("Visualize objects")
+                json_sol1 = self.kb.query("findall_objs(Objs).")
+                
+                obj_lst = json_sol1[0]['Objs'] 
+                
+                objs = dict()
+                i = 0
+                for obj in obj_lst:
+                    if obj[0] not in objs:
+                        label = obj[2] + ' (' + str(obj[3]) + ')' 
+                        self.create_obj_marker(obj_markerArray, i, self.prologPose_to_ROSPose(obj[1]), label )
+                        objs[obj[0]] = obj[2]
+                        i += 2
+
+                self.obj_marker_len =  len(obj_markerArray.markers)
+                self.obj_marker.publish(obj_markerArray)
+                return PrologQueryResponse(solution)
+
+            # Else: check whether query is next_vis()
             res = self.pattern.match(req.query)
             if res == None:
                 # no visualization
                 return PrologQueryResponse(solution)
 
-            qsr_var = res.group(1)
+            else:
+                # visulaize relations
+                qsr_var = res.group(1)
             
-            if not json_sol:
+                if not json_sol:
                 
-                return PrologQueryResponse(solution)
+                    return PrologQueryResponse(solution)
 
-            qsr_lst = json_sol[0][qsr_var]
+                qsr_lst = json_sol[0][qsr_var]
 
-            objs = dict()
-            i = 0
-            j = 0
-            for qsr in qsr_lst:
-                if qsr[1][0] not in objs:
-                    label = qsr[1][1] if qsr[1][2] == 'None' else  qsr[1][1] + ' (' + qsr[1][2] + ')' 
-                    self.create_obj_marker(obj_markerArray, i, self.prologPose_to_ROSPose(qsr[1][3]), label )
-                    objs[qsr[1][0]] = qsr[1][0]
-                    i += 2
-                if qsr[2][0] not in objs:
-                    label = qsr[2][1] if qsr[2][2] == 'None' else  qsr[2][1] + ' (' + qsr[2][2] + ')'
-                    self.create_obj_marker(obj_markerArray, i, self.prologPose_to_ROSPose(qsr[2][3]), label)
-                    objs[qsr[2][0]] = qsr[2][0]
-                    i += 2
-                self.create_rel_marker(rel_markerArray, j, self.prologPose_to_ROSPose(qsr[1][3]), self.prologPose_to_ROSPose(qsr[2][3]), qsr[0])
-                j +=2
+                #objs = dict()
+                i = 0
+                j = 0
+                for qsr in qsr_lst:
+                    # if qsr[1][0] not in objs:
+                    #     label = qsr[1][1] if qsr[1][2] == 'None' else  qsr[1][1] + ' (' + qsr[1][2] + ')' 
+                    #     self.create_obj_marker(obj_markerArray, i, self.prologPose_to_ROSPose(qsr[1][3]), label )
+                    #     objs[qsr[1][0]] = qsr[1][0]
+                    #     i += 2
+                    # if qsr[2][0] not in objs:
+                    #     label = qsr[2][1] if qsr[2][2] == 'None' else  qsr[2][1] + ' (' + qsr[2][2] + ')'
+                    #     self.create_obj_marker(obj_markerArray, i, self.prologPose_to_ROSPose(qsr[2][3]), label)
+                    #     objs[qsr[2][0]] = qsr[2][0]
+                    #     i += 2
+                    self.create_rel_marker(rel_markerArray, j, self.prologPose_to_ROSPose(qsr[1][3]), self.prologPose_to_ROSPose(qsr[2][3]), qsr[0])
+                    j +=2
                 
-            self.obj_marker_len =  len(obj_markerArray.markers)
-            self.rel_marker_len =  len(rel_markerArray.markers)
-
-            self.obj_marker.publish(obj_markerArray)
-            self.rel_marker.publish(rel_markerArray)
+               
+                self.rel_marker_len =  len(rel_markerArray.markers)
+                self.rel_marker.publish(rel_markerArray)
 
             
         except HTTPError, e:
@@ -195,7 +219,7 @@ class QSRVis(object):
         marker2.type = marker2.TEXT_VIEW_FACING
         marker2.action = marker2.ADD
 
-        marker2.scale.z = 0.10
+        marker2.scale.z = 0.20
 
         marker2.color.a = 1.0
         marker2.color.r = 0.0
@@ -205,7 +229,7 @@ class QSRVis(object):
 
         x = pose.position.x + (pose2.position.x - pose.position.x) / 2 
         y = pose.position.y + (pose2.position.y - pose.position.y) / 2  
-        z = pose.position.z + (pose2.position.z - pose.position.z) / 2  + 0.1 
+        z = pose.position.z + (pose2.position.z - pose.position.z) / 2  + 0.2 
         
         marker2.pose.position.x = x
         marker2.pose.position.y = y
@@ -216,7 +240,7 @@ class QSRVis(object):
         rel_markerArray.markers.append(marker2)
 
 
-    def delete_markers(self):
+    def delete_obj_markers(self):
         obj_markerArray = MarkerArray()
         for i in range(0,self.obj_marker_len):
             marker = Marker()
@@ -226,6 +250,7 @@ class QSRVis(object):
             obj_markerArray.markers.append(marker)
         self.obj_marker.publish(obj_markerArray)
 
+    def delete_rel_markers(self):
         rel_markerArray = MarkerArray()
         for i in range(0,self.rel_marker_len):
             marker = Marker()
