@@ -303,7 +303,7 @@ def calculate_qsrs(table_name, timestamp):
     w = World()
     table = w.get_object(table_name)
     
-    QUAL_FILE = "/home/chris/iros_tdrc.qsrs"
+    QUAL_FILE = "/home/chris/review.qsrs"
     qsrs = qualitators.Qualitators.load_from_disk(QUAL_FILE)
     print "Loaded ", len(qsrs._qualitators), "qualitators from disk"
     
