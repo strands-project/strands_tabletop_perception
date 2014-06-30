@@ -5,7 +5,7 @@ set(CMAKE_BUILD_TYPE Debug)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp sensor_msgs std_msgs segmentation_srv_definitions classifier_srv_definitions object_perception_msgs strandsv4r)
+find_package(catkin REQUIRED COMPONENTS roscpp sensor_msgs std_msgs segmentation_srv_definitions classifier_srv_definitions object_perception_msgs strandsv4r table_segmentation)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -36,7 +36,7 @@ include_directories(${PCL_INCLUDE_DIRS})
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES object_classifier
-   CATKIN_DEPENDS segmentation_srv_definitions classifier_srv_definitions strandsv4r
+   CATKIN_DEPENDS segmentation_srv_definitions classifier_srv_definitions strandsv4r table_segmentation
 #  DEPENDS system_lib
 )
 
