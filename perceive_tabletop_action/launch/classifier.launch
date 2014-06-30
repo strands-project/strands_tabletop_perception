@@ -1,9 +1,9 @@
 
 <launch>
 
-	<arg name="models_dir" default="/media/Data/datasets/my_classifier/Cat200_ModelDatabase__small" />
-	<arg name="training_dir" default="/media/Data/datasets/my_classifier/class_trained" />
-
+	<arg name="models_dir" default="~/data/Cat200_ModelDatabase__small" />
+	<arg name="training_dir" default="~/data/Cat200_ModelDatabase__small_trained" />
+	
 	<arg name="descriptor_name" default="esf" />
 	<arg name="nn" default="13" />
 	<arg name="chop_z" default="3.5" />
