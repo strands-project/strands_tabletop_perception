@@ -79,16 +79,18 @@ set(incs include/pcl_conversions.h include/segmenter.h)
 add_executable(recognition_service src/recognition_service.cpp ${incs})
 add_executable(checkObjectPresence src/CheckObjectPresence.cpp)
 add_executable(checkObjectPresence_client src/CheckObjectPresence_client.cpp)
+add_executable(ply_to_pcl src/ply_to_pcl.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 add_dependencies(checkObjectPresence ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 add_dependencies(checkObjectPresence_client ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(ply_to_pcl ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(recognition_service
-   ${catkin_LIBRARIES} 
+   ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
 )
@@ -99,6 +101,11 @@ target_link_libraries(checkObjectPresence
 )
 
 target_link_libraries(checkObjectPresence_client
+   ${catkin_LIBRARIES}
+   ${PCL_LIBRARIES}
+)
+
+target_link_libraries(ply_to_pcl
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
 )
