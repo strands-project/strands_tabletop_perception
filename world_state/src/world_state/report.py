@@ -287,6 +287,22 @@ def calculate_qsrs(table_name, timestamp):
     except:
         rospy.logerr("qsr_kb package not available?")
         return None
+    
+    
+    msg_store = MessageStoreProxy(collection='frozen_tables')
+    viewpoints = msg_store.query(Pose._type)
+    for v, m in viewpoints:
+        if m["name"][:-10] == table_name:
+            print "Matched"
+            break
+    else:
+        rospy.logerr("Oh crap, viewpoint does not exist!")
+        return []
+    viewpoint = geometry.Pose.from_ros_msg(v)
+    
+    w = World()
+    table = w.get_object(table_name)
+    
     QUAL_FILE = "/home/chris/iros_tdrc.qsrs"
     qsrs = qualitators.Qualitators.load_from_disk(QUAL_FILE)
     print "Loaded ", len(qsrs._qualitators), "qualitators from disk"
@@ -298,30 +314,24 @@ def calculate_qsrs(table_name, timestamp):
     rels = []
     pretty_rels = []
     for o in objs:
+        # Before adding the object, transform it from table to viewer frame.
+        pose = geometry.Pose.from_homog(np.dot(np.linalg.inv(viewpoint.as_homog_matrix()), o.pose.as_homog_matrix()))
+        
         geo.add_object(o.name, o.identification.class_type[0],
-                       o.position, o.quaternion,
+                       pose.position, pose.quaternion,
                        o._bounding_box.points)
         print "Adding object ", o.name
         
-    msg_store = MessageStoreProxy(collection='frozen_tables')
-    viewpoints = msg_store.query(Pose._type)
-    for v, m in viewpoints:
-        if m["name"][:-10] == table_name:
-            print "Matched"
-            break
-    else:
-        rospy.logerr("Oh crap, viewpoint does not exist!")
-        return []
-    viewpoint = v
     
     for ob1 in geo._objects.keys():
         # Get camera position in ob1 frame
         #cam_pos = [geo._objects[ob1].position.x - viewpoint.position.x,
                    #geo._objects[ob1].position.y - viewpoint.position.y,
                    #geo._objects[ob1].position.z - viewpoint.position.z]
-        cam_pos = [viewpoint.position.x,
-                   viewpoint.position.y,
-                   viewpoint.position.z]
+        #cam_pos = [viewpoint.position.x,
+                   #viewpoint.position.y,
+                   #viewpoint.position.z]
+        cam_pos = [0, 0, 0] # is now zeros since objects are in its frame.
         ##None
         for ob2 in geo._objects.keys():
             if ob1 == ob2:
@@ -359,8 +369,6 @@ def calculate_qsrs(table_name, timestamp):
 
     cls =  []
     pose = []
-    w = World()
-    table = w.get_object(table_name)
     for o in objs:
         oo = geometry.Pose.from_homog(np.dot(table.pose.as_homog_matrix(), o.pose.as_homog_matrix()))
         cls.append([str(o.name), str(o.identification.class_type[0]),str(o.identification.class_type[1]) ])
