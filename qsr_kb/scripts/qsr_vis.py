@@ -93,7 +93,7 @@ class QSRVis(object):
                 i = 0
                 for obj in obj_lst:
                     if obj[0] not in objs:
-                        label = obj[2] + ' (' + str(obj[3]) + ')' 
+                        label = obj[2] + ' (' + str(obj[3])[:5] + ')' 
                         self.create_obj_marker(obj_markerArray, i, self.prologPose_to_ROSPose(obj[1]), label )
                         objs[obj[0]] = obj[2]
                         i += 2

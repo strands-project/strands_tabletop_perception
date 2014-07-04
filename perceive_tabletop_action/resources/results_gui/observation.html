@@ -31,6 +31,17 @@ var visualise_qsr = function() {
     jQuery.post( '/visualise_qsr', 
                 jQuery('form#prologform').serialize(), function(data) {
          //... do something with response from server
+         jQuery("#qsrquery").val("Calculating...");
+       },
+       'text' // I expect a JSON response
+    );
+}
+    
+var next_visualise_qsr = function(qq) {
+    jQuery('#prolog').val(qq);
+    jQuery.post( '/visualise_qsr', 
+                jQuery('form#prologform').serialize(), function(data) {
+         //... do something with response from server
          jQuery("#qsrquery").text="Calculating...";
        },
        'text' // I expect a JSON response
@@ -108,36 +119,51 @@ var visualise_qsr = function() {
                     </a>
                   </h5>
                 </div>
-                <div id="collapseqsrs" class="panel-collapse collapse">
+                <div id="collapseqsrs" class="panel-collapse">
                     <div id="qsrs"></div> 
                 </div>
-          </div>
+            </div>
+            <div class="row">
+                <div id="qsr_prolog" class="row" style="display:none">
+                    <div class="col-md-9">
+                        <p>For example, qsrT(front, X, monitor, Q), qsrT(right, Y, X, Q1),vis([Q,Q1]).</p>
+                        <form method="post" action="/visualise_qsr" id="prologform">
+                            <label>QSR Visualisation Query</label><br />
+                            <textarea id="prolog" name="prolog" cols="100" rows="10" placeholder="Prolog query.."></textarea>
+                            <!--<input type="submit" value="Add" />-->
+                        </form>
+                        <button type="button" onclick="visualise_qsr();" class="btn btn-default">
+                            Execute Query
+                        </button>
+                        
+                        <div id="qsrquery"></div>
+                    </div>
+                    <div class="col-md-2">
+                        <h5>Predefined queries</h5>
+                          <button type="button" onclick="next_visualise_qsr('qsrT(R,O1,O2,Q), vis([Q]).');" class="btn btn-default">
+                                One by One
+                            </button>
+                        <button type="button" onclick="next_visualise_qsr('next_vis(X).');" class="btn btn-default">
+                                Show Result
+                        </button>
+                        <button type="button" onclick="next_visualise_qsr('new_vis.');" class="btn btn-default">
+                                Clear visualisation cache
+                        </button>
+                        </button>
+                        <button type="button" onclick="next_visualise_qsr('findall_qsrT(left,Q),vis(Q).');" class="btn btn-default">
+                                Show all 'left'
+                        </button>
+                        <button type="button" onclick="next_visualise_qsr('findall_qsrT(veryclose,Q),vis(Q).');" class="btn btn-default">
+                                Show all 'veryclose'
+                        </button>
+                    </div>
+                </div>
+         
+            </div>
         </div>
     </div>
 </div>
-<div class="row">
-    <div class="col-md-1">
-    </div>
-    
-    <div class="col-md-11">
-        <div id="qsr_prolog" class="row" style="display:none">
-            <div class="col-md-1"></div>
-            <div class="col-md5">
-                <form method="post" action="/visualise_qsr" id="prologform">
-                    <label>QSR Visualisation Query</label><br />
-                    <textarea name="prolog" cols="40" rows="10" placeholder="Prolog query.."></textarea>
-                    <!--<input type="submit" value="Add" />-->
-                </form>
-                <button type="button" onclick="visualise_qsr();" class="btn btn-default">
-                    Execute Query
-                </button>
-                <div id="qsrquery"></div>
-            </div>
-            <div class="col-md5">
-            </div>
-        </div>
-    </div>
-</div>
+
 <div class="row">
     <small id="status">
     </small>
