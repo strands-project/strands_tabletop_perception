@@ -50,7 +50,7 @@ find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs messa
  add_service_files(
   FILES
    recognize.srv
-#   Service2.srv
+   multiview_recognize.srv
  )
 
 ## Generate actions in the 'action' folder
