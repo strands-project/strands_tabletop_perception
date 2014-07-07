@@ -97,15 +97,15 @@ include_directories(include
   ${catkin_INCLUDE_DIRS}
 )
 
-set(incs include/pcl_conversions.h include/segmenter.h include/myGraphClasses.h)
+set(incs include/pcl_conversions.h include/segmenter.h include/multiview_object_recognizer_service.h)
 ## Declare a cpp library
 # add_library(multiview_object_recognizer
 #   src/${PROJECT_NAME}/multiview_object_recognizer.cpp
 # )
 
 ## Declare a cpp executable
-add_executable(multiview_object_recognizer_node src/main.cpp src/myGraphClasses.cpp ${incs})
-add_executable(multiview_object_recognizer_test_node src/test_multiview_recognizer.cpp src/myGraphClasses.cpp ${incs})
+add_executable(multiview_object_recognizer_node src/multiview_object_recognizer_service.cpp ${incs})
+add_executable(multiview_object_recognizer_test_node src/test_multiview_recognizer.cpp ${incs})
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

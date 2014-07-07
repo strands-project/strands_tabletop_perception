@@ -1,11 +1,10 @@
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 
-#include "myGraphClasses.h"
+#include "multiview_object_recognizer_service.h"
 #include <pcl/common/transforms.h>
 #include <faat_pcl/utils/pcl_visualization_utils.h>
 #include <faat_pcl/utils/segmentation_utils.h>
 #include <faat_pcl/utils/filesystem_utils.h>
-#include <faat_pcl/utils/segmentation_utils.h>
 
 
 template<class PointT>
@@ -2435,4 +2434,13 @@ void multiviewGraph::init ( int argc, char **argv )
         vis_->setWindowName ( "Recognition from Multiple Views" );
     }
     ros::spin();
+}
+
+int main (int argc, char **argv)
+{
+  multiviewGraph myGraph;
+  myGraph.init(argc, argv);
+  ROS_INFO("Starting rec");
+  //myGraph.recognize();
+  return 0;
 }
