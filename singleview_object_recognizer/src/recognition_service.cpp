@@ -71,6 +71,7 @@ private:
   int v1_,v2_, v3_;
   ros::ServiceServer recognize_;
   boost::shared_ptr<ros::NodeHandle> n_;
+  ros::Publisher vis_pc_pub_;
   int cg_size_;
   bool ignore_color_;
 
@@ -328,6 +329,9 @@ private:
 
     //parse verified_models and generate response to service call
       //vector of id + pose
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
+
     for (size_t j = 0; j < verified_models->size (); j++)
     {
       std_msgs::String ss;
@@ -347,7 +351,18 @@ private:
       tt.rotation.z = q.z();
       tt.rotation.w = q.w();
       response.transforms.push_back(tt);
+
+
+      ConstPointInTPtr model_cloud = verified_models->at(j)->getAssembled (0.01);
+      typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
+      pcl::transformPointCloud (*model_cloud, *model_aligned, verified_transforms->at(j));
+      *pRecognizedModels += *model_aligned;
     }
+    sensor_msgs::PointCloud2 recognizedModelsRos;
+    pcl::toROSMsg (*pRecognizedModels, recognizedModelsRos);
+    recognizedModelsRos.header.frame_id = "camera_link";
+    vis_pc_pub_.publish(recognizedModelsRos);
+
 
 #ifdef SOC_VISUALIZE
     vis_->spin ();
@@ -583,7 +598,8 @@ public:
     multi_recog_->setICPIterations(icp_iterations_);
     multi_recog_->initialize();
 
-    recognize_ = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
+    recognize_  = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
+    vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "sv_recogniced_object_instances_", 1 );
     std::cout << "Ready to get service calls..." << std::endl;
     ros::spin ();
   }

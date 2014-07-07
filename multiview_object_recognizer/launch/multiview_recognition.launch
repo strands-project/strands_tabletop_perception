@@ -1,9 +1,8 @@
 <launch>
-	<arg name="js" default="$(optenv JOYSTICK_DEVICE /dev/input/js0)" />
 	<arg name="topic" default="/camera/depth_registered/points" />
-	<arg name="models_dir" default="/media/Data/datasets/willow_dataset/models_temp/" />
-	<arg name="recognizer_structure_sift" default="/media/Data/datasets/willow_dataset/recognizer_structure" />
-	<arg name="training_dir_sift" default="/media/Data/datasets/willow_dataset/sift_trained_temp/" />
+	<arg name="models_dir" default="/media/Data/datasets/willow_dataset/models/" />
+	<arg name="recognizer_structure_sift" default="/media/Data/datasets/willow_dataset/willow_structure" />
+	<arg name="training_dir_sift" default="/media/Data/datasets/willow_dataset/sift_trained/" />
 	<arg name="gt_or_output_dir" default="" />
 	<arg name="visualize_output" default="false" />
 	<arg name="icp_iterations" default="3" />

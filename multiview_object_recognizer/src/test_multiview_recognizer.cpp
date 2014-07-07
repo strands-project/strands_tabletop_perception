@@ -66,15 +66,23 @@ main (int argc, char **argv)
         std::string start = "";
         std::string ext = std::string ("pcd");
         faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, start, files_intern, ext);
+
+        ros::Publisher vis_pc_pub_ = n->advertise<sensor_msgs::PointCloud2>( "multiview_point_cloud_input", 1 );
+
         for (size_t file_id=0; file_id < files_intern.size(); file_id++)
         {
             std::stringstream full_file_name;
             full_file_name << scenes_dir << "/" << files_intern[file_id];
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pScene (new pcl::PointCloud<pcl::PointXYZRGB>);
             pcl::io::loadPCDFile(full_file_name.str(), *pScene);
-
+//            pcl::visualization::PCLVisualizer::Ptr vis (new pcl::visualization::PCLVisualizer("vis"));
+//            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb (pScene);
+//            vis->addPointCloud<pcl::PointXYZRGB> (pScene, handler_rgb, "scnene");
+//            vis->spin();
             sensor_msgs::PointCloud2  pc2;
             pcl::toROSMsg (*pScene, pc2);
+            pc2.header.frame_id = "camera_link";
+            vis_pc_pub_.publish(pc2);
             srv.request.cloud = pc2;
             srv.request.scene_name.data = scenes_dir;
             if (mv_recognition_client.call(srv))

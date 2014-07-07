@@ -5,6 +5,7 @@
 #include <faat_pcl/utils/pcl_visualization_utils.h>
 #include <faat_pcl/utils/segmentation_utils.h>
 #include <faat_pcl/utils/filesystem_utils.h>
+#include <faat_pcl/utils/segmentation_utils.h>
 
 
 template<class PointT>
@@ -982,19 +983,18 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
     recognition_srv_definitions::recognize srv;
 //    sensor_msgs::PointCloud2 output;
 
-//    pcl::fromROSMsg(req.cloud, *current_cloud_);
     std::string scene_name = req.scene_name.data;
 
-    if (current_cloud_->empty())
+    if (req.cloud.data.size()==0)
     {
-        PCL_WARN("Point cloud is empty!");
-        return -1;
+        ROS_ERROR("Point cloud is empty!");
+        return false;
     }
     ROS_INFO ( "Sending the current point cloud to the single view recognition system..." );
     Vertex vrtx = boost::add_vertex ( grph_ );
     Vertex vrtx_final = boost::add_vertex ( grph_final_ );
-//    pcl::toROSMsg ( *current_cloud_, output );
-    //*(grph_[vrtx].pScenePCl) = *current_cloud_;
+    pcl::fromROSMsg(req.cloud, *current_cloud_);
+    *(grph_[vrtx].pScenePCl) = *current_cloud_;
 
 //    if(chop_at_z_ > 0)
 //    {
@@ -1068,7 +1068,10 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
         ne.compute ( * ( grph_[vrtx].pSceneNormals ) );
 
 
-        ROS_WARN("There are %ld vertices in the grph.", num_vertices(grph_));
+//        std::stringstream text_tmp;
+//        text_tmp << "There are " << num_vertices(grph_) << " in the graph for scene " << grph_[vrtx].scene_filename_;
+//        ROS_INFO(text_tmp.str());
+
         vertex_iter vertexIt, vertexEnd;
         boost::tie(vertexIt, vertexEnd) = vertices(grph_);
         for (; vertexIt != vertexEnd; ++vertexIt){
@@ -1079,7 +1082,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
 
         //----------create-edges-between-views-by-SIFT-----------------------------------
         calcFeatures ( vrtx, grph_ );
-        std::cout << "keypoints:" << grph_[vrtx].pKeypoints->points.size() << std::endl;
+        std::cout << "keypoints: " << grph_[vrtx].pKeypoints->points.size() << std::endl;
 
         if (num_vertices(grph_)>1 && scene_to_scene_)
         {
