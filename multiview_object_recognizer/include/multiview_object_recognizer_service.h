@@ -5,11 +5,6 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <boost/graph/adjacency_list.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/graph/graph_traits.hpp>
-#include <boost/graph/graphviz.hpp>
-//#include <boost/graph/prim_minimum_spanning_tree.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/nonfree/features2d.hpp>
 //#include <pcl/common/common.h>
@@ -65,6 +60,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/String.h>
 #include <pcl_conversions.h>
+#include "boost_graph_extension.h"
 // #include "functions.h"
 //#include "visual_recognizer/Hypotheses.h"
 #include "recognition_srv_definitions/recognize.h"
@@ -79,67 +75,6 @@ typedef pcl::PointXYZRGB PointT;
 typedef pcl::Histogram<128> FeatureT;
 typedef flann::L1<float> DistT;
 
-class Hypothesis
-{
-public:
-    Hypothesis ( std::string model_id, Eigen::Matrix4f transform, std::string origin, bool extended = false, bool verified = false );
-    std::string model_id_, origin_;
-    Eigen::Matrix4f transform_;
-    bool extended_;
-    bool verified_;
-};
-
-class View
-{
-public:
-    View();
-    //View(const View &view);
-    boost::shared_ptr< pcl::PointCloud<pcl::PointXYZRGB> > pScenePCl;
-//    boost::shared_ptr< pcl::PointCloud<pcl::PointXYZRGBNormal> > pSceneXYZRGBNormal;
-    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals;
-    //boost::shared_ptr< pcl::PointCloud<pcl::PointXYZRGB> > pScenePCl_f; //no table plane
-    //boost::shared_ptr< pcl::PointCloud<pcl::PointXYZRGB> > pScenePCl_f_ds;
-    boost::shared_ptr< pcl::PointCloud<FeatureT > > pSignatures;
-    boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;
-    boost::shared_ptr< pcl::PointCloud<pcl::PointXYZRGB> > pKeypoints;
-    std::vector<float> sift_keypoints_scales;
-    pcl::PointIndices keypoints_indices_;
-    std::string scene_filename_;
-    //std::vector<std::string> model_ids_;
-    std::vector<double> modelToViewCost;
-    std::vector<Hypothesis> hypothesis;
-    std::vector<Hypothesis> hypothesis_single_unverified;
-    Eigen::Matrix4f absolute_pose;
-    bool has_been_hopped_;
-    double cumulative_weight_to_new_vrtx_;
-};
-
-class myEdge
-{
-public:
-    myEdge();
-    Eigen::Matrix4f transformation;
-    double edge_weight;
-    std::string model_name;
-    std::string source_id, target_id;
-    std::vector <cv::DMatch> matches;
-    bool edge_weight_has_been_calculated_;
-};
-
-using namespace boost;
-namespace bf = boost::filesystem;
-//typedef adjacency_list < listS, listS, undirectedS, property<vertex_distance_t, int>, property<edge_weight_t, double> > GraphMST;
-//typedef graph_traits < GraphMST >::vertex_descriptor VertexMST;
-//typedef graph_traits < GraphMST >::edge_descriptor EdgeMST;
-
-//--"copy"-of-graph-to-save-custom-information------prim_minimum_spanning_tree----cannot(?)-handle-internal-bundled-properties---
-typedef adjacency_list < vecS, vecS, undirectedS, View, myEdge > Graph;
-typedef graph_traits < Graph >::vertex_descriptor Vertex;
-typedef graph_traits < Graph >::edge_descriptor Edge;
-typedef graph_traits<Graph>::vertex_iterator vertex_iter;
-typedef graph_traits<Graph>::edge_iterator edge_iter;
-typedef property_map<Graph, vertex_index_t>::type IndexMap;
-
 typedef faat_pcl::rec_3d_framework::Model<PointT> ModelT;
 typedef boost::shared_ptr<ModelT> ModelTPtr;
 typedef typename pcl::PointCloud<PointT>::ConstPtr ConstPointInTPtr;
@@ -150,10 +85,9 @@ private:
     Graph grph_, grph_final_;
     std::vector<Edge> edges_, best_edges_;
     std::string models_dir_;
-    ros::ServiceClient client_;
-    ros::ServiceServer ros_mv_rec_server_;
+    std::string scene_name_;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr current_cloud_;
-    boost::mutex current_cloud_mutex_;
+//    boost::mutex current_cloud_mutex_;
     boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> > models_source_;
     std::string object_to_be_highlighted_;
     bool visualize_output_;
@@ -255,11 +189,13 @@ public:
       output_dir_3d_results_ = "";
 
       use_table_plane_ = true;
+
+      object_to_be_highlighted_ = "";
+
+      current_cloud_.reset ( new pcl::PointCloud<pcl::PointXYZRGB>() );
     }
 
-    bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
     //int recognize ( pcl::PointCloud<pcl::PointXYZRGB> &cloud, const std::string scene_name = std::string() );
-    void init ( int argc, char **argv );
     bool calcFeatures(Vertex &src, Graph &grph, bool use_table_plane=true);
     void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, Edge &edge );
 //    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
@@ -269,12 +205,40 @@ public:
     void createEdgesFromHypothesisMatch ( Graph &grph, std::vector<Edge> &edges );
     void createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges );
     void calcEdgeWeight (Graph &grph, int max_distance=-1, float z_dist=3.f, float max_overlap=0.75f);
-    void outputgraph ( Graph& map, const char* filename );
-    std::vector<Vertex> my_node_reader ( std::string filename, Graph &g );
     void createBigPointCloud ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud );
     Vertex getFurthestVertex ( Graph &grph);
-};
 
+    std::string getSceneName()
+    {
+        return scene_name_;
+    }
+    void setSceneName(const std::string scene_name)
+    {
+        scene_name_ = scene_name;
+    }
+
+    bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
+
+    void loadModels();
+
+    // getter and setter functions
+    std::string models_dir() const;
+    void setModels_dir(const std::string &models_dir);
+    bool visualize_output() const;
+    void setVisualize_output(bool visualize_output);
+    bool go_3d() const;
+    void setGo_3d(bool go_3d);
+    int icp_iter() const;
+    void setIcp_iter(int icp_iter);
+    int opt_type() const;
+    void setOpt_type(int opt_type);
+    std::string gt_or_ouput_dir() const;
+    void setGt_or_ouput_dir(const std::string &gt_or_ouput_dir);
+    double chop_at_z() const;
+    void setChop_at_z(double chop_at_z);
+    int mv_keypoints() const;
+    void setMv_keypoints(int mv_keypoints);
+};
 
 namespace multiview
 {

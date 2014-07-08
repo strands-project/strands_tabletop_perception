@@ -19,7 +19,7 @@
   <!-- <node pkg="scitos_teleop" type="rumble_control" name="teleop_joystick" output="screen" /> -->
   
   <!-- Multiview recognizer -->
-  <node pkg="multiview_object_recognizer" type="multiview_object_recognizer_node" name="multiview_object_recognizer_node" output="screen" >
+  <!-- <node pkg="multiview_object_recognizer" type="multiview_object_recognizer_node" name="multiview_object_recognizer_node" output="screen" >
        <param name="models_dir" value="$(arg models_dir)" type="string"/>
        <param name="gt_or_output_dir" value="$(arg gt_or_output_dir)" type="string"/>
        <param name="visualize_output" value="$(arg visualize_output)" type="bool"/>
@@ -28,7 +28,7 @@
        <param name="mv_keypoints" value="$(arg mv_keypoints)" type="int"/>
        <param name="opt_type" value="$(arg opt_type)" type="int"/>
        <param name="chop_z" value="$(arg chop_z)" type="double"/>
-  </node>
+  </node> -->
 
 	
 	<!-- recognition service service -->

@@ -1,11 +1,17 @@
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 
 #include "multiview_object_recognizer_service.h"
+#include "world_representation.h"
+#include "boost_graph_extension.h"
 #include <pcl/common/transforms.h>
 #include <faat_pcl/utils/pcl_visualization_utils.h>
 #include <faat_pcl/utils/segmentation_utils.h>
 #include <faat_pcl/utils/filesystem_utils.h>
 
+
+ros::ServiceClient client_;
+boost::shared_ptr<ros::NodeHandle> n_;
+ros::ServiceServer ros_mv_rec_server_;
 
 template<class PointT>
 void computeTablePlane (typename pcl::PointCloud<PointT>::Ptr & pCloud,
@@ -141,176 +147,6 @@ model_coefficients[table_plane_selected].values[2], model_coefficients[table_pla
     std::cout << "Table plane computed... " << std::endl;
 }
 
-//std::vector<Vertex> multiviewGraph::
-//my_node_reader ( std::string filename, Graph &g )
-//{
-//    std::string fn, model_id, line, tf_str, origin, verified;
-//    Eigen::Matrix4f tf;
-//    std::ifstream myfile;
-//    std::vector<Vertex> vertices_temp_v;
-
-//    myfile.open ( filename.c_str () );
-
-//    if ( myfile.is_open () )
-//    {
-//        while ( myfile.good () )
-//        {
-//            std::getline ( myfile, line );
-
-//            int found = -1;
-//            std::string searchstring ( "[file=\"" );
-//            found = line.find ( searchstring );
-
-//            if ( found > -1 )
-//            {
-//                Vertex v = boost::add_vertex ( g );
-//                vertices_temp_v.push_back ( v );
-
-//                fn = line.substr ( found + searchstring.length () );
-//                fn.erase ( fn.end () - 2, fn.end () );
-
-//                int read_state = 0;
-//                while ( myfile.good () && read_state > -1 )
-//                {
-//                    std::getline ( myfile, line );
-
-//                    searchstring = ";";
-//                    found = line.find ( searchstring );
-//                    if ( found > -1 )
-//                    {
-//                        read_state = -1;
-//                        break;
-//                    }
-//                    else
-//                    {
-//                        searchstring = "[hypothesis_model_id=\"";
-//                        found = line.find ( searchstring );
-//                        if ( found > -1 )
-//                        {
-//                            model_id = line.substr ( found + searchstring.length () );
-//                            model_id.erase ( model_id.end () - 2, model_id.end () );
-//                            read_state++;
-//                        }
-
-//                        searchstring = "[hypothesis_transform=\"";
-//                        found = line.find ( searchstring );
-//                        if ( found > -1 )
-//                        {
-//                            tf_str = line.substr ( found + searchstring.length () );
-//                            tf_str.erase ( tf_str.end () - 2, tf_str.end () );
-
-//                            std::stringstream ( tf_str ) >> tf ( 0, 0 ) >> tf ( 0, 1 ) >> tf ( 0, 2 ) >> tf ( 0, 3 ) >> tf ( 1, 0 ) >> tf ( 1, 1 ) >> tf ( 1, 2 ) >> tf ( 1, 3 )
-//                                                         >> tf ( 2, 0 ) >> tf ( 2, 1 ) >> tf ( 2, 2 ) >> tf ( 2, 3 ) >> tf ( 3, 0 ) >> tf ( 3, 1 ) >> tf ( 3, 2 ) >> tf ( 3, 3 );
-//                            read_state++;
-
-//                        }
-//                        searchstring = "[hypothesis_origin=\"";
-//                        found = line.find ( searchstring );
-//                        if ( found > -1 )
-//                        {
-//                            origin = line.substr ( found + searchstring.length () );
-//                            origin.erase ( origin.end () - 2, origin.end () );
-//                            read_state++;
-
-//                            searchstring = "[hypothesis_verified=\"";
-//                            found = line.find ( searchstring );
-//                            if ( found > -1 )
-//                            {
-//                                verified = line.substr ( found + searchstring.length () );
-//                                verified.erase ( verified.end () - 2, verified.end () );
-//                                read_state++;
-//                            }
-//                        }
-//                    }
-//                    if ( read_state >= 4 )
-//                    {
-//                        read_state = 0;
-//                        Hypothesis hypothesis ( model_id, tf, origin, false, atoi ( verified.c_str() ) );
-//                        g[v].hypothesis.push_back ( hypothesis );
-
-//                        g[v].scene_filename = fn;
-//                        g[v].pScenePCl.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
-//                        pcl::io::loadPCDFile ( g[v].scene_filename, * ( g[v].pScenePCl ) );
-
-//                    }
-//                }
-//            }
-//        }
-//        myfile.close ();
-//    }
-//    return vertices_temp_v;
-//}
-
-struct my_node_writer
-{
-    my_node_writer ( Graph& g_ ) :
-        g ( g_ )
-    {
-    }
-    ;
-    template<class Vertex>
-    void
-    operator() ( std::ostream& out, Vertex v )
-    {
-        out << " [label=\"" << g[v].scene_filename_ << "(" << boost::filesystem::path ( g[v].scene_filename_ ).stem ().string () << ")\"]"
-            << std::endl;
-        out << " [file=\"" << g[v].scene_filename_ << "\"]" << std::endl;
-        out << " [index=\"" << g[v].scene_filename_ << "\"]" << std::endl;
-
-        for ( std::vector<Hypothesis>::iterator it_hyp = g[v].hypothesis.begin (); it_hyp != g[v].hypothesis.end (); ++it_hyp )
-        {
-            out << " [hypothesis_model_id=\"" << it_hyp->model_id_ << "\"]" << std::endl;
-            out << " [hypothesis_transform=\"" << it_hyp->transform_ ( 0, 0 ) << " " << it_hyp->transform_ ( 0, 1 ) << " " << it_hyp->transform_ ( 0, 2 )
-                << " " << it_hyp->transform_ ( 0, 3 ) << " " << it_hyp->transform_ ( 1, 0 ) << " " << it_hyp->transform_ ( 1, 1 ) << " "
-                << it_hyp->transform_ ( 1, 2 ) << " " << it_hyp->transform_ ( 1, 3 ) << " " << it_hyp->transform_ ( 2, 0 ) << " " << it_hyp->transform_ ( 2, 1 )
-                << " " << it_hyp->transform_ ( 2, 2 ) << " " << it_hyp->transform_ ( 2, 3 ) << " " << it_hyp->transform_ ( 3, 0 ) << " "
-                << it_hyp->transform_ ( 3, 1 ) << " " << it_hyp->transform_ ( 3, 2 ) << " " << it_hyp->transform_ ( 3, 3 ) << " " << "\"]" << std::endl;
-            out << " [hypothesis_origin=\"" << it_hyp->origin_ << "\"]" << std::endl;
-            out << " [hypothesis_verified=\"" << it_hyp->verified_ << "\"]" << std::endl;
-        }
-    }
-    ;
-    Graph g;
-};
-
-struct my_edge_writer
-{
-    my_edge_writer ( Graph& g_ ) :
-        g ( g_ )
-    {
-    }
-    ;
-    template<class Edge>
-    void
-    operator() ( std::ostream& out, Edge e )
-    {
-        // just an example, showing that local options override global
-        out << " [color=purple]" << std::endl;
-        out << " [label=\"" << g[e].edge_weight << boost::filesystem::path ( g[e].model_name ).stem ().string () << "\"]" << std::endl;
-    }
-    ;
-    Graph g;
-};
-
-struct my_graph_writer
-{
-    void
-    operator() ( std::ostream& out ) const
-    {
-        out << "node [shape=circle color=blue]" << std::endl;
-        // just an example, showing that local options override global
-        out << "edge [color=red]" << std::endl;
-    }
-} myGraphWrite;
-
-void multiviewGraph::
-outputgraph ( Graph& map, const char* filename )
-{
-    std::ofstream gout;
-    gout.open ( filename );
-    write_graphviz ( gout, map, my_node_writer ( map ), my_edge_writer ( map ), myGraphWrite );
-}
-
 inline void
 createBigPointCloudRecursive ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud, Vertex start, Vertex coming_from,
                                Eigen::Matrix4f accum )
@@ -346,7 +182,7 @@ createBigPointCloudRecursive ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZ
         Vertex src = boost::source ( e, grph_final );
         Vertex targ = boost::target ( e, grph_final );
         Eigen::Matrix4f transform;
-        if ( grph_final[e].source_id.compare( grph_final[src].scene_filename_ ) == 0)
+        if ( grph_final[e].source_id.compare( grph_final[src].view_id_ ) == 0)
         {
             PCL_WARN ( "inverse" );
             transform = grph_final[e].transformation.inverse ();
@@ -377,6 +213,106 @@ createBigPointCloud ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr
     *big_cloud += *grph_final[*vp.first].pScenePCl;
     grph_final[*vp.first].absolute_pose = accum;
     createBigPointCloudRecursive ( grph_final, big_cloud, *vp.first, *vp.first, accum );
+}
+
+
+std::string multiviewGraph::models_dir() const
+{
+    return models_dir_;
+}
+
+void multiviewGraph::setModels_dir(const std::string &models_dir)
+{
+    models_dir_ = models_dir;
+}
+
+bool multiviewGraph::visualize_output() const
+{
+    return visualize_output_;
+}
+
+void multiviewGraph::setVisualize_output(bool visualize_output)
+{
+    visualize_output_ = visualize_output;
+}
+
+bool multiviewGraph::go_3d() const
+{
+    return go_3d_;
+}
+
+void multiviewGraph::setGo_3d(bool go_3d)
+{
+    go_3d_ = go_3d;
+}
+
+int multiviewGraph::icp_iter() const
+{
+    return icp_iter_;
+}
+
+void multiviewGraph::setIcp_iter(int icp_iter)
+{
+    icp_iter_ = icp_iter;
+}
+
+int multiviewGraph::opt_type() const
+{
+    return opt_type_;
+}
+
+void multiviewGraph::setOpt_type(int opt_type)
+{
+    opt_type_ = opt_type;
+}
+
+std::string multiviewGraph::gt_or_ouput_dir() const
+{
+    return gt_or_ouput_dir_;
+}
+
+void multiviewGraph::setGt_or_ouput_dir(const std::string &gt_or_ouput_dir)
+{
+    gt_or_ouput_dir_ = gt_or_ouput_dir;
+}
+
+double multiviewGraph::chop_at_z() const
+{
+    return chop_at_z_;
+}
+
+void multiviewGraph::setChop_at_z(double chop_at_z)
+{
+    chop_at_z_ = chop_at_z;
+}
+
+int multiviewGraph::mv_keypoints() const
+{
+    return mv_keypoints_;
+}
+
+void multiviewGraph::setMv_keypoints(int mv_keypoints)
+{
+    mv_keypoints_ = mv_keypoints;
+}
+
+void multiviewGraph::loadModels()
+{
+    //load models for visualization
+    models_source_.reset ( new faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> );
+    models_source_->setPath ( models_dir_ );
+    models_source_->setLoadViews ( false );
+    models_source_->setLoadIntoMemory ( false );
+    std::string training_dir = "not_needed";
+    models_source_->generate ( training_dir );
+    models_source_->createVoxelGridAndDistanceTransform ( icp_resolution_ );
+    ROS_INFO ( "Models loaded from %s", models_dir_.c_str() );
+
+    if ( visualize_output_ ) //-------Visualize Scene Cloud--------------------
+    {
+        vis_.reset ( new pcl::visualization::PCLVisualizer ( "vis1" ) );
+        vis_->setWindowName ( "Recognition from Multiple Views" );
+    }
 }
 
 bool multiviewGraph::
@@ -453,7 +389,7 @@ estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph 
     flann::Matrix<float> distances = flann::Matrix<float> ( new float[K], 1, K );
 
     pcl::CorrespondencesPtr temp_correspondences ( new pcl::Correspondences );
-    PCL_INFO ( "Calculate transform via SIFT between scene %s and %s for a keypoint size of %ld", grph[src].scene_filename_.c_str(), grph[trgt].scene_filename_.c_str(), grph[src].pKeypoints->size () );
+    PCL_INFO ( "Calculate transform via SIFT between view %s and %s for a keypoint size of %ld", grph[src].view_id_.c_str(), grph[trgt].view_id_.c_str(), grph[src].pKeypoints->size () );
     for ( size_t keypointId = 0; keypointId < grph[src].pKeypoints->size (); keypointId++ )
     {
         FeatureT searchFeature = grph[src].pSignatures->at ( keypointId );
@@ -487,8 +423,8 @@ estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph 
     tie ( edge, b ) = add_edge ( trgt, src, grph );
     grph[edge].transformation = transformation;
     grph[edge].model_name = std::string ( "scene_to_scene" );
-    grph[edge].source_id = grph[src].scene_filename_;
-    grph[edge].target_id = grph[trgt].scene_filename_;
+    grph[edge].source_id = grph[src].view_id_;
+    grph[edge].target_id = grph[trgt].view_id_;
 
 
     pcl::visualization::PCLVisualizer::Ptr vis_temp2 (new pcl::visualization::PCLVisualizer);
@@ -564,25 +500,25 @@ extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge) //is directed ed
     grph[current_vertex].has_been_hopped_ = true;
     grph[current_vertex].cumulative_weight_to_new_vrtx_ = grph[src].cumulative_weight_to_new_vrtx_ + grph[calling_out_edge].edge_weight;
 
-    ROS_INFO("Current Vertex %s has a cumulative weight of %lf.", grph[current_vertex].scene_filename_.c_str(), grph[current_vertex].cumulative_weight_to_new_vrtx_);
+    ROS_INFO("Current Vertex %s has a cumulative weight of %lf.", grph[current_vertex].view_id_.c_str(), grph[current_vertex].cumulative_weight_to_new_vrtx_);
     for ( tie ( out_i, out_end ) = out_edges ( current_vertex, grph ); out_i != out_end; ++out_i )
     {
         Vertex new_trgt = target ( *out_i, grph );
 
         if ( grph[new_trgt].has_been_hopped_ )
         {
-            ROS_INFO("Vertex %s has already been hopped.", grph[new_trgt].scene_filename_.c_str());
+            ROS_INFO("Vertex %s has already been hopped.", grph[new_trgt].view_id_.c_str());
             continue;
         }
-        ROS_INFO("Hopping to vertex %s...", grph[new_trgt].scene_filename_.c_str());
+        ROS_INFO("Hopping to vertex %s...", grph[new_trgt].view_id_.c_str());
         std::vector<Hypothesis> new_hypotheses = extendHypothesisRecursive ( grph, *out_i);
         for(std::vector<Hypothesis>::iterator it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
         {
-            if ( grph[calling_out_edge].source_id.compare( grph[src].scene_filename_ ) == 0)
+            if ( grph[calling_out_edge].source_id.compare( grph[src].view_id_ ) == 0)
             {
                 it_new_hyp->transform_ = grph[calling_out_edge].transformation.inverse () * it_new_hyp->transform_ ;
             }
-            else if (grph[calling_out_edge].target_id.compare( grph[src].scene_filename_ ) == 0)
+            else if (grph[calling_out_edge].target_id.compare( grph[src].view_id_ ) == 0)
             {
                 it_new_hyp->transform_ = grph[calling_out_edge].transformation * it_new_hyp->transform_;
             }
@@ -600,11 +536,11 @@ extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge) //is directed ed
             continue;
 
         Eigen::Matrix4f tf;
-        if ( grph[calling_out_edge].source_id.compare( grph[src].scene_filename_ ) == 0)
+        if ( grph[calling_out_edge].source_id.compare( grph[src].view_id_ ) == 0)
         {
             tf = grph[calling_out_edge].transformation.inverse () * it_hyp->transform_;
         }
-        else if (grph[calling_out_edge].target_id.compare( grph[src].scene_filename_ ) == 0)
+        else if (grph[calling_out_edge].target_id.compare( grph[src].view_id_ ) == 0)
         {
             tf = grph[calling_out_edge].transformation * it_hyp->transform_;
         }
@@ -637,7 +573,7 @@ extendHypothesis ( Graph &grph )
                 Edge e = *out_i;
                 Vertex src = source ( e, grph ), targ = target ( e, grph );
 
-                if ( grph[src].scene_filename_ != grph[*vp.first].scene_filename_ )
+                if ( grph[src].view_id_ != grph[*vp.first].view_id_ )
                     PCL_WARN("something's wrong");
 
                 size_t hypothesis_length_before_extension = grph[src].hypothesis.size ();
@@ -657,7 +593,7 @@ extendHypothesis ( Graph &grph )
                     if ( !hypotheses_from_view_exist )
                     {
                         Eigen::Matrix4f tf;
-                        if ( grph[e].source_id.compare( grph[*vp.first].scene_filename_ ) == 0 )
+                        if ( grph[e].source_id.compare( grph[*vp.first].view_id_ ) == 0 )
                         {
                             tf = grph[e].transformation.inverse () * it_hypB->transform_;
                         }
@@ -761,12 +697,12 @@ createEdgesFromHypothesisMatch (Graph &grph, std::vector<Edge> &edges )
                         tie ( e_cpy, b ) = add_edge ( *vertexItA, *vertexItB, grph );
                         grph[e_cpy].transformation = tf_temp;
                         grph[e_cpy].model_name = grph[*vertexItA].hypothesis[hypVec_id].model_id_;
-                        grph[e_cpy].source_id = grph[*vertexItA].scene_filename_;
-                        grph[e_cpy].target_id = grph[*vertexItB].scene_filename_;
+                        grph[e_cpy].source_id = grph[*vertexItA].view_id_;
+                        grph[e_cpy].target_id = grph[*vertexItB].view_id_;
                         grph[e_cpy].edge_weight = std::numeric_limits<double>::max ();
                         edges.push_back ( e_cpy );
 
-                        std::cout << "Creating Edge from " << grph[*vertexItA].scene_filename_ << " to " << grph[*vertexItB].scene_filename_
+                        std::cout << "Creating Edge from view " << grph[*vertexItA].view_id_ << " to " << grph[*vertexItB].view_id_
                                   << std::endl;
                     }
                 }
@@ -781,12 +717,12 @@ createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std
     vertex_iter vertexItA, vertexEndA;
     for (boost::tie(vertexItA, vertexEndA) = vertices(grph_); vertexItA != vertexEndA; ++vertexItA)
     {
-        if ( grph[*vertexItA].scene_filename_.compare( grph[new_vertex].scene_filename_ ) == 0 )
+        if ( grph[*vertexItA].view_id_.compare( grph[new_vertex].view_id_ ) == 0 )
         {
             continue;
         }
 
-        ROS_INFO("Checking vertex %s, which has %ld hypotheses.", grph[*vertexItA].scene_filename_.c_str(), grph[*vertexItA].hypothesis.size());
+        ROS_INFO("Checking vertex %s, which has %ld hypotheses.", grph[*vertexItA].view_id_.c_str(), grph[*vertexItA].hypothesis.size());
         //for ( size_t hypVec_id = 0; hypVec_id < grph[*it_vrtxA].hypothesis.size (); hypVec_id++ )
         for ( std::vector<Hypothesis>::iterator it_hypA = grph[*vertexItA].hypothesis.begin (); it_hypA != grph[*vertexItA].hypothesis.end (); ++it_hypA )
         {
@@ -802,12 +738,12 @@ createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std
                     tie ( e_cpy, b ) = add_edge ( *vertexItA, new_vertex, grph );
                     grph[e_cpy].transformation = tf_temp;
                     grph[e_cpy].model_name = it_hypA->model_id_;
-                    grph[e_cpy].source_id = grph[*vertexItA].scene_filename_;
-                    grph[e_cpy].target_id = grph[new_vertex].scene_filename_;
+                    grph[e_cpy].source_id = grph[*vertexItA].view_id_;
+                    grph[e_cpy].target_id = grph[new_vertex].view_id_;
                     grph[e_cpy].edge_weight = std::numeric_limits<double>::max ();
                     edges.push_back ( e_cpy );
 
-                    std::cout << "Creating edge from " << grph[*vertexItA].scene_filename_ << " to " << grph[new_vertex].scene_filename_
+                    std::cout << "Creating edge from view " << grph[*vertexItA].view_id_ << " to view " << grph[new_vertex].view_id_
                               << " for model match " << grph[e_cpy].model_name
                               << std::endl;
                     /*pcl::visualization::PCLVisualizer::Ptr vis_temp (new pcl::visualization::PCLVisualizer);
@@ -881,7 +817,7 @@ calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
         vrtx_trgt = target ( *ep.first, grph );
 
         Eigen::Matrix4f transform;
-        if ( grph[*ep.first].source_id.compare( grph[vrtx_src].scene_filename_ ))
+        if ( grph[*ep.first].source_id.compare( grph[vrtx_src].view_id_ ))
         {
             transform = grph[*ep.first].transformation;
         }
@@ -935,7 +871,7 @@ calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
         //        pcl::transformPointCloudWithNormals ( * ( grph[vrtx_src].pSceneXYZRGBNormal ), *pTargetNormalPCl, icp_trans );
         //        pcl::copyPointCloud ( * ( grph[vrtx_trgt].pSceneXYZRGBNormal ), *pSourceNormalPCl );
 
-        if ( grph[*ep.first].source_id.compare( grph[vrtx_src].scene_filename_ ))
+        if ( grph[*ep.first].source_id.compare( grph[vrtx_src].view_id_ ))
         {
             PCL_WARN ( "Normal...\n" );
             //icp trans is aligning source to target
@@ -979,16 +915,8 @@ calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
 
 bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response) // pcl::PointCloud<pcl::PointXYZRGB> &cloud, const std::string scene_name )
 {
-    recognition_srv_definitions::recognize srv;
-    //    sensor_msgs::PointCloud2 output;
+     std::string scene_name = req.scene_name.data;
 
-    std::string scene_name = req.scene_name.data;
-
-    if (req.cloud.data.size()==0)
-    {
-        ROS_ERROR("Point cloud is empty!");
-        return false;
-    }
     ROS_INFO ( "Sending the current point cloud to the single view recognition system..." );
     Vertex vrtx = boost::add_vertex ( grph_ );
     Vertex vrtx_final = boost::add_vertex ( grph_final_ );
@@ -1002,20 +930,22 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
     //        pass_.setFilterFieldName ( "z" );
     //        pass_.setInputCloud ( current_cloud_ );
     //        pass_.setKeepOrganized ( true );
-    //        pass_.filter ( *grph_[vrtx].pScenePCl );
+    //        pass_.filter ( *grph[vrtx].pScenePCl );
     //    }
     //    current_cloud_mutex_.unlock();
 
-    if (0)// !scene_name.empty() )
-    {
-        grph_[vrtx].scene_filename_ = scene_name;
-    }
-    else
-    {
-        std::stringstream filename;
-        filename << "scene_" << recorded_clouds_;
-        grph_[vrtx].scene_filename_ = filename.str();
-    }
+//    if (0)// !scene_name.empty() )
+//    {
+//        setSceneName(scene_name);
+//    }
+//    else
+//    {
+//        std::stringstream filename;
+//        filename << "scene_" << recorded_clouds_;
+//        grph[vrtx].scene_filename_ = filename.str();
+//    }
+
+    recognition_srv_definitions::recognize srv;
     srv.request.cloud = req.cloud;
     recorded_clouds_++;
 
@@ -1055,7 +985,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
 
                 std::stringstream model_name;
                 model_name << models_dir_ << srv.response.ids[i].data;
-                Hypothesis hypothesis ( model_name.str(), tt, grph_[vrtx].scene_filename_, false );
+                Hypothesis hypothesis ( model_name.str(), tt, grph_[vrtx].view_id_, false );
                 grph_[vrtx].hypothesis.push_back ( hypothesis );
             }
         }
@@ -1066,15 +996,14 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
         ne.setInputCloud ( grph_[vrtx].pScenePCl );
         ne.compute ( * ( grph_[vrtx].pSceneNormals ) );
 
-
-        std::stringstream text_tmp;
-        text_tmp << "There are " << num_vertices(grph_) << " vertices in the graph for scene " << grph_[vrtx].scene_filename_;
-        ROS_INFO(text_tmp.str().c_str());
+//        std::stringstream text_tmp;
+//        text_tmp << "There are " << num_vertices(grph_) << " vertices in the graph for scene " << getSceneName() << " and view " << grph_[vrtx].view_id_;
+        ROS_INFO("There are %ld vertices in the graph for scene %s and view %s", num_vertices(grph_), getSceneName().c_str(), grph_[vrtx].view_id_.c_str());
 
         vertex_iter vertexIt, vertexEnd;
         boost::tie(vertexIt, vertexEnd) = vertices(grph_);
         for (; vertexIt != vertexEnd; ++vertexIt){
-            std::cout << grph_[*vertexIt].scene_filename_ << std::endl;
+            std::cout << grph_[*vertexIt].view_id_ << std::endl;
         }
 
         //----------create-edges-between-views-by-SIFT-----------------------------------
@@ -1097,7 +1026,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                 {
                     Eigen::Matrix4f transformation;
                     Edge edge;
-                    if( grph_final_[*vertexIt].scene_filename_.compare ( grph_final_[vrtx].scene_filename_ ) != 0 )
+                    if( grph_final_[*vertexIt].view_id_.compare ( grph_final_[vrtx].view_id_ ) != 0 )
                     {
                         estimateViewTransformationBySIFT ( *vertexIt, vrtx, grph_, flann_index, transformation, edge );
                         new_edges.push_back ( edge );
@@ -1116,7 +1045,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
         //---copy-vertices-to-graph_final----------------------------
         grph_final_[vrtx_final].pScenePCl = grph_[vrtx].pScenePCl;
         grph_final_[vrtx_final].pSceneNormals = grph_[vrtx].pSceneNormals;
-        grph_final_[vrtx_final].scene_filename_ = grph_[vrtx].scene_filename_;
+        grph_final_[vrtx_final].view_id_ = grph_[vrtx].view_id_;
         grph_final_[vrtx_final].hypothesis = grph_[vrtx].hypothesis;
         grph_final_[vrtx_final].pKeypoints = grph_[vrtx].pKeypoints;
         grph_final_[vrtx_final].keypoints_indices_ = grph_[vrtx].keypoints_indices_;
@@ -1124,9 +1053,9 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
 
 
         //std::vector<Edge> edges_final;
-        //calcMST (edges_, grph_, edges_final);
+        //calcMST (edges_, grph, edges_final);
 
-        //        outputgraph (grph_, hypothesis_file.c_str ());
+        //        outputgraph (grph, hypothesis_file.c_str ());
 
         //---copy-edges-that-are-left-after-MST-calculation-to-the-final-graph-------------------------------------------------------------
         //#pragma omp parallel for
@@ -2143,7 +2072,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                         aligned_models.push_back ( pModelPCl2 );
                         ids.push_back ( it_hyp->model_id_ );
                     }
-                    std::cout << "View " << grph_final_[vrtx_tmp].scene_filename_ << " has " << grph_final_[vrtx_tmp].hypothesis.size ()
+                    std::cout << "View " << grph_final_[vrtx_tmp].view_id_ << " has " << grph_final_[vrtx_tmp].hypothesis.size ()
                               << " hypothesis. " << std::endl;
 
                     //initialize go
@@ -2272,13 +2201,13 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
             }
         }
 
-        //        outputgraph ( grph_final_, "Final_with_Hypothesis_extension.dot" );
+        //        outputgraph ( grph_final, "Final_with_Hypothesis_extension.dot" );
 
         if ( visualize_output_ ) //-------Visualize Scene Cloud--------------------
         {
             std::vector<int> viewportNr;
             vis_->removeAllPointClouds();
-            viewportNr = faat_pcl::utils::visualization_framework ( vis_, num_vertices(grph_), 4 );
+            viewportNr = faat_pcl::utils::visualization_framework ( vis_, num_vertices(grph_final_), 4 );
 
             std::pair<vertex_iter, vertex_iter> vp;
             int view_id = -1;
@@ -2287,7 +2216,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                 view_id++;
                 pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb ( grph_final_[*vp.first].pScenePCl );
                 std::stringstream cloud_name;
-                cloud_name << "scene_cloud_" << grph_final_[*vp.first].scene_filename_;
+                cloud_name << "view_cloud_" << grph_final_[*vp.first].view_id_;
                 vis_->addPointCloud<pcl::PointXYZRGB> ( grph_final_[*vp.first].pScenePCl, handler_rgb, cloud_name.str (), viewportNr[view_id * 4 + 0] );
 
                 for ( size_t hyp_id = 0; hyp_id < grph_final_[*vp.first].hypothesis.size(); hyp_id++ )
@@ -2314,7 +2243,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                     pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler ( model_aligned );
                     vis_->addPointCloud<PointT> ( model_aligned, rgb_handler, name.str (), viewportNr[view_id * 4 +2] );
 
-                    if ( grph_final_[*vp.first].hypothesis[hyp_id].origin_.compare ( grph_final_[*vp.first].scene_filename_ ) == 0 )	//--show-hypotheses-from-single-view
+                    if ( grph_final_[*vp.first].hypothesis[hyp_id].origin_.compare ( grph_final_[*vp.first].view_id_ ) == 0 )	//--show-hypotheses-from-single-view
                     {
                         name << "__extended";
                         pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2 ( model_aligned );
@@ -2392,54 +2321,49 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
     return true;
 }
 
-void multiviewGraph::init ( int argc, char **argv )
+int main (int argc, char **argv)
 {
-    ros::init ( argc, argv, "multiview_object_recognizer_node" );
-    ros::NodeHandle  n("~");
-    current_cloud_.reset ( new pcl::PointCloud<pcl::PointXYZRGB>() );
-    std::string icp_iterations, mv_keypoints, opt_type;
+    std::string models_dir;
+    bool visualize_output;
+    bool go_3d;
+    int icp_iter;
+    int opt_type;
+    std::string gt_or_ouput_dir;
+    double chop_at_z;
+    int mv_keypoints;
 
-    if ( ! n.getParam ( "models_dir", models_dir_ ))
+    ros::init ( argc, argv, "multiview_object_recognizer_node" );
+    n_.reset( new ros::NodeHandle ( "~" ) );
+
+    if ( ! n_->getParam ( "models_dir", models_dir ))
     {
         std::cout << "No models_dir specified. " << std::endl;
     }
 
-    n.getParam ( "visualize_output", visualize_output_ );
-    n.getParam ( "go_3d", go_3d_ );
-    n.getParam ( "gt_or_output_dir", gt_or_ouput_dir_ );
-    n.getParam ( "icp_iterations", icp_iter_ );
-    n.getParam ( "mv_keypoints", mv_keypoints_ );
-    n.getParam ( "opt_type", opt_type_ );
-    n.getParam ( "chop_z", chop_at_z_ );
+    n_->getParam ( "visualize_output", visualize_output);
+    n_->getParam ( "go_3d", go_3d);
+    n_->getParam ( "gt_or_output_dir", gt_or_ouput_dir);
+    n_->getParam ( "icp_iterations", icp_iter);
+    n_->getParam ( "mv_keypoints", mv_keypoints);
+    n_->getParam ( "opt_type", opt_type);
+    n_->getParam ( "chop_z", chop_at_z);
 
-    client_ = n.serviceClient<recognition_srv_definitions::recognize> ( "/recognition_service/mp_recognition" );
-    ros_mv_rec_server_ = n.advertiseService("multiview_recognotion_servcice", &multiviewGraph::recognize, this);
 
-    //load models for visualization
-    models_source_.reset ( new faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> );
-    models_source_->setPath ( models_dir_ );
-    models_source_->setLoadViews ( false );
-    models_source_->setLoadIntoMemory ( false );
-    std::string training_dir = "not_needed";
-    models_source_->generate ( training_dir );
-    models_source_->createVoxelGridAndDistanceTransform ( icp_resolution_ );
-    ROS_INFO ( "Models loaded from %s", models_dir_.c_str() );
+    worldRepresentation myWorld;
+    myWorld.setModels_dir(models_dir);
+    myWorld.setVisualize_output(visualize_output);
+    myWorld.setGo_3d(go_3d);
+    myWorld.setGt_or_ouput_dir(gt_or_ouput_dir);
+    myWorld.setIcp_iter(icp_iter);
+    myWorld.setMv_keypoints(mv_keypoints);
+    myWorld.setOpt_type(opt_type);
+    myWorld.setChop_at_z(chop_at_z);
 
-    object_to_be_highlighted_ = "";
+    client_ = n_->serviceClient<recognition_srv_definitions::recognize> ( "/recognition_service/mp_recognition" );
+    ros_mv_rec_server_ = n_->advertiseService("multiview_recognotion_servcice", &worldRepresentation::recognize, &myWorld);
 
-    if ( visualize_output_ ) //-------Visualize Scene Cloud--------------------
-    {
-        vis_.reset ( new pcl::visualization::PCLVisualizer ( "vis1" ) );
-        vis_->setWindowName ( "Recognition from Multiple Views" );
-    }
     ROS_INFO("Multiview object recognizer is ready to get service calls.");
     ros::spin();
-}
 
-int main (int argc, char **argv)
-{
-    multiviewGraph myGraph;
-    myGraph.init(argc, argv);
-    ROS_INFO("Starting rec");
     return 0;
 }

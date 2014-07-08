@@ -67,7 +67,8 @@ main (int argc, char **argv)
         std::string ext = std::string ("pcd");
         faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, start, files_intern, ext);
 
-        ros::Publisher vis_pc_pub_ = n->advertise<sensor_msgs::PointCloud2>( "multiview_point_cloud_input", 1 );
+        ros::Publisher vis_pc_pub_ = n->advertise<sensor_msgs::PointCloud2>( "multiview_point_cloud_input", 0 );
+        ros::Rate loop_rate(1);
 
         for (size_t file_id=0; file_id < files_intern.size(); file_id++)
         {
@@ -79,10 +80,16 @@ main (int argc, char **argv)
 //            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb (pScene);
 //            vis->addPointCloud<pcl::PointXYZRGB> (pScene, handler_rgb, "scnene");
 //            vis->spin();
+
             sensor_msgs::PointCloud2  pc2;
             pcl::toROSMsg (*pScene, pc2);
             pc2.header.frame_id = "camera_link";
+            pc2.header.stamp = ros::Time::now();
+            pc2.is_dense = false;
             vis_pc_pub_.publish(pc2);
+            ros::spinOnce(); // Why does the point cloud not get published immediately?
+            loop_rate.sleep();
+
             srv.request.cloud = pc2;
             srv.request.scene_name.data = scenes_dir;
             if (mv_recognition_client.call(srv))
