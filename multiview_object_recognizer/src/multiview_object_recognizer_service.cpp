@@ -773,11 +773,6 @@ calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
     {
         if(grph[*ep.first].edge_weight_has_been_calculated_)
             continue;
-        //        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pTargetNormalPCl ( new pcl::PointCloud<pcl::PointXYZRGBNormal> );
-        //        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pTargetPCl ( new pcl::PointCloud<pcl::PointXYZRGB> );
-        //        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pSourcePCl ( new pcl::PointCloud<pcl::PointXYZRGB> );
-        //        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pSourceNormalPCl ( new pcl::PointCloud<pcl::PointXYZRGBNormal> );
-
 
         double edge_weight;
         Vertex vrtx_src, vrtx_trgt;
@@ -809,9 +804,6 @@ calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
 
         pass_.setInputCloud (grph[vrtx_trgt].pScenePCl);
         pass_.filter (*pTargetPCl_ficp);
-
-        //        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pTargetPCl_ficp ( new pcl::PointCloud<pcl::PointXYZRGB> );
-        //        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pSourcePCl_ficp ( new pcl::PointCloud<pcl::PointXYZRGB> );
 
         float best_overlap_ = max_overlap;
         Eigen::Matrix4f icp_trans;
@@ -883,13 +875,14 @@ calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
 
 bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response) // pcl::PointCloud<pcl::PointXYZRGB> &cloud, const std::string scene_name )
 {
-     std::string scene_name = req.scene_name.data;
+    std::string view_name = req.view_name.data;
 
     ROS_INFO ( "Sending the current point cloud to the single view recognition system..." );
     Vertex vrtx = boost::add_vertex ( grph_ );
     Vertex vrtx_final = boost::add_vertex ( grph_final_ );
     pcl::fromROSMsg(req.cloud, *current_cloud_);
     *(grph_[vrtx].pScenePCl) = *current_cloud_;
+    grph_[vrtx].view_id_ = view_name;
 
     //    if(chop_at_z_ > 0)
     //    {
@@ -1011,6 +1004,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
         outputgraph ( grph_, "complete_graph.dot" );
 
         //---copy-vertices-to-graph_final----------------------------
+        grph_final_[vrtx_final].view_id_ = grph_[vrtx].view_id_;
         grph_final_[vrtx_final].pScenePCl = grph_[vrtx].pScenePCl;
         grph_final_[vrtx_final].pSceneNormals = grph_[vrtx].pSceneNormals;
         grph_final_[vrtx_final].view_id_ = grph_[vrtx].view_id_;

@@ -92,6 +92,7 @@ main (int argc, char **argv)
 
             srv.request.cloud = pc2;
             srv.request.scene_name.data = scenes_dir;
+            srv.request.view_name.data = files_intern[file_id];
             if (mv_recognition_client.call(srv))
             {
                 if ( srv.response.ids.size() == 0 )

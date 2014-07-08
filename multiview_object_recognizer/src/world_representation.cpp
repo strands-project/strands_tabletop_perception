@@ -1,6 +1,6 @@
 #include "world_representation.h"
 
-multiviewGraph worldRepresentation::get_current_graph(const std::string scene_name)
+multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_name)
 {
     for (size_t scene_id = 0; scene_id < graph_v.size(); scene_id++)
     {
@@ -19,8 +19,8 @@ multiviewGraph worldRepresentation::get_current_graph(const std::string scene_na
     newGraph.setMv_keypoints(mv_keypoints_);
     newGraph.setOpt_type(opt_type_);
     newGraph.setChop_at_z(chop_at_z_);
-
     newGraph.setSceneName(scene_name);
+    newGraph.loadModels();
     graph_v.push_back(newGraph);
     return graph_v.back();
 }
@@ -36,7 +36,7 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
 
     std::string scene_name = req.scene_name.data;
 
-    multiviewGraph currentGraph = get_current_graph(scene_name);
+    multiviewGraph &currentGraph = get_current_graph(scene_name);
     return currentGraph.recognize(req, response);
 }
 

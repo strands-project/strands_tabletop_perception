@@ -7,7 +7,7 @@
 class worldRepresentation
 {
 private:
-    std::vector <multiviewGraph> graph_v;
+    std::vector <multiviewGraph > graph_v;
     bool visualize_output_;
     bool go_3d_;
     int icp_iter_;
@@ -19,7 +19,7 @@ private:
 
 public:
     bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
-    multiviewGraph get_current_graph(const std::string scene_name);
+    multiviewGraph& get_current_graph(const std::string scene_name);
 
     // getter and setter functions
     int icp_iter() const;
