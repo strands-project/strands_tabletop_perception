@@ -762,38 +762,6 @@ createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std
     }
 }
 
-View::View ()
-{
-    pScenePCl.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
-    //pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
-    pSceneNormals.reset ( new pcl::PointCloud<pcl::Normal> );
-    //    pSceneXYZRGBNormal.reset ( new pcl::PointCloud<pcl::PointXYZRGBNormal> );
-    //pScenePCl_f_ds.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
-    pIndices_above_plane.reset ( new pcl::PointIndices );
-    pSignatures.reset ( new pcl::PointCloud<FeatureT> );
-    has_been_hopped_ = false;
-    cumulative_weight_to_new_vrtx_ = 0;
-}
-
-Hypothesis::Hypothesis ( const std::string model_id, const Eigen::Matrix4f transform, const std::string origin, const bool extended, const bool verified )
-{
-    model_id_ = model_id;
-    transform_ = transform;
-    origin_ = origin;
-    extended_ = extended;
-    verified_ = verified;
-}
-
-myEdge::myEdge()
-{
-    edge_weight = std::numeric_limits<float>::max ();
-    model_name = "";
-    source_id = "";
-    target_id = "";
-    edge_weight_has_been_calculated_ = false;
-    std::vector <cv::DMatch> matches;
-}
-
 void multiviewGraph::
 calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
 {

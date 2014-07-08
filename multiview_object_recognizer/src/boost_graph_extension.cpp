@@ -69,6 +69,38 @@ void outputgraph ( Graph& map, const char* filename )
 	write_graphviz ( gout, map, my_node_writer ( map ), my_edge_writer ( map ), myGraphWrite );
 }
 
+View::View ()
+{
+    pScenePCl.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
+    //pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
+    pSceneNormals.reset ( new pcl::PointCloud<pcl::Normal> );
+    //    pSceneXYZRGBNormal.reset ( new pcl::PointCloud<pcl::PointXYZRGBNormal> );
+    //pScenePCl_f_ds.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
+    pIndices_above_plane.reset ( new pcl::PointIndices );
+    pSignatures.reset ( new pcl::PointCloud<FeatureT> );
+    has_been_hopped_ = false;
+    cumulative_weight_to_new_vrtx_ = 0;
+}
+
+Hypothesis::Hypothesis ( const std::string model_id, const Eigen::Matrix4f transform, const std::string origin, const bool extended, const bool verified )
+{
+    model_id_ = model_id;
+    transform_ = transform;
+    origin_ = origin;
+    extended_ = extended;
+    verified_ = verified;
+}
+
+myEdge::myEdge()
+{
+    edge_weight = std::numeric_limits<float>::max ();
+    model_name = "";
+    source_id = "";
+    target_id = "";
+    edge_weight_has_been_calculated_ = false;
+    std::vector <cv::DMatch> matches;
+}
+
 //std::vector<Vertex> my_node_reader ( std::string filename, Graph &g )
 //{
 //    std::string fn, model_id, line, tf_str, origin, verified;
