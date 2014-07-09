@@ -83,28 +83,42 @@ bool service_callback(table_segmentation::SegmentTable::Request& req,
     pcl::fromROSMsg(req.cloud, *msg_cloud);
     size_t n = msg_cloud->points.size();
     
-    std::string dest_frame = "/map";
-    tf::StampedTransform transform;
-    try {
-        //listener->transformPointCloud("/head_xtion_rgb_optical_frame", msg->header.stamp, *msg, msg->header.frame_id, cout);
-        listener->lookupTransform(dest_frame, req.cloud.header.frame_id, req.cloud.header.stamp, transform);
-    }
-    catch (tf::TransformException ex) {
-        ROS_INFO("%s",ex.what());
-        return false;
-    }
-    
-    tf::Matrix3x3 basis = transform.getBasis();
-    tf::Vector3 origin = transform.getOrigin();
-    
+       
     Matrix3f R;
     Vector3f t;
-    for (size_t i = 0; i < 3; ++i) {
-        t(i) = origin.m_floats[i];
-        for (size_t j = 0; j < 3; ++j) {
-            R(i, j) = basis.getRow(i).m_floats[j];
-        }
+	if (req.transform.size() == 16) { // we got a transform supplied already
+	    Eigen::Matrix<float, 4, 4, Eigen::RowMajor> transform;
+		std::cout << "A transform was supplied, not using ROS TF" << std::endl;
+		for (unsigned int i=0;i<16;i++) {
+		  *(transform.data()+i) = req.transform[i];
+		}		
+		//basis = transform.topLeftCorner<3,3>();
+		R = transform.block<3,3>(0,0);
+		t = transform.block<3,1>(0,3);
+		std::cout << R << std::endl;
+		std::cout << t << std::endl;
+	} else {
+		std::string dest_frame = "/map";
+		tf::StampedTransform transform;
+		try {
+			//listener->transformPointCloud("/head_xtion_rgb_optical_frame", msg->header.stamp, *msg, msg->header.frame_id, cout);
+			listener->lookupTransform(dest_frame, req.cloud.header.frame_id, req.cloud.header.stamp, transform);
+		}
+		catch (tf::TransformException ex) {
+			ROS_INFO("%s",ex.what());
+			return false;
+		}
+	 
+		tf::Vector3 origin = transform.getOrigin();
+		tf::Matrix3x3 basis = transform.getBasis();
+		for (size_t i = 0; i < 3; ++i) {
+			t(i) = origin.m_floats[i];
+			for (size_t j = 0; j < 3; ++j) {
+				R(i, j) = basis.getRow(i).m_floats[j];
+			}
+		}
     }
+	
     
     Vector3f point;
     Vector2f point2d;
