@@ -107,19 +107,19 @@ main (int argc, char **argv)
                         ROS_INFO ( "I detected object %s in the scene.", object_id.data.c_str() );
                         //model_ids.push_back ( srv.response.ids[i].data );
 
-                        Eigen::Matrix4f tt;
-                        tt.setIdentity ( 4,4 );
+//                        Eigen::Matrix4f tt;
+//                        tt.setIdentity ( 4,4 );
 
-                        tt ( 0,3 ) = srv.response.transforms[i].translation.x;
-                        tt ( 1,3 ) = srv.response.transforms[i].translation.y;
-                        tt ( 2,3 ) = srv.response.transforms[i].translation.z;
-                        Eigen::Quaternionf q ( srv.response.transforms[i].rotation.w,
-                                               srv.response.transforms[i].rotation.x,
-                                               srv.response.transforms[i].rotation.y,
-                                               srv.response.transforms[i].rotation.z );
+//                        tt ( 0,3 ) = srv.response.transforms[i].translation.x;
+//                        tt ( 1,3 ) = srv.response.transforms[i].translation.y;
+//                        tt ( 2,3 ) = srv.response.transforms[i].translation.z;
+//                        Eigen::Quaternionf q ( srv.response.transforms[i].rotation.w,
+//                                               srv.response.transforms[i].rotation.x,
+//                                               srv.response.transforms[i].rotation.y,
+//                                               srv.response.transforms[i].rotation.z );
 
-                        Eigen::Matrix3f rot = q.toRotationMatrix();
-                        tt.block<3,3> ( 0,0 ) = rot;
+//                        Eigen::Matrix3f rot = q.toRotationMatrix();
+//                        tt.block<3,3> ( 0,0 ) = rot;
 
                         //transforms.push_back ( tt );
 

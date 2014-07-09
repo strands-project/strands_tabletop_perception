@@ -30,6 +30,7 @@ public:
     View();
     //View(const View &view);
     boost::shared_ptr< pcl::PointCloud<pcl::PointXYZRGB> > pScenePCl;
+    boost::shared_ptr< pcl::PointCloud<pcl::PointXYZRGB> > pScenePCl_f;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals;
     boost::shared_ptr< pcl::PointCloud<FeatureT > > pSignatures;
     boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;

@@ -324,7 +324,7 @@ calcFeatures ( Vertex &src, Graph &grph, bool use_table_plane )
     if(use_table_plane)
         estimator->setIndices (*(grph[src].pIndices_above_plane));
 
-    bool ret = estimator->estimate (grph[src].pScenePCl, grph[src].pKeypoints, grph[src].pSignatures, grph[src].sift_keypoints_scales);
+    bool ret = estimator->estimate (grph[src].pScenePCl_f, grph[src].pKeypoints, grph[src].pSignatures, grph[src].sift_keypoints_scales);
 
     estimator->getKeypointIndices(grph[src].keypoints_indices_);
 
@@ -428,10 +428,10 @@ estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph 
 
 
     pcl::visualization::PCLVisualizer::Ptr vis_temp2 (new pcl::visualization::PCLVisualizer);
-    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified (grph[trgt].pScenePCl);
-    vis_temp2->addPointCloud<pcl::PointXYZRGB> (grph[trgt].pScenePCl, handler_rgb_verified, "Hypothesis_1");
+    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified (grph[trgt].pScenePCl_f);
+    vis_temp2->addPointCloud<pcl::PointXYZRGB> (grph[trgt].pScenePCl_f, handler_rgb_verified, "Hypothesis_1");
     PointInTPtr transformed_PCl (new pcl::PointCloud<pcl::PointXYZRGB>);
-    pcl::transformPointCloud (*grph[src].pScenePCl, *transformed_PCl, grph[edge].transformation);
+    pcl::transformPointCloud (*grph[src].pScenePCl_f, *transformed_PCl, grph[edge].transformation);
     pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified2 (transformed_PCl);
     vis_temp2->addPointCloud<pcl::PointXYZRGB> (transformed_PCl, handler_rgb_verified2, "Hypothesis_2");
     vis_temp2->spin ();
@@ -791,26 +791,26 @@ calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
 
         float w_after_icp_ = std::numeric_limits<float>::max ();
 
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pTargetPCl_ficp (new pcl::PointCloud<pcl::PointXYZRGB>);
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pSourcePCl_ficp (new pcl::PointCloud<pcl::PointXYZRGB>);
+//        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pTargetPCl_ficp (new pcl::PointCloud<pcl::PointXYZRGB>);
+//        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pSourcePCl_ficp (new pcl::PointCloud<pcl::PointXYZRGB>);
 
-        pcl::PassThrough<pcl::PointXYZRGB> pass_;
-        pass_.setFilterLimits (0.f, z_dist);
-        pass_.setFilterFieldName ("z");
-        pass_.setKeepOrganized (true);
+//        pcl::PassThrough<pcl::PointXYZRGB> pass_;
+//        pass_.setFilterLimits (0.f, z_dist);
+//        pass_.setFilterFieldName ("z");
+//        pass_.setKeepOrganized (true);
 
-        pass_.setInputCloud (grph[vrtx_src].pScenePCl);
-        pass_.filter (*pSourcePCl_ficp);
+//        pass_.setInputCloud (grph[vrtx_src].pScenePCl);
+//        pass_.filter (*pSourcePCl_ficp);
 
-        pass_.setInputCloud (grph[vrtx_trgt].pScenePCl);
-        pass_.filter (*pTargetPCl_ficp);
+//        pass_.setInputCloud (grph[vrtx_trgt].pScenePCl);
+//        pass_.filter (*pTargetPCl_ficp);
 
         float best_overlap_ = max_overlap;
         Eigen::Matrix4f icp_trans;
         faat_pcl::registration::FastIterativeClosestPointWithGC<pcl::PointXYZRGB> icp;
         icp.setMaxCorrespondenceDistance ( 0.02f );
-        icp.setInputSource (pSourcePCl_ficp);
-        icp.setInputTarget (pTargetPCl_ficp);
+        icp.setInputSource (grph[vrtx_src].pScenePCl_f);
+        icp.setInputTarget (grph[vrtx_trgt].pScenePCl_f);
         icp.setUseNormals (true);
         icp.useStandardCG (true);
         icp.setNoCG(true);
@@ -882,6 +882,17 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
     Vertex vrtx_final = boost::add_vertex ( grph_final_ );
     pcl::fromROSMsg(req.cloud, *current_cloud_);
     *(grph_[vrtx].pScenePCl) = *current_cloud_;
+
+    if(chop_at_z_ > 0)
+    {
+        pcl::PassThrough<PointT> pass_;
+        pass_.setFilterLimits (0.f, static_cast<float>(chop_at_z_));
+        pass_.setFilterFieldName ("z");
+        pass_.setInputCloud (grph_[vrtx].pScenePCl);
+        pass_.setKeepOrganized (true);
+        pass_.filter (*(grph_[vrtx].pScenePCl_f));
+    }
+
     grph_[vrtx].view_id_ = view_name;
 
     //    if(chop_at_z_ > 0)
@@ -1006,6 +1017,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
         //---copy-vertices-to-graph_final----------------------------
         grph_final_[vrtx_final].view_id_ = grph_[vrtx].view_id_;
         grph_final_[vrtx_final].pScenePCl = grph_[vrtx].pScenePCl;
+        grph_final_[vrtx_final].pScenePCl_f = grph_[vrtx].pScenePCl_f;
         grph_final_[vrtx_final].pSceneNormals = grph_[vrtx].pSceneNormals;
         grph_final_[vrtx_final].view_id_ = grph_[vrtx].view_id_;
         grph_final_[vrtx_final].hypothesis = grph_[vrtx].hypothesis;
@@ -1141,7 +1153,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                             dt->getInputCloud ( cloud );
 
                             pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_voxelized_icp_transformed ( new pcl::PointCloud<pcl::PointXYZRGB> () );
-                            pcl::transformPointCloud ( *grph_final_[vrtx_tmp].pScenePCl, *cloud_voxelized_icp_transformed, scene_to_model_trans );
+                            pcl::transformPointCloud ( *grph_final_[vrtx_tmp].pScenePCl_f, *cloud_voxelized_icp_transformed, scene_to_model_trans );
 
                             est->setVoxelRepresentationTarget ( dt );
                             est->setInputSource ( cloud_voxelized_icp_transformed );
@@ -1252,7 +1264,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                     if(use_table_plane_)
                     {
                         Eigen::Vector4f table_plane;
-                        computeTablePlane<pcl::PointXYZRGB>(grph_final_[*vp.first].pScenePCl, table_plane);
+                        computeTablePlane<pcl::PointXYZRGB>(grph_final_[*vp.first].pScenePCl_f, table_plane);
                         for (size_t kk = 0; kk < trans_cloud->points.size (); kk++)
                         {
 
@@ -2162,6 +2174,14 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                 }
             }
         }
+        else
+        {
+            for ( size_t hyp_id = 0; hyp_id < grph_final_[vrtx_final].hypothesis.size(); hyp_id++ )
+            {
+                grph_[vrtx].hypothesis[hyp_id].verified_ = true;
+                grph_final_[vrtx_final].hypothesis[hyp_id].verified_ = true;
+            }
+        }
 
         //        outputgraph ( grph_final, "Final_with_Hypothesis_extension.dot" );
 
@@ -2224,6 +2244,45 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
             vis_->spin ();
             //vis->getInteractorStyle()->saveScreenshot ( "singleview.png" );
         }
+
+//        pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
+
+
+        for ( size_t hyp_id = 0; hyp_id < grph_final_[vrtx_final].hypothesis.size(); hyp_id++ )
+        {
+            if ( grph_final_[vrtx_final].hypothesis[hyp_id].verified_ )
+            {
+                    std_msgs::String model_id;
+                    model_id.data = grph_final_[vrtx_final].hypothesis[hyp_id].model_id_;
+                    response.ids.push_back(model_id);
+
+//                    Eigen::Matrix4f trans = verified_transforms->at(j);
+//                    geometry_msgs::Transform tt;
+//                    tt.translation.x = trans(0,3);
+//                    tt.translation.y = trans(1,3);
+//                    tt.translation.z = trans(2,3);
+
+//                    Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
+//                    Eigen::Quaternionf q(rotation);
+//                    tt.rotation.x = q.x();
+//                    tt.rotation.y = q.y();
+//                    tt.rotation.z = q.z();
+//                    tt.rotation.w = q.w();
+//                    response.transforms.push_back(tt);
+
+
+//                    typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
+//                    typename pcl::PointCloud<PointT>::Ptr model_aligned ( new pcl::PointCloud<PointT> );
+//                    pcl::io::loadPCDFile ( model_id, *pModelPCl );
+//                    pcl::transformPointCloud ( *pModelPCl, *model_aligned, trans );
+//                    *pRecognizedModels += *model_aligned;
+            }
+        }
+
+//        sensor_msgs::PointCloud2 recognizedModelsRos;
+//        pcl::toROSMsg (*pRecognizedModels, recognizedModelsRos);
+//        recognizedModelsRos.header.frame_id = "camera_link";
+//        vis_pc_pub_.publish(recognizedModelsRos);
 
         //---CLEAN-UP-GRAPH
 

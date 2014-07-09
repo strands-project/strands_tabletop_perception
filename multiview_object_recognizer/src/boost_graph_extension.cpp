@@ -72,7 +72,7 @@ void outputgraph ( Graph& map, const char* filename )
 View::View ()
 {
     pScenePCl.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
-    //pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
+    pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pSceneNormals.reset ( new pcl::PointCloud<pcl::Normal> );
     //    pSceneXYZRGBNormal.reset ( new pcl::PointCloud<pcl::PointXYZRGBNormal> );
     //pScenePCl_f_ds.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
