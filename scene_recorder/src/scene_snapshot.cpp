@@ -26,27 +26,51 @@ class SceneSnapshot
 private:
     std::string camera_frame_;
     std::string base_frame_;
+    std::string camera_topic_;
     geometry_msgs::Pose robot_pose_;
     boost::shared_ptr <pcl::PointCloud<pcl::PointXYZRGB>> pCloud_;
     bool cam_snapshot_done_;
     bool robot_pose_snapshot_done_;
     ros::Subscriber sub_tf_;
     ros::Subscriber sub_pc_;
-    ros::NodeHandle nh_;
+    tf::StampedTransform tf_transform_;
+    boost::shared_ptr<ros::NodeHandle> nh_;
     boost::shared_ptr<actionlib::SimpleActionServer<scene_recorder::TakeSnapshotAction> > as_;
     boost::shared_ptr<MessageStoreProxy> messageStore;
     scene_recorder::TakeSnapshotActionFeedback feedback_;
     scene_recorder::TakeSnapshotActionResult result_;
+    size_t s_recorded_clouds_;
 
 public:
-    SceneSnapshot(std::string name)
+    SceneSnapshot(int argc, char** argv)
     {
-        camera_frame_ = "/camera_depth_optical_frame";
-        base_frame_ = "/camera_link";
+        ros::init(argc, argv, "TakeSnapshot");
+
+        nh_.reset(new ros::NodeHandle("~") );
+        if(!nh_->getParam("camera_frame", camera_frame_))
+        {
+            std::cout << "No camera frame given. " << std::endl;
+            camera_frame_ = "/camera_depth_optical_frame";
+        }
+        if(!nh_->getParam("base_frame", base_frame_))
+        {
+            std::cout << "No base frame given. " << std::endl;
+            base_frame_ = "/camera_link";
+        }
+        if(!nh_->getParam("camera_topic", camera_topic_))
+        {
+            std::cout << "No camera topic given. " << std::endl;
+            camera_topic_ = "/camera/depth_registered/points";
+        }
+
+        std::cout << "camera frame: " << camera_frame_ << std::endl <<
+                     "base frame: " << base_frame_ << std::endl <<
+                     "camera topic: " << camera_topic_ << std::endl;
+
         pCloud_.reset(new pcl::PointCloud<pcl::PointXYZRGB>() );
         cam_snapshot_done_ = false;
-        robot_pose_snapshot_done_ = false;
-        messageStore.reset(new MessageStoreProxy(nh_, "ws_observations"));
+//        robot_pose_snapshot_done_ = false;
+        messageStore.reset(new MessageStoreProxy(*nh_, "ws_observations"));
 
 //        std::vector< boost::shared_ptr<ros_datacentre_msgs::SerialisedMessage> > snapshots;
 //        messageStore->queryID<ros_datacentre_msgs::SerialisedMessage>("53be61345d90780f4b1252bf", snapshots);
@@ -55,8 +79,9 @@ public:
 //            ros_datacentre_msgs::SerialisedMessage snapshot = *snapshots[i];
 //        }
 
+        s_recorded_clouds_ = 0;
         as_.reset(new actionlib::SimpleActionServer<scene_recorder::TakeSnapshotAction>
-                (nh_, name, boost::bind(&SceneSnapshot::actionCallback, this, _1), false));
+                (*nh_, ros::this_node::getName(), boost::bind(&SceneSnapshot::actionCallback, this, _1), false));
         as_->start();
     }
 
@@ -70,21 +95,24 @@ public:
     void actionCallback(const scene_recorder::TakeSnapshotGoalConstPtr &goal)
     {
         ROS_INFO("Got an action request.");
-        getBaseCameraTransform(transform_);
-        sub_tf_ = nh_.subscribe ("/robot_pose", 1, &SceneSnapshot::robot_pose_callback, this);
-        sub_pc_ = nh_.subscribe ("/camera/depth_registered/points", 1, &SceneSnapshot::kinectCallback, this);
+        Eigen::Matrix<float, 4, 4, Eigen::RowMajor> transform;
+        getBaseCameraTransform(transform);
+//        sub_tf_ = nh_->subscribe ("/robot_pose", 1, &SceneSnapshot::robot_pose_callback, this);
+        sub_pc_ = nh_->subscribe ("/camera/depth_registered/points", 1, &SceneSnapshot::kinectCallback, this);
 
         while(!cam_snapshot_done_ )//|| !robot_pose_snapshot_done_)
         {
            std::cout << ".";
         }
         sub_pc_.shutdown();
-        sub_tf_.shutdown();
+//        sub_tf_.shutdown();
         cam_snapshot_done_ = false;
         robot_pose_snapshot_done_ = false;
-        std::string name("camera transform test2");
-        //Insert something with a name, storing id too
-        std::string id(messageStore->insertNamed(name, robot_pose_));
+
+        std::stringstream database_entry_name;
+        database_entry_name << "my_scene_" << s_recorded_clouds_;
+
+//        std::string id(messageStore->insertNamed(name, robot_pose_));
         geometry_msgs::Pose pose;
 
         //cast tf_transform to eigen::Matrix4f
@@ -100,12 +128,12 @@ public:
         pose.orientation.y = q.getY();
         pose.orientation.z = q.getZ();
 
-        std::string id2(messageStore->insertNamed(name, pose));
+        std::string id(messageStore->insertNamed(database_entry_name.str(), pose));
 
         sensor_msgs::PointCloud2 rosCloud;
         pcl::toROSMsg(*pCloud_, rosCloud);
-        std::string id3(messageStore->insertNamed(name, rosCloud));
-        std::cout<<"Transform \""<<name<<"\" inserted with id "<< id << " and " << id2 << " and " << id3 << std::endl;
+        std::string id2(messageStore->insertNamed(database_entry_name.str(), rosCloud));
+        std::cout<<"Transform \"" << database_entry_name.str() << "\" inserted with id "<<  id << " and point cloud inserted with id " << id2 << std::endl;
     }
 
     void kinectCallback ( const sensor_msgs::PointCloud2& msg )
@@ -119,7 +147,6 @@ public:
     getBaseCameraTransform (Eigen::Matrix<float, 4, 4, Eigen::RowMajor> & trans)
     {
         tf::TransformListener tf_listener;
-        tf::StampedTransform tf_transform_;
         Eigen::Matrix<float, 4, 4, Eigen::RowMajor> transform_;
 
         std::cout << "Getting transform from:" << camera_frame_ << " to " << base_frame_ << std::endl;
@@ -150,12 +177,15 @@ public:
         trans.block<3,3>(0,0) = rotation;
         return true;
     }
+    void spin()
+    {
+        ros::spin();
+    }
 };
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "TakeSnapshot");
-  SceneSnapshot robot_scene(ros::this_node::getName());
-  ros::spin();
+  SceneSnapshot robot_scene(argc, argv);
+  robot_scene.spin();
   return 0;
 }
