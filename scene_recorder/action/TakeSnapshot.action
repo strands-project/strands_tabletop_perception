@@ -1,0 +1,7 @@
+# Define the goal
+---
+# Define the result
+uint32 status_code
+---
+# Define a feedback message
+string status
