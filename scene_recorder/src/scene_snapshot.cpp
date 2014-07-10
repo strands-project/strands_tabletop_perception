@@ -70,7 +70,7 @@ public:
         pCloud_.reset(new pcl::PointCloud<pcl::PointXYZRGB>() );
         cam_snapshot_done_ = false;
 //        robot_pose_snapshot_done_ = false;
-        messageStore.reset(new MessageStoreProxy(*nh_, "ws_observations"));
+        messageStore.reset(new MessageStoreProxy(*nh_, "multiview_observations"));
 
 //        std::vector< boost::shared_ptr<ros_datacentre_msgs::SerialisedMessage> > snapshots;
 //        messageStore->queryID<ros_datacentre_msgs::SerialisedMessage>("53be61345d90780f4b1252bf", snapshots);
@@ -98,11 +98,11 @@ public:
         Eigen::Matrix<float, 4, 4, Eigen::RowMajor> transform;
         getBaseCameraTransform(transform);
 //        sub_tf_ = nh_->subscribe ("/robot_pose", 1, &SceneSnapshot::robot_pose_callback, this);
-        sub_pc_ = nh_->subscribe ("/camera/depth_registered/points", 1, &SceneSnapshot::kinectCallback, this);
-
+        sub_pc_ = nh_->subscribe (camera_topic_, 1, &SceneSnapshot::kinectCallback, this);
+	std::cout << "Waiting for next point cloud. " << std::endl;
         while(!cam_snapshot_done_ )//|| !robot_pose_snapshot_done_)
         {
-           std::cout << ".";
+//           std::cout << ".";
         }
         sub_pc_.shutdown();
 //        sub_tf_.shutdown();
