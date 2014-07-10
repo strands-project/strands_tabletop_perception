@@ -102,9 +102,17 @@ public:
 
         while(!cam_snapshot_done_ )//|| !robot_pose_snapshot_done_)
         {
-           std::cout << ".";
+           //std::cout << ".";
         }
+           }
+
+    void kinectCallback ( const sensor_msgs::PointCloud2& msg )
+    {
         sub_pc_.shutdown();
+        ROS_INFO("I have received a new snapshot of the scene.");
+        pcl::fromROSMsg(msg, *pCloud_);
+        cam_snapshot_done_ = true;
+
 //        sub_tf_.shutdown();
         cam_snapshot_done_ = false;
         robot_pose_snapshot_done_ = false;
@@ -134,13 +142,6 @@ public:
         pcl::toROSMsg(*pCloud_, rosCloud);
         std::string id2(messageStore->insertNamed(database_entry_name.str(), rosCloud));
         std::cout<<"Transform \"" << database_entry_name.str() << "\" inserted with id "<<  id << " and point cloud inserted with id " << id2 << std::endl;
-    }
-
-    void kinectCallback ( const sensor_msgs::PointCloud2& msg )
-    {
-        ROS_INFO("I have received a new snapshot of the scene.");
-        pcl::fromROSMsg(msg, *pCloud_);
-        cam_snapshot_done_ = true;
     }
 
     bool
