@@ -8,7 +8,7 @@ SET (CMAKE_BUILD_TYPE Debug)
 find_package(catkin REQUIRED COMPONENTS genmsg roscpp rospy
                                         ros_datacentre_msgs ros_datacentre_cpp_client
                                         actionlib_msgs actionlib
-                                        geometry_msgs scitos_apps_msgs sensor_msgs tf)
+                                        geometry_msgs scitos_apps_msgs sensor_msgs tf world_state)
 
 find_package(Boost REQUIRED COMPONENTS system thread program_options filesystem)
 find_package(PCL 1.7 REQUIRED)
@@ -22,7 +22,7 @@ generate_messages(DEPENDENCIES actionlib_msgs)
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp rospy scitos_ptu ros_datacentre_msgs ros_datacentre_cpp_client geometry_msgs tf2_msgs sensor_msgs tf scitos_apps_msgs
+  CATKIN_DEPENDS roscpp rospy scitos_ptu ros_datacentre_msgs ros_datacentre_cpp_client geometry_msgs tf2_msgs sensor_msgs tf world_state scitos_apps_msgs
 )
 
 ###########

@@ -53,7 +53,7 @@
   <build_depend>scitos_ptu</build_depend>
   <build_depend>scitos_apps_msgs</build_depend>
   <build_depend>message_generation</build_depend>
-
+  <build_depend>world_state</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
@@ -68,7 +68,7 @@
   <run_depend>scitos_ptu</run_depend>
   <run_depend>scitos_apps_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
-
+  <run_depend>world_state</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
