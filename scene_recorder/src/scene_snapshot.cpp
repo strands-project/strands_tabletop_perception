@@ -102,13 +102,8 @@ public:
 	std::cout << "Waiting for next point cloud. " << std::endl;
         while(!cam_snapshot_done_ )//|| !robot_pose_snapshot_done_)
         {
-<<<<<<< HEAD
 //           std::cout << ".";
-=======
-           //std::cout << ".";
->>>>>>> 397a56cdc166ddcc19eb69d17e960de95202edca
         }
-           }
 
     void kinectCallback ( const sensor_msgs::PointCloud2& msg )
     {
