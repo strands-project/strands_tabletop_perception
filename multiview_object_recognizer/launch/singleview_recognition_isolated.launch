@@ -1,5 +1,4 @@
 <launch>
-	<arg name="topic" default="/camera/depth_registered/points" />
 	<arg name="models_dir" default="/media/Data/datasets/willow_dataset/models/" />
 	<arg name="recognizer_structure_sift" default="/media/Data/datasets/willow_dataset/willow_structure" />
 	<arg name="training_dir_sift" default="/media/Data/datasets/willow_dataset/sift_trained/" />

@@ -19,6 +19,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
+#include <pcl/recognition/cg/geometric_consistency.h>
 #include <pcl/registration/correspondence_types.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/correspondence_estimation.h>
@@ -90,8 +91,8 @@ private:
 //    boost::mutex current_cloud_mutex_;
     boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> > models_source_;
     std::string object_to_be_highlighted_;
+    pcl::visualization::PCLVisualizer::Ptr edge_vis;
     bool visualize_output_;
-    unsigned long recorded_clouds_;
     bool go_3d_;
     int icp_iter_;
     int opt_type_;
@@ -102,6 +103,8 @@ private:
     bool do_reverse_hyp_extension;
     pcl::visualization::PCLVisualizer::Ptr vis_;
     bool scene_to_scene_;
+    bool use_robot_pose_;
+    bool use_gc_s2s_;
 
     bool use_unverified_single_view_hypotheses;
 
@@ -142,7 +145,6 @@ private:
     
 public:
     multiviewGraph(){
-      recorded_clouds_ = 0;
       do_reverse_hyp_extension = false;
       go_3d_ = false;
       mv_keypoints_ = 0;
@@ -152,6 +154,8 @@ public:
       icp_resolution_ = 0.005f;
       icp_max_correspondence_distance_ = 0.02f;
       scene_to_scene_ = true;
+      use_robot_pose_ = true;
+      use_gc_s2s_ = true;
 
       use_unverified_single_view_hypotheses = false;
 
@@ -193,12 +197,14 @@ public:
       object_to_be_highlighted_ = "";
 
       current_cloud_.reset ( new pcl::PointCloud<pcl::PointXYZRGB>() );
+      edge_vis.reset (new pcl::visualization::PCLVisualizer());
     }
 
     //int recognize ( pcl::PointCloud<pcl::PointXYZRGB> &cloud, const std::string scene_name = std::string() );
     bool calcFeatures(Vertex &src, Graph &grph, bool use_table_plane=true);
-    void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, Edge &edge );
-//    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
+    void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, std::vector<Edge> & edges, bool use_gc=false );
+    void estimateViewTransformationByRobotPose ( const Vertex &src, const Vertex &trgt, Graph &grph, Edge &edge );
+    //    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
     void extendHypothesis ( Graph &grph );
     std::vector<Hypothesis> extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge);
 //    void calcMST ( const std::vector<Edge> &edges, const Graph &grph, std::vector<Edge> &edges_final );
@@ -216,6 +222,8 @@ public:
     {
         scene_name_ = scene_name;
     }
+
+    void visualizeEdge (const Edge &edge, const Graph &grph);
 
     bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
 

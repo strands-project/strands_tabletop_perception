@@ -43,6 +43,7 @@ public:
     std::vector<Hypothesis> hypothesis;
     std::vector<Hypothesis> hypothesis_single_unverified;
     Eigen::Matrix4f absolute_pose;
+    Eigen::Matrix4f transform_to_world_co_system_;
     bool has_been_hopped_;
     double cumulative_weight_to_new_vrtx_;
 };
