@@ -1,4 +1,5 @@
 sensor_msgs/PointCloud2 cloud
 string table_id
+float32[] transform #homogeneous transformation of the point cloud to the world coordinate frame (/map) using row major
 ---
 sensor_msgs/PointCloud2 cloud
