@@ -80,6 +80,7 @@ View::View ()
     pSignatures.reset ( new pcl::PointCloud<FeatureT> );
     has_been_hopped_ = false;
     cumulative_weight_to_new_vrtx_ = 0;
+    timestamp_nsec = 0;
 }
 
 Hypothesis::Hypothesis ( const std::string model_id, const Eigen::Matrix4f transform, const std::string origin, const bool extended, const bool verified )
@@ -99,6 +100,32 @@ myEdge::myEdge()
     target_id = "";
     edge_weight_has_been_calculated_ = false;
     std::vector <cv::DMatch> matches;
+}
+
+void copyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target)
+{
+    grph_target[vrtx_target].view_id_ = grph_src[vrtx_src].view_id_;
+    grph_target[vrtx_target].pScenePCl = grph_src[vrtx_src].pScenePCl;
+    grph_target[vrtx_target].pScenePCl_f = grph_src[vrtx_src].pScenePCl_f;
+    grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
+    grph_target[vrtx_target].pSceneNormals = grph_src[vrtx_src].pSceneNormals;
+    grph_target[vrtx_target].view_id_ = grph_src[vrtx_src].view_id_;
+    grph_target[vrtx_target].hypothesis = grph_src[vrtx_src].hypothesis;
+    grph_target[vrtx_target].pKeypoints = grph_src[vrtx_src].pKeypoints;
+    grph_target[vrtx_target].keypoints_indices_ = grph_src[vrtx_src].keypoints_indices_;
+    grph_target[vrtx_target].sift_keypoints_scales = grph_src[vrtx_src].sift_keypoints_scales;
+    grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
+    grph_target[vrtx_target].timestamp_nsec = grph_src[vrtx_src].timestamp_nsec;
+  }
+
+void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target)
+{
+    grph_target[edge_target].transformation = grph_src[edge_src].transformation;
+    grph_target[edge_target].edge_weight = grph_src[edge_src].edge_weight;
+    grph_target[edge_target].model_name = grph_src[edge_src].model_name;
+    grph_target[edge_target].source_id = grph_src[edge_src].source_id;
+    grph_target[edge_target].target_id = grph_src[edge_src].target_id;
+    grph_target[edge_target].edge_weight_has_been_calculated_ = grph_src[edge_src].edge_weight_has_been_calculated_;
 }
 
 //std::vector<Vertex> my_node_reader ( std::string filename, Graph &g )

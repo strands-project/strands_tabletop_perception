@@ -2,17 +2,13 @@
 import rospy
 import actionlib
 
-from std_msgs.msg import *
-from sensor_msgs.msg import *
-
-
 from world_state.observation import TransformationStore, Observation
 from world_state.mongo import MongoConnection
 from sensor_msgs.msg import PointCloud2,  JointState, Image, CameraInfo
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from recognition_srv_definitions.srv import *
 from scene_recorder.msg import *
-from std_msgs.msg import String
+from std_msgs.msg import String, Time
 import world_state.geometry as geometry
 
 if __name__ == '__main__':
@@ -29,8 +25,8 @@ if __name__ == '__main__':
 
                 # Load an observation from the datacentre
 
-		scene_name = 'table2_'
-		view_id = 8;
+		scene_name = 'table1'
+		view_id = 0;
 		
 		while True:
 		                observation_id = scene_name + `view_id`
@@ -48,7 +44,9 @@ if __name__ == '__main__':
 		            	# Reading the transformation tree is done by reconstructing a ROS transformer
 		            	# that then works in the same way as a TF Listener object.
 		            	tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
-                                transform = tf.lookupTransform("/map", pointcloud.header.frame_id, observation.get_message("/head_xtion/rgb/camera_info").header.stamp)
+                                timestamp = observation.get_message("/head_xtion/rgb/camera_info").header.stamp
+				print timestamp
+				transform = tf.lookupTransform("/map", pointcloud.header.frame_id, timestamp)
                                 print "Transform: " + str(transform)
             			depth_to_world = geometry.Pose(geometry.Point(*(transform[0])), geometry.Quaternion(*(transform[1])))
 				trans_homo =  depth_to_world.as_homog_matrix()
@@ -61,8 +59,14 @@ if __name__ == '__main__':
 	
 		            	rospy.wait_for_service("/multiview_object_recognizer_node/multiview_recognotion_servcice");
 		            	try:
-		                	mv_client = rospy.ServiceProxy("/multiview_object_recognizer_node/multiview_recognotion_servcice", multiview_recognize)	
-					resp1 = mv_client(pointcloud, String(scene_name), String(`view_id`), transf_1d)
+     			           	mv_client = rospy.ServiceProxy("/multiview_object_recognizer_node/multiview_recognotion_servcice", multiview_recognize)	
+					msg_to_send = multiview_recognize()
+					msg_to_send.cloud = pointcloud
+					msg_to_send.scene_name = String(scene_name)
+					msg_to_send.view_name = String(`view_id`)
+					msg_to_send.transform = transf_1d
+					#msg_to_send.timestamp = Int32(timestampe)
+					resp1 = mv_client(pointcloud, String(scene_name), String(`view_id`), transf_1d, Time(timestamp))
 		           	except rospy.ServiceException, e:
 	#                      		print "Service call failed: %s"%e
 					print "Service call failed"

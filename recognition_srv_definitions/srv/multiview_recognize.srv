@@ -5,6 +5,7 @@ std_msgs/String view_name
 #float32[] translation
 #float32[] quaternion
 float32[] transform
+std_msgs/Time timestamp
 ---
 std_msgs/String[] ids
 geometry_msgs/Transform[] transforms
