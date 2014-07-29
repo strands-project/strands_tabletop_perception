@@ -1,6 +1,12 @@
 <launch>
+<<<<<<< HEAD
 	<arg name="models_dir" default="/opt/strands/data/object_recognition/models" />
 	<arg name="recognizer_structure_sift" default="/opt/strands/data/object_recognition/recognizer_structure" />
+=======
+	<arg name="topic" default="/camera/depth_registered/points" />
+	<arg name="models_dir" default="/media/Data/datasets/willow_dataset/models_temp/" />
+	<arg name="recognizer_structure_sift" default="/media/Data/datasets/willow_dataset/willow_structure" />
+>>>>>>> fbb093d9e95d90340310a533e0ca1f8226d8a019
 	<arg name="training_dir_sift" default="/media/Data/datasets/willow_dataset/sift_trained/" />
 	<arg name="gt_or_output_dir" default="" />
 	<arg name="visualize_output" default="false" />

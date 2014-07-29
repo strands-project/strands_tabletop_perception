@@ -43,8 +43,10 @@ public:
     std::vector<Hypothesis> hypothesis;
     std::vector<Hypothesis> hypothesis_single_unverified;
     Eigen::Matrix4f absolute_pose;
+    Eigen::Matrix4f transform_to_world_co_system_;
     bool has_been_hopped_;
     double cumulative_weight_to_new_vrtx_;
+    size_t timestamp_nsec;
 };
 
 class myEdge
@@ -71,5 +73,7 @@ typedef property_map<Graph, vertex_index_t>::type IndexMap;
 
 
 void outputgraph ( Graph& map, const char* filename );
+void copyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target);
+void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target);
 //std::vector<Vertex> my_node_reader ( std::string filename, Graph &g )
 #endif

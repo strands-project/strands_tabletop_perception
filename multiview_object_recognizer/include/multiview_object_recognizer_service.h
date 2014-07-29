@@ -19,6 +19,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
+#include <pcl/recognition/cg/geometric_consistency.h>
 #include <pcl/registration/correspondence_types.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/correspondence_estimation.h>
@@ -86,12 +87,9 @@ private:
     std::vector<Edge> edges_, best_edges_;
     std::string models_dir_;
     std::string scene_name_;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr current_cloud_;
-//    boost::mutex current_cloud_mutex_;
     boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> > models_source_;
-    std::string object_to_be_highlighted_;
+    pcl::visualization::PCLVisualizer::Ptr edge_vis;
     bool visualize_output_;
-    unsigned long recorded_clouds_;
     bool go_3d_;
     int icp_iter_;
     int opt_type_;
@@ -102,6 +100,8 @@ private:
     bool do_reverse_hyp_extension;
     pcl::visualization::PCLVisualizer::Ptr vis_;
     bool scene_to_scene_;
+    bool use_robot_pose_;
+    bool use_gc_s2s_;
 
     bool use_unverified_single_view_hypotheses;
 
@@ -142,67 +142,65 @@ private:
     
 public:
     multiviewGraph(){
-      recorded_clouds_ = 0;
-      do_reverse_hyp_extension = false;
-      go_3d_ = false;
-      mv_keypoints_ = 0;
-      opt_type_ = 0;
-      gt_or_ouput_dir_ = "";
-      chop_at_z_ = 1.5f;
-      icp_resolution_ = 0.005f;
-      icp_max_correspondence_distance_ = 0.02f;
-      scene_to_scene_ = true;
+        do_reverse_hyp_extension = false;
+        go_3d_ = false;
+        mv_keypoints_ = 0;
+        opt_type_ = 0;
+        gt_or_ouput_dir_ = "";
+        chop_at_z_ = 1.5f;
+        icp_resolution_ = 0.005f;
+        icp_max_correspondence_distance_ = 0.02f;
+        scene_to_scene_ = true;
+        use_robot_pose_ = true;
+        use_gc_s2s_ = true;
 
-      use_unverified_single_view_hypotheses = false;
+        use_unverified_single_view_hypotheses = false;
 
-      //GO3D parameters
-      go3d_color_sigma_ = 0.3f;
-      go3d_outlier_regularizer_ = 3.f;
-      go3d_clutter_regularizer_ = 3.f;
-      go3d_clutter_radius_ = 0.04f;
-      go3d_inlier_threshold_ = 0.01f;
+        //GO3D parameters
+        go3d_color_sigma_ = 0.3f;
+        go3d_outlier_regularizer_ = 3.f;
+        go3d_clutter_regularizer_ = 3.f;
+        go3d_clutter_radius_ = 0.04f;
+        go3d_inlier_threshold_ = 0.01f;
 
-      go3d_detect_clutter_ = true;
-      go3d_add_planes_ = false;
-      go3d_icp_ = true;
-      go3d_icp_model_to_scene_ = false;
-      go3d_use_supervoxels_ = true;
+        go3d_detect_clutter_ = true;
+        go3d_add_planes_ = false;
+        go3d_icp_ = true;
+        go3d_icp_model_to_scene_ = false;
+        go3d_use_supervoxels_ = true;
 
-      go3d_and_icp_resolution_ = 0.005f;
+        go3d_and_icp_resolution_ = 0.005f;
 
+        //Noise model parameters
+        max_angle_ = 70.f;
+        lateral_sigma_ = 0.0015f;
+        nm_integration_min_weight_ = 0.25f;
 
-      //Noise model parameters
-      max_angle_ = 70.f;
-      lateral_sigma_ = 0.0015f;
-      nm_integration_min_weight_ = 0.25f;
+        //Multiview refinement parameters
+        mv_icp_ = true;
+        max_keypoint_dist_mv_ = 2.5f;
+        mv_iterations_ = 5;
+        min_overlap_mv_ = 0.3f;
+        mv_keypoints_ = 0;
+        inlier_threshold_ = 0.003f;
+        max_corresp_dist_ = 0.01f;
 
-      //Multiview refinement parameters
-      mv_icp_ = true;
-      max_keypoint_dist_mv_ = 2.5f;
-      mv_iterations_ = 5;
-      min_overlap_mv_ = 0.3f;
-      mv_keypoints_ = 0;
-      inlier_threshold_ = 0.003f;
-      max_corresp_dist_ = 0.01f;
+        //Other parameters
+        output_dir_3d_results_ = "";
 
-      //Other parameters
-      output_dir_3d_results_ = "";
+        use_table_plane_ = true;
 
-      use_table_plane_ = true;
-
-      object_to_be_highlighted_ = "";
-
-      current_cloud_.reset ( new pcl::PointCloud<pcl::PointXYZRGB>() );
+        edge_vis.reset (new pcl::visualization::PCLVisualizer());
     }
 
-    //int recognize ( pcl::PointCloud<pcl::PointXYZRGB> &cloud, const std::string scene_name = std::string() );
     bool calcFeatures(Vertex &src, Graph &grph, bool use_table_plane=true);
-    void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, Edge &edge );
-//    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
+    void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, std::vector<Edge> & edges, bool use_gc=false );
+    void estimateViewTransformationByRobotPose ( const Vertex &src, const Vertex &trgt, Graph &grph, Edge &edge );
     void extendHypothesis ( Graph &grph );
     std::vector<Hypothesis> extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge);
-//    void calcMST ( const std::vector<Edge> &edges, const Graph &grph, std::vector<Edge> &edges_final );
-    void createEdgesFromHypothesisMatch ( Graph &grph, std::vector<Edge> &edges );
+    //    void calcMST ( const std::vector<Edge> &edges, const Graph &grph, std::vector<Edge> &edges_final );
+    //    void createEdgesFromHypothesisMatch ( Graph &grph, std::vector<Edge> &edges );
+    //    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
     void createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges );
     void calcEdgeWeight (Graph &grph, int max_distance=-1, float z_dist=3.f, float max_overlap=0.75f);
     void createBigPointCloud ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud );
@@ -217,8 +215,8 @@ public:
         scene_name_ = scene_name;
     }
 
+    void visualizeEdge (const Edge &edge, const Graph &grph);
     bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
-
     void loadModels();
 
     // getter and setter functions

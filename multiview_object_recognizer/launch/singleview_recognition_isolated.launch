@@ -1,7 +1,11 @@
 <launch>
-	<arg name="models_dir" default="/opt/strands/data/object_recognition/models" />
+	<!--<arg name="models_dir" default="/opt/strands/data/object_recognition/models" />
 	<arg name="recognizer_structure_sift" default="/opt/strands/data/object_recognition/recognizer_structure" />
-	<arg name="training_dir_sift" default="/opt/strands/data/object_recognition/sift_trained" />
+	<arg name="training_dir_sift" default="/opt/strands/data/object_recognition/sift_trained" />-->
+	
+	<arg name="models_dir" default="/media/Data/datasets/willow_dataset/models/" />
+	<arg name="recognizer_structure_sift" default="/media/Data/datasets/willow_dataset/willow_structure" />
+	<arg name="training_dir_sift" default="/media/Data/datasets/willow_dataset/sift_trained/" />
 	<arg name="gt_or_output_dir" default="" />
 	<arg name="visualize_output" default="false" />
 	<arg name="icp_iterations" default="3" />
