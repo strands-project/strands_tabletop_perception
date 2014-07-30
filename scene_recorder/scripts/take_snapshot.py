@@ -22,15 +22,15 @@ class TakeSnapshotActionServer(object):
 		rospy.loginfo("Action server up: %s"%self._action_name)
 
 	def execute_cb(self, goal):
-		observation_name = goal.scene_name + `self._recorded_snapshots`
+		observation_name = goal.scene_name + "_" + `goal.session_id` + "_" + `self._recorded_snapshots`
 	    	self.send_feedback("Connecting to MongoDB")
-		mongodb =  MongoConnection(database_name="snapshots", server="romeo")
+		mongodb =  MongoConnection(database_name="snapshots")
 
                 self.send_feedback("Taking snapshot with name %s and store it into mongodb"%observation_name)
     		# Make an 'Observation' object that grabs ROS topics and hold an index
     		# to their MessageStore saved messages.
     		TOPICS = [("/amcl_pose", PoseWithCovarianceStamped),
-			  ("/head_xtion/rgb/image_color", Image), 
+			  ("/head_xtion/rgb/image_raw", Image), 
 			  ("/head_xtion/rgb/camera_info", CameraInfo), 
         		  ("/head_xtion/depth_registered/points", PointCloud2),
             	          ("/ptu/state", JointState) ]
@@ -40,23 +40,24 @@ class TakeSnapshotActionServer(object):
    		# Save the observation to the datacentre
     		observation_id = mongodb.database.observations.insert({'observation': observation,
                                                            'observation_name': observation_name,})
-	    	self._recorded_snapshots += 1
-		
+	    	self._result.view_id = self._recorded_snapshots
+		self._recorded_snapshots += 1
+		self._as.set_succeeded(self._result)
 
-		self.send_feedback('Loading observation from the database')
+		#self.send_feedback('Loading observation from the database')
 		# Load an observation from the datacentre
-    		observation = mongodb.database.observations.find_one({'observation_name': observation_name})['observation']
+    		#observation = mongodb.database.observations.find_one({'observation_name': observation_name})['observation']
 
     		# Get the messages that were part of the observation. This directly gives
     		# a ROS message - here a sensor_msgs/PointCloud2 and geometry_msgs/PoseWithCovarianceStamped
-    		pointcloud = observation.get_message("/head_xtion/depth_registered/points")
-    		pose = observation.get_message("/amcl_pose")
+#    		pointcloud = observation.get_message("/head_xtion/depth_registered/points")
+ #   		pose = observation.get_message("/amcl_pose")
 
     		# Reading the transformation tree is done by reconstructing a ROS transformer
     		# that then works in the same way as a TF Listener object.
 #		self.send_feedback('Looking up transform')
-  		tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
-   		print tf.lookupTransform("/map", "/base_footprint", rospy.Time(0))
+#  		tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
+#   		print tf.lookupTransform("/map", "/base_footprint", rospy.Time(0))
 
 
 #        	rospy.wait_for_service("/multiview_object_recognizer_node/multiview_recognotion_servcice");
