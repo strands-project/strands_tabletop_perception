@@ -214,7 +214,7 @@ private:
     if(model_ids.size() == 0)
     {
         ROS_DEBUG("No models to verify, returning.\n");
-        return false;
+        return true;
     }
 
     go->setObjectIds(model_ids);
@@ -378,7 +378,7 @@ public:
     do_sift_ = true;
     do_ourcvfh_ = false;
     icp_iterations_ = 0;
-    cg_size_ = 5;
+    cg_size_ = 3;
 
 #ifdef SOC_VISUALIZE
     vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
@@ -403,6 +403,7 @@ public:
       n_->getParam ( "do_ourcvfh", do_ourcvfh_);
       n_->getParam ( "ignore_color", ignore_color_);
 
+      std::cout << chop_at_z_ << ", " << ignore_color_ << std::endl;
     if (models_dir_.compare ("") == 0)
     {
       PCL_ERROR ("Set -models_dir option in the command line, ABORTING");

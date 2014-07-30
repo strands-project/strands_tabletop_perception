@@ -138,9 +138,9 @@ bool service_callback(table_segmentation::SegmentTable::Request& req,
         ly = point2d.dot(axes.col(1));
         // check if inbetween certain heights and in table rectangle
         if (lx < -lengths(0)/2.0 || lx > lengths(0)/2.0 || ly < -lengths(1)/2.0 || ly > lengths(1)/2.0 || point(2) < zmin) {
-            msg_cloud->points[i].x = INFINITY;
-            msg_cloud->points[i].y = INFINITY;
-            msg_cloud->points[i].z = INFINITY;
+            msg_cloud->points[i].x = std::numeric_limits<float>::quiet_NaN ();;
+            msg_cloud->points[i].y = std::numeric_limits<float>::quiet_NaN ();;
+            msg_cloud->points[i].z = std::numeric_limits<float>::quiet_NaN ();;
         }
     }
     
