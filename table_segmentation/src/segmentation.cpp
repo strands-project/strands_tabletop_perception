@@ -70,6 +70,7 @@ bool service_callback(table_segmentation::SegmentTable::Request& req,
 {
     std::vector<boost::shared_ptr<strands_perception_msgs::Table> > results;
     std::string name = req.table_id;
+
     //Get it back, by default get one
     if (!messageStore->queryNamed<strands_perception_msgs::Table>(name, results)) {
         ROS_ERROR("Couldn't find table %s in datacentre.", name.c_str());
@@ -82,27 +83,46 @@ bool service_callback(table_segmentation::SegmentTable::Request& req,
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr msg_cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
     pcl::fromROSMsg(req.cloud, *msg_cloud);
     size_t n = msg_cloud->points.size();
-    
-    std::string dest_frame = "/map";
-    tf::StampedTransform transform;
-    try {
-        //listener->transformPointCloud("/head_xtion_rgb_optical_frame", msg->header.stamp, *msg, msg->header.frame_id, cout);
-        listener->lookupTransform(dest_frame, req.cloud.header.frame_id, req.cloud.header.stamp, transform);
-    }
-    catch (tf::TransformException ex) {
-        ROS_INFO("%s",ex.what());
-        return false;
-    }
-    
-    tf::Matrix3x3 basis = transform.getBasis();
-    tf::Vector3 origin = transform.getOrigin();
-    
+
     Matrix3f R;
     Vector3f t;
-    for (size_t i = 0; i < 3; ++i) {
-        t(i) = origin.m_floats[i];
-        for (size_t j = 0; j < 3; ++j) {
-            R(i, j) = basis.getRow(i).m_floats[j];
+    if(req.transform.size()==16)
+    {
+        Eigen::Matrix4f trans;
+        for (size_t row=0; row <4; row++)
+        {
+            for(size_t col=0; col<4; col++)
+            {
+                trans(row, col) = req.transform[4*row + col];
+            }
+        }
+        R = trans.block<3,3>(0,0);
+        t(0) = trans(0,3);
+        t(1) = trans(1,3);
+        t(2) = trans(2,3);
+    }
+    else
+    {
+        std::cout << "Getting transform to map..." << std::endl;
+        std::string dest_frame = "/map";
+        tf::StampedTransform transform;
+        try {
+            //listener->transformPointCloud("/head_xtion_rgb_optical_frame", msg->header.stamp, *msg, msg->header.frame_id, cout);
+            listener->lookupTransform(dest_frame, req.cloud.header.frame_id, req.cloud.header.stamp, transform);
+        }
+        catch (tf::TransformException ex) {
+            ROS_INFO("%s",ex.what());
+            return false;
+        }
+
+        tf::Matrix3x3 basis = transform.getBasis();
+        tf::Vector3 origin = transform.getOrigin();
+
+        for (size_t i = 0; i < 3; ++i) {
+            t(i) = origin.m_floats[i];
+            for (size_t j = 0; j < 3; ++j) {
+                R(i, j) = basis.getRow(i).m_floats[j];
+            }
         }
     }
     
