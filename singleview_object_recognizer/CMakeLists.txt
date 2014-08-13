@@ -8,7 +8,7 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 
 find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
                                         strandsv4r genmsg actionlib_msgs actionlib
-                                        scitos_ptu ros_datacentre_msgs ros_datacentre_cpp_client)
+                                        scitos_ptu mongodb_store_msgs mongodb_store_cpp_client)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 
@@ -57,7 +57,7 @@ generate_messages(DEPENDENCIES actionlib_msgs)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-   CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strandsv4r scitos_ptu ros_datacentre_msgs ros_datacentre_cpp_client
+   CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strandsv4r scitos_ptu mongodb_store_msgs mongodb_store_cpp_client
 )
 
 ###########

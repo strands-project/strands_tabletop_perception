@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   strands_perception_msgs
   visualization_msgs
-  ros_datacentre_cpp_client
+  mongodb_store_cpp_client
 )
 
 ## System dependencies are found with CMake's conventions

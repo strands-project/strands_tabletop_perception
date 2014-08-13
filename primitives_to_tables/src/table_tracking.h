@@ -5,11 +5,11 @@
 #include <Eigen/Dense>
 
 #include "strands_perception_msgs/Table.h"
-#include "ros_datacentre/message_store.h"
+#include "mongodb_store/message_store.h"
 
 class table_tracking {
 private:
-    ros_datacentre::MessageStoreProxy message_store; // for storing in the datacentre
+    mongodb_store::MessageStoreProxy message_store; // for storing in the datacentre
     // tables in datacentre
     std::vector<boost::shared_ptr<strands_perception_msgs::Table> > tables;
     // the mass centers of the tables in the datacenter

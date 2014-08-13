@@ -6,7 +6,7 @@ project(manual_table_storer)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
-  ros_datacentre
+  mongodb_store
   rospy
   tf
 )
@@ -83,7 +83,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES manual_table_storer
-#  CATKIN_DEPENDS geometry_msgs ros_datacentre rospy tf
+#  CATKIN_DEPENDS geometry_msgs mongodb_store rospy tf
 #  DEPENDS system_lib
 )
 

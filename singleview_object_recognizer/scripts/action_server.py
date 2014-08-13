@@ -7,7 +7,7 @@ from singleview_object_recognizer.msg import *
 from sensor_msgs.msg import PointCloud2,  JointState
 import math
 from recognition_srv_definitions.srv import * 
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 from robblog.msg import RobblogEntry
 from robblog import utils as rb_utils
 from std_msgs.msg import String
@@ -26,7 +26,7 @@ from sensor_msgs.msg import PointCloud, PointCloud2
 import sensor_msgs.point_cloud2 as pc2
 from cv_bridge import CvBridge, CvBridgeError
 
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 
 class ActionServer(object):
   # create messages that are used to publish feedback/result

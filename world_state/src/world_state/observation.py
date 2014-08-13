@@ -7,8 +7,8 @@ from collections import deque
 
 from sensor_msgs.msg import Image, PointCloud2, CameraInfo, JointState
 from geometry_msgs.msg import PoseWithCovarianceStamped
-from ros_datacentre.message_store import MessageStoreProxy
-from ros_datacentre_msgs.msg import SerialisedMessage
+from mongodb_store.message_store import MessageStoreProxy
+from mongodb_store_msgs.msg import SerialisedMessage
 from exceptions import StateException
 
 DEFAULT_TOPICS = [("/amcl_pose", PoseWithCovarianceStamped),

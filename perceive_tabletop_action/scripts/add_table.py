@@ -7,7 +7,7 @@ import sys
 from strands_perception_msgs.msg import Table
 from geometry_msgs.msg import PoseWithCovariance, Polygon, Point32
 
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 
 
 

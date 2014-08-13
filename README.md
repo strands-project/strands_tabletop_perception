@@ -92,7 +92,7 @@ Create a document that looks like:
 from strands_perception_msgs.msg import Table
 from geometry_msgs.msg import PoseWithCovariance, Polygon
 
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 
 my_table = Table()
 my_table.table_id = "MagicTable1"

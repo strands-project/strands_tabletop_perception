@@ -5,16 +5,16 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <singleview_object_recognizer/CheckObjectPresenceAction.h>
 #include <recognition_srv_definitions/recognize.h>
-#include "ros_datacentre/message_store.h"
-#include "ros_datacentre_msgs/StringPairList.h"
+#include "mongodb_store/message_store.h"
+#include "mongodb_store_msgs/StringPairList.h"
 #include <std_msgs/Int32.h>
 #include <scitos_ptu/PtuGotoAction.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions.h>
 
 using namespace std_msgs;
-using namespace ros_datacentre;
-using namespace ros_datacentre_msgs;
+using namespace mongodb_store;
+using namespace mongodb_store_msgs;
 using namespace std;
 
 class CheckObjectPresenceAction
@@ -193,7 +193,7 @@ public:
     outputFile.close();
 
     //log point cloud, result and object_id
-    /*ros_datacentre::MessageStoreProxy messageStore(nh_, "checkObjectPresence");
+    /*mongodb_store::MessageStoreProxy messageStore(nh_, "checkObjectPresence");
 
     std::vector< std::pair<std::string, std::string> > stored;
     // now add objects and store ids with the addition of type strings for safety. The types are not necessary unless you want to do some kind of reflection on this data later.
@@ -210,7 +210,7 @@ public:
 
     StringPairList spl;
     for(auto & pair : stored) {
-        spl.pairs.push_back(ros_datacentre::makePair(pair.first, pair.second));
+        spl.pairs.push_back(mongodb_store::makePair(pair.first, pair.second));
     }
 
     // and add some descriptive information
