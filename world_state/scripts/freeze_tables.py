@@ -7,7 +7,7 @@ from world_state.geometry import Pose
 
 import world_state.objectmaster as objectmaster
 
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 
 from strands_perception_msgs.msg import Table
 
