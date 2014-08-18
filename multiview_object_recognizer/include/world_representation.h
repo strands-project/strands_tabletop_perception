@@ -18,6 +18,7 @@ private:
     double chop_at_z_;
     int mv_keypoints_;
     std::string models_dir_;
+    cv::Ptr<SiftGPU> sift_;
 
 public:
     bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
@@ -41,6 +42,8 @@ public:
     std::string models_dir() const;
     void setModels_dir(const std::string &models_dir);
     void setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value);
+    cv::Ptr<SiftGPU> sift() const;
+    void setSift(const cv::Ptr<SiftGPU> &sift);
 };
 
 #endif

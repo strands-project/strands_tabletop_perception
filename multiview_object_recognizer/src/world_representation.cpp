@@ -22,6 +22,7 @@ multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_n
     newGraph.setSceneName(scene_name);
     newGraph.loadModels();
     newGraph.setPSingleview_recognizer(pSingleview_recognizer_);
+    newGraph.setSift(sift_);
     graph_v.push_back(newGraph);
     return graph_v.back();
 }
@@ -31,6 +32,16 @@ void worldRepresentation::setPSingleview_recognizer(const boost::shared_ptr<Reco
     pSingleview_recognizer_ = value;
 }
 
+
+cv::Ptr<SiftGPU> worldRepresentation::sift() const
+{
+    return sift_;
+}
+
+void worldRepresentation::setSift(const cv::Ptr<SiftGPU> &sift)
+{
+    sift_ = sift;
+}
 bool worldRepresentation::recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response)
 {
     if (req.cloud.data.size()==0)

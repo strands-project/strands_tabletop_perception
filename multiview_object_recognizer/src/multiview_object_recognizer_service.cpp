@@ -185,20 +185,30 @@ void multiviewGraph::setPSingleview_recognizer(const boost::shared_ptr<Recognize
     pSingleview_recognizer_ = value;
 }
 
-bool multiviewGraph::
-calcFeatures ( Vertex &src, Graph &grph, bool use_table_plane )
+
+cv::Ptr<SiftGPU> multiviewGraph::sift() const
 {
-    boost::shared_ptr < faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, FeatureT> > estimator2;
-    estimator2.reset (new faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, FeatureT>);
+    return sift_;
+}
+
+void multiviewGraph::setSift(const cv::Ptr<SiftGPU> &sift)
+{
+    sift_ = sift;
+}
+bool multiviewGraph::
+calcFeatures (Vertex &src, Graph &grph, bool use_table_plane )
+{
+    boost::shared_ptr < faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, FeatureT> > estimator;
+    estimator.reset (new faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, FeatureT>(sift_));
 
     if(use_table_plane)
-        estimator2->setIndices (*(grph[src].pIndices_above_plane));
+        estimator->setIndices (*(grph[src].pIndices_above_plane));
 
-    //bool ret = estimator->estimate (grph[src].pScenePCl_f, grph[src].pKeypoints, grph[src].pSignatures, grph[src].sift_keypoints_scales);
+    bool ret = estimator->estimate (grph[src].pScenePCl_f, grph[src].pKeypoints, grph[src].pSignatures, grph[src].sift_keypoints_scales);
 
-    estimator2->getKeypointIndices(grph[src].keypoints_indices_);
+    estimator->getKeypointIndices(grph[src].keypoints_indices_);
 
-    return true;//ret;
+    return ret;
 
     //----display-keypoints--------------------
     /*pcl::visualization::PCLVisualizer::Ptr vis_temp (new pcl::visualization::PCLVisualizer);
@@ -851,33 +861,33 @@ bool multiviewGraph::recognize
     if(scene_to_scene_)
     {
         calcFeatures ( vrtx, grph_ );
-//        std::cout << "keypoints: " << grph_[vrtx].pKeypoints->points.size() << std::endl;
+        std::cout << "keypoints: " << grph_[vrtx].pKeypoints->points.size() << std::endl;
 
-//        if (num_vertices(grph_)>1)
-//        {
-//            flann::Matrix<float> flann_data;
-//            flann::Index<DistT> *flann_index;
-//            multiview::convertToFLANN<pcl::Histogram<128> > ( grph_[vrtx].pSignatures, flann_data );
-//            flann_index = new flann::Index<DistT> ( flann_data, flann::KDTreeIndexParams ( 4 ) );
-//            flann_index->buildIndex ();
+        if (num_vertices(grph_)>1)
+        {
+            flann::Matrix<float> flann_data;
+            flann::Index<DistT> *flann_index;
+            multiview::convertToFLANN<pcl::Histogram<128> > ( grph_[vrtx].pSignatures, flann_data );
+            flann_index = new flann::Index<DistT> ( flann_data, flann::KDTreeIndexParams ( 4 ) );
+            flann_index->buildIndex ();
 
-//            //#pragma omp parallel for
-//            vertex_iter vertexIt, vertexEnd;
-//            for (boost::tie(vertexIt, vertexEnd) = vertices(grph_); vertexIt != vertexEnd; ++vertexIt)
-//            {
-//                Eigen::Matrix4f transformation;
-//                if( grph_[*vertexIt].view_id_.compare ( grph_[vrtx].view_id_ ) != 0 )
-//                {
-//                    std::vector<Edge> edge;
-//                    estimateViewTransformationBySIFT ( *vertexIt, vrtx, grph_, flann_index, transformation, edge, use_gc_s2s_ );
-//                    for(size_t kk=0; kk < edge.size(); kk++)
-//                    {
-//                        new_edges.push_back (edge[kk]);
-//                    }
-//                }
-//            }
-//            delete flann_index;
-//        }
+            //#pragma omp parallel for
+            vertex_iter vertexIt, vertexEnd;
+            for (boost::tie(vertexIt, vertexEnd) = vertices(grph_); vertexIt != vertexEnd; ++vertexIt)
+            {
+                Eigen::Matrix4f transformation;
+                if( grph_[*vertexIt].view_id_.compare ( grph_[vrtx].view_id_ ) != 0 )
+                {
+                    std::vector<Edge> edge;
+                    estimateViewTransformationBySIFT ( *vertexIt, vrtx, grph_, flann_index, transformation, edge, use_gc_s2s_ );
+                    for(size_t kk=0; kk < edge.size(); kk++)
+                    {
+                        new_edges.push_back (edge[kk]);
+                    }
+                }
+            }
+            delete flann_index;
+        }
     }
     //----------END-create-edges-between-views-by-SIFT-----------------------------------
 

@@ -105,6 +105,8 @@ private:
     bool use_robot_pose_;
     bool use_gc_s2s_;
 
+    cv::Ptr<SiftGPU> sift_;
+
     bool use_unverified_single_view_hypotheses;
 
     //GO3D parameters
@@ -247,6 +249,8 @@ public:
     int mv_keypoints() const;
     void setMv_keypoints(int mv_keypoints);
     void setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value);
+    cv::Ptr<SiftGPU> sift() const;
+    void setSift(const cv::Ptr<SiftGPU> &sift);
 };
 
 namespace multiview
