@@ -6,7 +6,7 @@ SET (CMAKE_BUILD_TYPE Debug)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS genmsg roscpp rospy
-                                        ros_datacentre_msgs ros_datacentre_cpp_client
+                                        mongodb_store_msgs mongodb_store_cpp_client
                                         actionlib_msgs actionlib
                                         geometry_msgs scitos_apps_msgs sensor_msgs tf 
                                         recognition_srv_definitions world_state table_segmentation world_state)
@@ -23,7 +23,7 @@ generate_messages(DEPENDENCIES actionlib_msgs)
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS roscpp rospy scitos_ptu ros_datacentre_msgs ros_datacentre_cpp_client
+  CATKIN_DEPENDS roscpp rospy scitos_ptu mongodb_store_msgs mongodb_store_cpp_client
                 geometry_msgs tf2_msgs sensor_msgs tf world_state recognition_srv_definitions scitos_apps_msgs
                 table_segmentation world_state
 )
