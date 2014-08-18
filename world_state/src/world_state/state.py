@@ -8,7 +8,7 @@ from identification import ObjectIdentification
 from observation import Observation,  MessageStoreObject
 from exceptions import StateException
 
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 
 class Object(MongoDocument):
     def __init__(self, mongo=None):

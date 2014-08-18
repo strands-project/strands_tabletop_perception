@@ -14,7 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   strands_perception_msgs
   segmentation_srv_definitions
   visualization_msgs
-  ros_datacentre_cpp_client
+  mongodb_store_cpp_client
   sensor_msgs
   tf
 )

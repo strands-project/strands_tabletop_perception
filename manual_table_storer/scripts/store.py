@@ -4,7 +4,7 @@ import rospy
 import sys
 
 from strands_perception_msgs.msg import Table
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 import tf
 from geometry_msgs.msg import Point32, PoseStamped
 

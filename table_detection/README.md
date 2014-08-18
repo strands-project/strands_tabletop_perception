@@ -3,8 +3,8 @@ table_detection
 
 This package uses the `primitive_extraction` package to extract planes and determines which of the planes are tables
 based on size, angle with respect to floor, shape and height above floor. A list of detected tables is kept locally
-and in the `ros_datacentre` and new tables overlapping with old ones are merged by finding the common convex hull.
-All currently found tables can be found by querying all `strands_perception_msgs/Table` from the `ros_datacentre`.
+and in the `mongodb_store` and new tables overlapping with old ones are merged by finding the common convex hull.
+All currently found tables can be found by querying all `strands_perception_msgs/Table` from the `mongodb_store`.
 
 The table detection is launched by:
 

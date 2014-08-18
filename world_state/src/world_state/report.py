@@ -20,7 +20,7 @@ from geometry_msgs.msg import Pose
 
 from observation import MessageStoreObject, Observation, TransformationStore
 
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 from robblog.msg import RobblogEntry
 import robblog.utils
 from robblog import utils as rb_utils

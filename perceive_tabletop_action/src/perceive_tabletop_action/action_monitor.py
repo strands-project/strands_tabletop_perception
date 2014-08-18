@@ -3,7 +3,7 @@ import rospy
 import smach
 import smach_ros
 
-from ros_datacentre.message_store import MessageStoreProxy
+from mongodb_store.message_store import MessageStoreProxy
 from strands_perception_msgs.msg import Table
 
 from geometry_msgs.msg import Polygon

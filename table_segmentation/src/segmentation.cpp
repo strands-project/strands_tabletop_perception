@@ -1,4 +1,4 @@
-#include "ros_datacentre/message_store.h"
+#include "mongodb_store/message_store.h"
 #include "ros/ros.h"
 #include <Eigen/Dense>
 #include <pcl/point_cloud.h>
@@ -10,7 +10,7 @@
 #include "strands_perception_msgs/Table.h"
 #include "table_segmentation/SegmentTable.h"
 
-using namespace ros_datacentre;
+using namespace mongodb_store;
 using namespace Eigen;
 
 MessageStoreProxy* messageStore;
