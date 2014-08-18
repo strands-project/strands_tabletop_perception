@@ -3,10 +3,12 @@
 
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 #include "multiview_object_recognizer_service.h"
+#include "singleview_object_recognizer.h"
 
 class worldRepresentation
 {
 private:
+    boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     std::vector <multiviewGraph > graph_v;
     bool visualize_output_;
     bool go_3d_;
@@ -38,6 +40,7 @@ public:
     void setMv_keypoints(int mv_keypoints);
     std::string models_dir() const;
     void setModels_dir(const std::string &models_dir);
+    void setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value);
 };
 
 #endif

@@ -90,6 +90,7 @@ catkin_package(
 ## Build ##
 ###########
 
+add_definitions(-std=c++0x)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(include
@@ -103,6 +104,8 @@ set(incs
     include/segmenter.h
     include/multiview_object_recognizer_service.h
     include/world_representation.h
+    include/segmenter.h
+    include/singleview_object_recognizer.h
 )
 
 ## Declare a cpp library
@@ -115,6 +118,8 @@ add_executable(multiview_object_recognizer_node
                 src/multiview_object_recognizer_service.cpp
                 src/world_representation.cpp
                 src/boost_graph_extension.cpp
+		src/singleview_object_recognizer.cpp
+		src/main.cpp
                 ${incs}
 )
 

@@ -1,7 +1,6 @@
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 
 #include "multiview_object_recognizer_service.h"
-#include "world_representation.h"
 #include "boost_graph_extension.h"
 #include <pcl/common/transforms.h>
 #include <faat_pcl/utils/pcl_visualization_utils.h>
@@ -10,147 +9,6 @@
 #include "geometry_msgs/Point32.h"
 #include "geometry_msgs/Transform.h"
 #include "std_msgs/Time.h"
-
-
-ros::ServiceClient client_;
-boost::shared_ptr<ros::NodeHandle> n_;
-ros::ServiceServer ros_mv_rec_server_;
-ros::Publisher vis_pc_pub_;
-
-
-template<class PointT>
-void computeTablePlane (typename pcl::PointCloud<PointT>::Ptr & pCloud,
-                        Eigen::Vector4f & table_plane,
-                        float z_dist = std::numeric_limits<float>::max())
-{
-    typedef typename pcl::PointCloud<PointT> PointCloudT;
-    typedef typename PointCloudT::Ptr PointCloudTPtr;
-
-    pcl::IntegralImageNormalEstimation<PointT, pcl::Normal> ne;
-    ne.setNormalEstimationMethod (ne.COVARIANCE_MATRIX);
-    ne.setMaxDepthChangeFactor (0.02f);
-    ne.setNormalSmoothingSize (20.0f);
-    ne.setBorderPolicy (pcl::IntegralImageNormalEstimation<PointT, pcl::Normal>::BORDER_POLICY_IGNORE);
-    ne.setInputCloud (pCloud);
-    pcl::PointCloud<pcl::Normal>::Ptr normal_cloud (new pcl::PointCloud<pcl::Normal>);
-    ne.compute (*normal_cloud);
-
-    int num_plane_inliers = 5000;
-
-    PointCloudTPtr cloud_filtered (new PointCloudT);
-    pcl::PassThrough<PointT> pass_;
-    pass_.setFilterLimits (0.f, z_dist);
-    pass_.setFilterFieldName ("z");
-    pass_.setInputCloud (pCloud);
-    pass_.setKeepOrganized (true);
-    pass_.filter (*cloud_filtered);
-
-    pcl::OrganizedMultiPlaneSegmentation<PointT, pcl::Normal, pcl::Label> mps;
-    mps.setMinInliers (num_plane_inliers);
-    mps.setAngularThreshold (0.017453 * 1.5f); // 2 degrees
-    mps.setDistanceThreshold (0.01); // 1cm
-    mps.setInputNormals (normal_cloud);
-    mps.setInputCloud (cloud_filtered);
-
-    std::vector<pcl::PlanarRegion<PointT>, Eigen::aligned_allocator<pcl::PlanarRegion<PointT> > > regions;
-    std::vector<pcl::ModelCoefficients> model_coefficients;
-    std::vector<pcl::PointIndices> inlier_indices;
-    pcl::PointCloud<pcl::Label>::Ptr labels (new pcl::PointCloud<pcl::Label>);
-    std::vector<pcl::PointIndices> label_indices;
-    std::vector<pcl::PointIndices> boundary_indices;
-
-    typename pcl::PlaneRefinementComparator<PointT, pcl::Normal, pcl::Label>::Ptr ref_comp (
-                new pcl::PlaneRefinementComparator<PointT,
-                pcl::Normal, pcl::Label> ());
-    ref_comp->setDistanceThreshold (0.01f, true);
-    ref_comp->setAngularThreshold (0.017453 * 10);
-    mps.setRefinementComparator (ref_comp);
-    mps.segmentAndRefine (regions, model_coefficients, inlier_indices, labels, label_indices, boundary_indices);
-
-    std::cout << "Number of planes found:" << model_coefficients.size () << std::endl;
-
-    int table_plane_selected = 0;
-    int max_inliers_found = -1;
-    std::vector<int> plane_inliers_counts;
-    plane_inliers_counts.resize (model_coefficients.size ());
-
-    for (size_t i = 0; i < model_coefficients.size (); i++)
-    {
-        Eigen::Vector4f table_plane = Eigen::Vector4f (model_coefficients[i].values[0], model_coefficients[i].values[1], model_coefficients[i].values[2],
-                model_coefficients[i].values[3]);
-
-        std::cout << "Number of inliers for this plane:" << inlier_indices[i].indices.size () << std::endl;
-        int remaining_points = 0;
-        PointCloudTPtr plane_points (new PointCloudT (*cloud_filtered));
-        for (int j = 0; j < plane_points->points.size (); j++)
-        {
-            Eigen::Vector3f xyz_p = plane_points->points[j].getVector3fMap ();
-
-            if (!pcl_isfinite (xyz_p[0]) || !pcl_isfinite (xyz_p[1]) || !pcl_isfinite (xyz_p[2]))
-                continue;
-
-            float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
-
-            if (std::abs (val) > 0.01)
-            {
-                plane_points->points[j].x = std::numeric_limits<float>::quiet_NaN ();
-                plane_points->points[j].y = std::numeric_limits<float>::quiet_NaN ();
-                plane_points->points[j].z = std::numeric_limits<float>::quiet_NaN ();
-            }
-            else
-                remaining_points++;
-        }
-
-        plane_inliers_counts[i] = remaining_points;
-
-        if (remaining_points > max_inliers_found)
-        {
-            table_plane_selected = i;
-            max_inliers_found = remaining_points;
-        }
-    }
-
-    size_t itt = static_cast<size_t> (table_plane_selected);
-    table_plane = Eigen::Vector4f (model_coefficients[itt].values[0], model_coefficients[itt].values[1], model_coefficients[itt].values[2],
-            model_coefficients[itt].values[3]);
-
-    Eigen::Vector3f normal_table = Eigen::Vector3f (model_coefficients[itt].values[0], model_coefficients[itt].values[1],
-            model_coefficients[itt].values[2]);
-
-    int inliers_count_best = plane_inliers_counts[itt];
-
-    //check that the other planes with similar normal are not higher than the table_plane_selected
-    for (size_t i = 0; i < model_coefficients.size (); i++)
-    {
-        Eigen::Vector4f model = Eigen::Vector4f (model_coefficients[i].values[0], model_coefficients[i].values[1], model_coefficients[i].values[2],
-                model_coefficients[i].values[3]);
-
-        Eigen::Vector3f normal = Eigen::Vector3f (model_coefficients[i].values[0], model_coefficients[i].values[1], model_coefficients[i].values[2]);
-
-        int inliers_count = plane_inliers_counts[i];
-
-        std::cout << "Dot product is:" << normal.dot (normal_table) << std::endl;
-        if ((normal.dot (normal_table) > 0.95) && (inliers_count_best * 0.5 <= inliers_count))
-        {
-            //check if this plane is higher, projecting a point on the normal direction
-            std::cout << "Check if plane is higher, then change table plane" << std::endl;
-            std::cout << model[3] << " " << table_plane[3] << std::endl;
-            if (model[3] < table_plane[3])
-            {
-                PCL_WARN ("Changing table plane...");
-                table_plane_selected = i;
-                table_plane = model;
-                normal_table = normal;
-                inliers_count_best = inliers_count;
-            }
-        }
-    }
-
-    /*table_plane = Eigen::Vector4f (model_coefficients[table_plane_selected].values[0], model_coefficients[table_plane_selected].values[1],
-model_coefficients[table_plane_selected].values[2], model_coefficients[table_plane_selected].values[3]);*/
-
-    std::cout << "Table plane computed... " << std::endl;
-}
 
 inline void
 createBigPointCloudRecursive ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud, Vertex start, Vertex coming_from,
@@ -320,20 +178,27 @@ void multiviewGraph::loadModels()
     }
 }
 
+
+
+void multiviewGraph::setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value)
+{
+    pSingleview_recognizer_ = value;
+}
+
 bool multiviewGraph::
 calcFeatures ( Vertex &src, Graph &grph, bool use_table_plane )
 {
-    boost::shared_ptr < faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, FeatureT> > estimator;
-    estimator.reset (new faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, FeatureT>);
+    boost::shared_ptr < faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, FeatureT> > estimator2;
+    estimator2.reset (new faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, FeatureT>);
 
     if(use_table_plane)
-        estimator->setIndices (*(grph[src].pIndices_above_plane));
+        estimator2->setIndices (*(grph[src].pIndices_above_plane));
 
-    bool ret = estimator->estimate (grph[src].pScenePCl_f, grph[src].pKeypoints, grph[src].pSignatures, grph[src].sift_keypoints_scales);
+    //bool ret = estimator->estimate (grph[src].pScenePCl_f, grph[src].pKeypoints, grph[src].pSignatures, grph[src].sift_keypoints_scales);
 
-    estimator->getKeypointIndices(grph[src].keypoints_indices_);
+    estimator2->getKeypointIndices(grph[src].keypoints_indices_);
 
-    return ret;
+    return true;//ret;
 
     //----display-keypoints--------------------
     /*pcl::visualization::PCLVisualizer::Ptr vis_temp (new pcl::visualization::PCLVisualizer);
@@ -857,6 +722,7 @@ calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
 
         float w_after_icp_ = std::numeric_limits<float>::max ();
         float best_overlap_ = max_overlap;
+
         Eigen::Matrix4f icp_trans;
         faat_pcl::registration::FastIterativeClosestPointWithGC<pcl::PointXYZRGB> icp;
         icp.setMaxCorrespondenceDistance ( 0.02f );
@@ -921,21 +787,36 @@ Eigen::Matrix4f GeometryMsgToMatrix4f(geometry_msgs::Transform & tt)
     return trans;
 }
 
-bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response) // pcl::PointCloud<pcl::PointXYZRGB> &cloud, const std::string scene_name )
+bool multiviewGraph::recognize
+                (pcl::PointCloud<pcl::PointXYZRGB>::Ptr pInputCloud,
+                 std::vector<Eigen::Matrix4f> &hyp_transforms_local,
+                 std::vector<std::string> &hyp_model_ids,
+                 const std::string view_name,
+                 const Eigen::Matrix4f global_transform,
+                 const size_t timestamp)
 {
+//    ;
+//}
+
+//bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response) // pcl::PointCloud<pcl::PointXYZRGB> &cloud, const std::string scene_name )
+//{
+    assert(pInputCloud->width == 640 && pInputCloud->height == 480);
     Vertex vrtx = boost::add_vertex ( grph_ );
 
-    Eigen::Matrix4f trans;
-    for (size_t row=0; row <4; row++)
-    {
-        for(size_t col=0; col<4; col++)
-        {
-            trans(row, col) = req.transform[4*row + col];
-        }
-    }
-    grph_[vrtx].transform_to_world_co_system_ = trans;
+//    Eigen::Matrix4f trans;
+//    for (size_t row=0; row <4; row++)
+//    {
+//        for(size_t col=0; col<4; col++)
+//        {
+//            trans(row, col) = req.transform[4*row + col];
+//        }
+//    }
 
-    pcl::fromROSMsg(req.cloud, *(grph_[vrtx].pScenePCl) );
+    grph_[vrtx].pScenePCl = pInputCloud;
+    grph_[vrtx].transform_to_world_co_system_ = global_transform;
+    grph_[vrtx].view_id_ = view_name;
+    grph_[vrtx].timestamp_nsec = timestamp;
+
 
     if(chop_at_z_ > 0)
     {
@@ -946,8 +827,6 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
         pass_.setKeepOrganized (true);
         pass_.filter (*(grph_[vrtx].pScenePCl_f));
     }
-    grph_[vrtx].view_id_ = req.view_name.data;
-    grph_[vrtx].timestamp_nsec = req.timestamp.data.toNSec();
 
     std::vector<Edge> new_edges;
 
@@ -972,67 +851,84 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
     if(scene_to_scene_)
     {
         calcFeatures ( vrtx, grph_ );
-        std::cout << "keypoints: " << grph_[vrtx].pKeypoints->points.size() << std::endl;
+//        std::cout << "keypoints: " << grph_[vrtx].pKeypoints->points.size() << std::endl;
 
-        if (num_vertices(grph_)>1)
-        {
-            flann::Matrix<float> flann_data;
-            flann::Index<DistT> *flann_index;
-            multiview::convertToFLANN<pcl::Histogram<128> > ( grph_[vrtx].pSignatures, flann_data );
-            flann_index = new flann::Index<DistT> ( flann_data, flann::KDTreeIndexParams ( 4 ) );
-            flann_index->buildIndex ();
+//        if (num_vertices(grph_)>1)
+//        {
+//            flann::Matrix<float> flann_data;
+//            flann::Index<DistT> *flann_index;
+//            multiview::convertToFLANN<pcl::Histogram<128> > ( grph_[vrtx].pSignatures, flann_data );
+//            flann_index = new flann::Index<DistT> ( flann_data, flann::KDTreeIndexParams ( 4 ) );
+//            flann_index->buildIndex ();
 
-            //#pragma omp parallel for
-            vertex_iter vertexIt, vertexEnd;
-            for (boost::tie(vertexIt, vertexEnd) = vertices(grph_); vertexIt != vertexEnd; ++vertexIt)
-            {
-                Eigen::Matrix4f transformation;
-                if( grph_[*vertexIt].view_id_.compare ( grph_[vrtx].view_id_ ) != 0 )
-                {
-                    std::vector<Edge> edge;
-                    estimateViewTransformationBySIFT ( *vertexIt, vrtx, grph_, flann_index, transformation, edge, use_gc_s2s_ );
-                    for(size_t kk=0; kk < edge.size(); kk++)
-                    {
-                        new_edges.push_back (edge[kk]);
-                    }
-                }
-            }
-            delete flann_index;
-        }
+//            //#pragma omp parallel for
+//            vertex_iter vertexIt, vertexEnd;
+//            for (boost::tie(vertexIt, vertexEnd) = vertices(grph_); vertexIt != vertexEnd; ++vertexIt)
+//            {
+//                Eigen::Matrix4f transformation;
+//                if( grph_[*vertexIt].view_id_.compare ( grph_[vrtx].view_id_ ) != 0 )
+//                {
+//                    std::vector<Edge> edge;
+//                    estimateViewTransformationBySIFT ( *vertexIt, vrtx, grph_, flann_index, transformation, edge, use_gc_s2s_ );
+//                    for(size_t kk=0; kk < edge.size(); kk++)
+//                    {
+//                        new_edges.push_back (edge[kk]);
+//                    }
+//                }
+//            }
+//            delete flann_index;
+//        }
     }
     //----------END-create-edges-between-views-by-SIFT-----------------------------------
 
 
     //----------call-single-view-recognizer----------------------------------------------
-    recognition_srv_definitions::recognize srv;
-    srv.request.cloud = req.cloud;
-
-    if ( client_.call ( srv ) )
+    std::vector<Eigen::Matrix4f> trans_v;
+    std::vector<std::string> model_ids_v;
+    pSingleview_recognizer_->recognize(grph_[vrtx].pScenePCl_f, trans_v, model_ids_v);
+    if(model_ids_v.size())
     {
-        if ( srv.response.ids.size() == 0 )
+        for(size_t model_id=0; model_id < model_ids_v.size(); model_id++)
         {
-            ROS_INFO ( "I didn't detect any object in the current scene." );
-        }
-        else
-        {
-            for ( size_t i=0; i < srv.response.ids.size(); i++ )
-            {
-                std_msgs::String object_id = ( std_msgs::String ) srv.response.ids[i];
-                ROS_INFO ( "I detected object %s in the scene.", object_id.data.c_str() );
+            std::cout << "I detected object " <<
+                        model_ids_v[model_id]<< " in the scene." << std::endl;
 
-                Eigen::Matrix4f tt = GeometryMsgToMatrix4f(srv.response.transforms[i]);
-
-                std::stringstream model_name;
-                model_name << models_dir_ << srv.response.ids[i].data;
-                Hypothesis hypothesis ( model_name.str(), tt, grph_[vrtx].view_id_, false );
-                grph_[vrtx].hypothesis.push_back ( hypothesis );
-            }
+            std::stringstream model_name;
+            model_name << models_dir_ << model_ids_v[model_id];
+            Hypothesis hypothesis ( model_name.str(), trans_v[model_id], grph_[vrtx].view_id_, false );
+            grph_[vrtx].hypothesis.push_back ( hypothesis );
         }
     }
     else
     {
-        ROS_ERROR ( "Failed to call service" );
+        std::cout << "I didn't detect any objects in the current scene." << std::endl;
     }
+    //    if ( client_.call ( srv ) )
+    //    {
+    //        if ( srv.response.ids.size() == 0 )
+    //        {
+    //            ROS_INFO ( "I didn't detect any object in the current scene." );
+    //        }
+    //        else
+    //        {
+    //            for ( size_t i=0; i < srv.response.ids.size(); i++ )
+    //            {
+    //                std_msgs::String object_id = ( std_msgs::String ) srv.response.ids[i];
+    //                ROS_INFO ( "I detected object %s in the scene.", object_id.data.c_str() );
+
+    //                Eigen::Matrix4f tt = GeometryMsgToMatrix4f(srv.response.transforms[i]);
+
+    //                std::stringstream model_name;
+    //                model_name << models_dir_ << srv.response.ids[i].data;
+    //                Hypothesis hypothesis ( model_name.str(), tt, grph_[vrtx].view_id_, false );
+    //                grph_[vrtx].hypothesis.push_back ( hypothesis );
+    //            }
+    //        }
+    //    }
+    //    else
+    //    {
+    //        ROS_ERROR ( "Failed to call service" );
+    //    }
     //----------END-call-single-view-recognizer------------------------------------------
 
 
@@ -1282,7 +1178,7 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                 if(use_table_plane_)
                 {
                     Eigen::Vector4f table_plane;
-                    computeTablePlane<pcl::PointXYZRGB>(grph_final_[*vp.first].pScenePCl_f, table_plane);
+                    faat_pcl::utils::computeTablePlane<pcl::PointXYZRGB>(grph_final_[*vp.first].pScenePCl_f, table_plane);
                     for (size_t kk = 0; kk < trans_cloud->points.size (); kk++)
                     {
 
@@ -2170,23 +2066,23 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
                     else
                     {
                         grph_final_[vrtx_tmp].hypothesis[hyp_id].verified_ = true;
-                        std_msgs::String ss;
-                        ss.data = grph_final_[vrtx_tmp].hypothesis[hyp_id].model_id_;
-                        response.ids.push_back(ss);
+//                        std_msgs::String ss;
+//                        ss.data = grph_final_[vrtx_tmp].hypothesis[hyp_id].model_id_;
+//                        response.ids.push_back(ss);
 
-                        Eigen::Matrix4f trans = grph_final_[vrtx_tmp].hypothesis[hyp_id].transform_;
-                        geometry_msgs::Transform tt;
-                        tt.translation.x = trans(0,3);
-                        tt.translation.y = trans(1,3);
-                        tt.translation.z = trans(2,3);
+//                        Eigen::Matrix4f trans = grph_final_[vrtx_tmp].hypothesis[hyp_id].transform_;
+//                        geometry_msgs::Transform tt;
+//                        tt.translation.x = trans(0,3);
+//                        tt.translation.y = trans(1,3);
+//                        tt.translation.z = trans(2,3);
 
-                        Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
-                        Eigen::Quaternionf q(rotation);
-                        tt.rotation.x = q.x();
-                        tt.rotation.y = q.y();
-                        tt.rotation.z = q.z();
-                        tt.rotation.w = q.w();
-                        response.transforms.push_back(tt);
+//                        Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
+//                        Eigen::Quaternionf q(rotation);
+//                        tt.rotation.x = q.x();
+//                        tt.rotation.y = q.y();
+//                        tt.rotation.z = q.z();
+//                        tt.rotation.w = q.w();
+//                        response.transforms.push_back(tt);
                     }
                 }
             }
@@ -2268,47 +2164,42 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
 
 
     //----respond-service-call-and-publish-all-recognized-models-(after-multiview-extension)-as-ROS-point-cloud-------------------
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
+//    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
     for ( size_t hyp_id = 0; hyp_id < grph_final_[vrtx_final].hypothesis.size(); hyp_id++ )
     {
         if ( grph_final_[vrtx_final].hypothesis[hyp_id].verified_ )
         {
-            std_msgs::String model_id;
-            model_id.data = grph_final_[vrtx_final].hypothesis[hyp_id].model_id_;
-            response.ids.push_back(model_id);
+            hyp_transforms_local.push_back(grph_final_[vrtx_final].hypothesis[hyp_id].transform_);
+            hyp_model_ids.push_back(grph_final_[vrtx_final].hypothesis[hyp_id].model_id_);
 
-            Eigen::Matrix4f trans = grph_final_[vrtx_final].hypothesis[hyp_id].transform_;
-            geometry_msgs::Transform tt;
-            tt.translation.x = trans(0,3);
-            tt.translation.y = trans(1,3);
-            tt.translation.z = trans(2,3);
+//            std_msgs::String model_id;
+//            model_id.data = grph_final_[vrtx_final].hypothesis[hyp_id].model_id_;
+//            response.ids.push_back(model_id);
 
-            Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
-            Eigen::Quaternionf q(rotation);
-            tt.rotation.x = q.x();
-            tt.rotation.y = q.y();
-            tt.rotation.z = q.z();
-            tt.rotation.w = q.w();
-            response.transforms.push_back(tt);
+//            Eigen::Matrix4f trans = grph_final_[vrtx_final].hypothesis[hyp_id].transform_;
+//            geometry_msgs::Transform tt;
+//            tt.translation.x = trans(0,3);
+//            tt.translation.y = trans(1,3);
+//            tt.translation.z = trans(2,3);
 
-            Eigen::Matrix4f trans_2_world = grph_final_[vrtx_final].transform_to_world_co_system_ * trans;
+//            Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
+//            Eigen::Quaternionf q(rotation);
+//            tt.rotation.x = q.x();
+//            tt.rotation.y = q.y();
+//            tt.rotation.z = q.z();
+//            tt.rotation.w = q.w();
+//            response.transforms.push_back(tt);
+
+//            Eigen::Matrix4f trans_2_world = grph_final_[vrtx_final].transform_to_world_co_system_ * trans;
 
 
-            typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
-            typename pcl::PointCloud<PointT>::Ptr model_aligned ( new pcl::PointCloud<PointT> );
-            pcl::io::loadPCDFile ( grph_final_[vrtx_final].hypothesis[hyp_id].model_id_, *pModelPCl );
-            pcl::transformPointCloud ( *pModelPCl, *model_aligned, trans_2_world );
-            *pRecognizedModels += *model_aligned;
+//            typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
+//            typename pcl::PointCloud<PointT>::Ptr model_aligned ( new pcl::PointCloud<PointT> );
+//            pcl::io::loadPCDFile ( grph_final_[vrtx_final].hypothesis[hyp_id].model_id_, *pModelPCl );
+//            pcl::transformPointCloud ( *pModelPCl, *model_aligned, trans_2_world );
+//            *pRecognizedModels += *model_aligned;
         }
     }
-
-    sensor_msgs::PointCloud2  pc2;
-    pcl::toROSMsg (*pRecognizedModels, pc2);
-    pc2.header.frame_id = "map";
-    pc2.header.stamp = req.timestamp.data;
-    pc2.is_dense = false;
-    vis_pc_pub_.publish(pc2);
-
 
     //-------Clean-up-graph-------------------
     if(num_vertices(grph_) > 2)
@@ -2359,53 +2250,4 @@ bool multiviewGraph::recognize (recognition_srv_definitions::multiview_recognize
     }
 
     return true;
-}
-
-int main (int argc, char **argv)
-{
-    std::string models_dir;
-    bool visualize_output;
-    bool go_3d;
-    int icp_iter;
-    int opt_type;
-    std::string gt_or_ouput_dir;
-    double chop_at_z;
-    int mv_keypoints;
-
-    ros::init ( argc, argv, "multiview_object_recognizer_node" );
-    n_.reset( new ros::NodeHandle ( "~" ) );
-
-    if ( ! n_->getParam ( "models_dir", models_dir ))
-    {
-        std::cout << "No models_dir specified. " << std::endl;
-    }
-
-    n_->getParam ( "visualize_output", visualize_output);
-    n_->getParam ( "go_3d", go_3d);
-    n_->getParam ( "gt_or_output_dir", gt_or_ouput_dir);
-    n_->getParam ( "icp_iterations", icp_iter);
-    n_->getParam ( "mv_keypoints", mv_keypoints);
-    n_->getParam ( "opt_type", opt_type);
-    n_->getParam ( "chop_z", chop_at_z);
-
-
-    worldRepresentation myWorld;
-    myWorld.setModels_dir(models_dir);
-    myWorld.setVisualize_output(visualize_output);
-    myWorld.setGo_3d(go_3d);
-    myWorld.setGt_or_ouput_dir(gt_or_ouput_dir);
-    myWorld.setIcp_iter(icp_iter);
-    myWorld.setMv_keypoints(mv_keypoints);
-    myWorld.setOpt_type(opt_type);
-    myWorld.setChop_at_z(chop_at_z);
-
-    client_ = n_->serviceClient<recognition_srv_definitions::recognize> ( "/recognition_service/mp_recognition" );
-    ros_mv_rec_server_ = n_->advertiseService("multiview_recognotion_servcice", &worldRepresentation::recognize, &myWorld);
-
-    vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "test", 0 );
-
-    ROS_INFO("Multiview object recognizer is ready to get service calls.");
-    ros::spin();
-
-    return 0;
 }

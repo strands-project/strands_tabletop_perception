@@ -21,23 +21,61 @@ multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_n
     newGraph.setChop_at_z(chop_at_z_);
     newGraph.setSceneName(scene_name);
     newGraph.loadModels();
+    newGraph.setPSingleview_recognizer(pSingleview_recognizer_);
     graph_v.push_back(newGraph);
     return graph_v.back();
 }
 
+void worldRepresentation::setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value)
+{
+    pSingleview_recognizer_ = value;
+}
+
 bool worldRepresentation::recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response)
 {
-
     if (req.cloud.data.size()==0)
     {
         ROS_ERROR("Point cloud is empty!");
         return false;
     }
-
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pInputCloud (new pcl::PointCloud<pcl::PointXYZRGB>);
+    pcl::fromROSMsg(req.cloud, *pInputCloud );
     std::string scene_name = req.scene_name.data;
+    std::string view_name = req.view_name.data;
+    size_t timestamp = req.timestamp.data.toNSec();
+
+    Eigen::Matrix4f global_trans;
+    for (size_t row=0; row <4; row++)
+    {
+        for(size_t col=0; col<4; col++)
+        {
+            global_trans(row, col) = req.transform[4*row + col];
+        }
+    }
+    std::vector<Eigen::Matrix4f> hyp_transforms_local;
+    std::vector<std::string> hyp_model_ids;
 
     multiviewGraph &currentGraph = get_current_graph(scene_name);
-    return currentGraph.recognize(req, response);
+    bool mv_recognize_error = currentGraph.recognize(pInputCloud, hyp_transforms_local, hyp_model_ids, view_name, global_trans, timestamp);//req, response);
+
+//    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
+//    for(size_t hyp_id = 0; hyp_id < hyp_model_ids.size(); hyp_id++)
+//    {
+//        typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
+//        typename pcl::PointCloud<PointT>::Ptr pModel_aligned ( new pcl::PointCloud<PointT> );
+//        pcl::io::loadPCDFile ( hyp_model_ids[hyp_id], *pModelPCl );
+//        pcl::transformPointCloud ( *pModelPCl, *pModel_aligned, global_trans * hyp_transforms_local[hyp_id] );
+//        *pRecognizedModels += *pModel_aligned;
+//    }
+
+//    sensor_msgs::PointCloud2  pc2;
+//    pcl::toROSMsg (*pRecognizedModels, pc2);
+//    pc2.header.frame_id = "map";
+//    pc2.header.stamp = req.timestamp.data;
+//    pc2.is_dense = false;
+//    vis_pc_pub_.publish(pc2);
+
+    return mv_recognize_error;
 }
 
 

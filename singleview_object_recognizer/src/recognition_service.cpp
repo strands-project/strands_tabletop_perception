@@ -214,6 +214,7 @@ private:
     if(model_ids.size() == 0)
     {
         ROS_DEBUG("No models to verify, returning.\n");
+        ROS_ERROR("Cancelling service request.");
         return true;
     }
 

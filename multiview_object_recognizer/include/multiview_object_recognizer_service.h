@@ -67,6 +67,7 @@
 #include "recognition_srv_definitions/recognize.h"
 #include "recognition_srv_definitions/multiview_recognize.h"
 #include "segmenter.h"
+#include "singleview_object_recognizer.h"
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointInT;
@@ -83,6 +84,7 @@ typedef typename pcl::PointCloud<PointT>::ConstPtr ConstPointInTPtr;
 class multiviewGraph
 {
 private:
+    boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     Graph grph_, grph_final_;
     std::vector<Edge> edges_, best_edges_;
     std::string models_dir_;
@@ -217,6 +219,14 @@ public:
 
     void visualizeEdge (const Edge &edge, const Graph &grph);
     bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
+
+    bool recognize ( pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloud,
+                     std::vector<Eigen::Matrix4f> &hyp_transforms_local,
+                     std::vector<std::string> &hyp_model_ids,
+                     const std::string view_name = "",
+                     const Eigen::Matrix4f global_transform = Eigen::Matrix4f::Identity(),
+                     const size_t timestamp = 0);
+
     void loadModels();
 
     // getter and setter functions
@@ -236,6 +246,7 @@ public:
     void setChop_at_z(double chop_at_z);
     int mv_keypoints() const;
     void setMv_keypoints(int mv_keypoints);
+    void setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value);
 };
 
 namespace multiview

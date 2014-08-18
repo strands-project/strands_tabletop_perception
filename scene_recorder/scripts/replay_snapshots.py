@@ -43,17 +43,18 @@ if __name__ == '__main__':
                                 # a ROS message - here a sensor_msgs/PointCloud2 and geometry_msgs/PoseWithCovarianceStamped
                                 pointcloud = observation.get_message("/head_xtion/depth_registered/points")
                                 pose = observation.get_message("/amcl_pose")
-
+				print pointcloud.width
+				print pointcloud.height
                                 # Reading the transformation tree is done by reconstructing a ROS transformer
                                 # that then works in the same way as a TF Listener object.
                                 tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
                                 timestamp = observation.get_message("/head_xtion/depth_registered/points").header.stamp
-                                print "Timestamp: " + timestamp
+                                print "Timestamp: " + `timestamp`
                                 transform = tf.lookupTransform("/map", pointcloud.header.frame_id, timestamp)
                                 print "Transform: " + str(transform)
                                 depth_to_world = geometry.Pose(geometry.Point(*(transform[0])), geometry.Quaternion(*(transform[1])))
                                 trans_homo =  depth_to_world.as_homog_matrix()
-                                print "Homogeneous transform: " + trans_homo
+                                print trans_homo
 
                                 transf_1d = [0]*16
                                 for row in range(0,4):
