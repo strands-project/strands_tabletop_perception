@@ -39,7 +39,7 @@ public:
     boost::shared_ptr< pcl::PointCloud<PointT> > pScenePCl_f;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals_f_;
-//    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormals_f_;
+    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormals_;
     boost::shared_ptr< pcl::PointCloud<FeatureT > > pSignatures;
     boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypoints;

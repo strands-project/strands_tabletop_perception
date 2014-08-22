@@ -203,7 +203,7 @@ public:
     void extendHypothesis ( Graph &grph );
     void extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypothesis> &hyp_vec);
     void extendFeatureMatchesRecursive ( Graph &grph,
-                                         Edge calling_out_edge,
+                                         Vertex &vrtx_start,
                                          std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > &hypotheses,
                                          pcl::PointCloud<PointT> &keypoints,
                                          pcl::PointCloud<pcl::Normal> &keypointNormals);
@@ -214,6 +214,7 @@ public:
     void calcEdgeWeight (Graph &grph, int max_distance=-1, float z_dist=3.f, float max_overlap=0.75f);
     void createBigPointCloud ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud );
     void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr vis);
+    void constructHypothesesFromFeatureMatches(Graph &grph, Vertex &vrtx);
 
     std::string getSceneName()
     {

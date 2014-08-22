@@ -75,6 +75,7 @@ View::View ()
     pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pSceneNormals.reset ( new pcl::PointCloud<pcl::Normal> );
     pSceneNormals_f_.reset ( new pcl::PointCloud<pcl::Normal> );
+    pKeypointNormals_.reset ( new pcl::PointCloud<pcl::Normal> );
     pIndices_above_plane.reset ( new pcl::PointIndices );
     pSignatures.reset ( new pcl::PointCloud<FeatureT> );
     has_been_hopped_ = false;
@@ -109,6 +110,7 @@ void copyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Verte
     grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
     grph_target[vrtx_target].pSceneNormals = grph_src[vrtx_src].pSceneNormals;
     grph_target[vrtx_target].pSceneNormals_f_ = grph_src[vrtx_src].pSceneNormals_f_;
+    grph_target[vrtx_target].pKeypointNormals_ = grph_src[vrtx_src].pKeypointNormals_;
     grph_target[vrtx_target].view_id_ = grph_src[vrtx_src].view_id_;
     grph_target[vrtx_target].hypothesis = grph_src[vrtx_src].hypothesis;
     grph_target[vrtx_target].pKeypoints = grph_src[vrtx_src].pKeypoints;
