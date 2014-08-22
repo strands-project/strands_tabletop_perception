@@ -205,8 +205,7 @@ calcFeatures (Vertex &src, Graph &grph, bool use_table_plane )
         estimator->setIndices (*(grph[src].pIndices_above_plane));
 
     bool ret = estimator->estimate (grph[src].pScenePCl_f, grph[src].pKeypoints, grph[src].pSignatures, grph[src].sift_keypoints_scales);
-
-    estimator->getKeypointIndices(grph[src].keypoints_indices_);
+    estimator->getKeypointIndices(grph[src].keypointIndices_);
 
     return ret;
 
@@ -422,30 +421,14 @@ estimateViewTransformationByRobotPose ( const Vertex &src, const Vertex &trgt, G
 //    }
 //}
 
-Vertex multiviewGraph::getFurthestVertex ( Graph &grph)
+
+void multiviewGraph::
+extendFeatureMatchesRecursive ( Graph &grph,
+                                Edge calling_out_edge,
+                                std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > &hypotheses,
+                                pcl::PointCloud<PointT> &keypoints,
+                                pcl::PointCloud<pcl::Normal> &keypointNormals)//is directed edge (so the source of calling_edge is calling vertex)
 {
-    std::pair<vertex_iter, vertex_iter> vp; //vp.first = running iterator..... vp.second = last iterator
-
-    vp = vertices ( grph );
-    Vertex furthest_vrtx = *vp.first;
-    ++vp.first;
-
-    for (; vp.first != vp.second; ++vp.first )
-    {
-        if(grph[*vp.first].cumulative_weight_to_new_vrtx_ > grph[furthest_vrtx].cumulative_weight_to_new_vrtx_)
-        {
-            furthest_vrtx = *vp.first;
-        }
-    }
-
-    return furthest_vrtx;
-}
-
-std::vector<Hypothesis> multiviewGraph::
-extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge) //is directed edge (so the source of calling_edge is calling vertex)
-{
-    std::vector<Hypothesis> hyp_vec;
-
     typename graph_traits<Graph>::out_edge_iterator out_i, out_end;
     Vertex current_vertex = target ( calling_out_edge, grph );
     Vertex src = source ( calling_out_edge, grph );
@@ -464,7 +447,171 @@ extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge) //is directed ed
             continue;
         }
         ROS_INFO("Hopping to vertex %s...", grph[new_trgt].view_id_.c_str());
-        std::vector<Hypothesis> new_hypotheses = extendHypothesisRecursive ( grph, *out_i);
+        std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > new_hypotheses;
+        pcl::PointCloud<PointT> newKeypoints;
+        pcl::PointCloud<pcl::Normal> newKeypointNormals;
+        extendFeatureMatchesRecursive ( grph, *out_i, new_hypotheses, newKeypoints, newKeypointNormals);
+
+        assert( newKeypoints.size() == newKeypointNormals.size() );
+
+        Eigen::Matrix4f transform;
+
+        if ( grph[calling_out_edge].source_id.compare( grph[src].view_id_ ) == 0)
+        {
+            transform = grph[calling_out_edge].transformation.inverse ();
+
+        }
+        else if (grph[calling_out_edge].target_id.compare( grph[src].view_id_ ) == 0)
+        {
+
+            transform = grph[calling_out_edge].transformation;
+        }
+        else
+        {
+            ROS_WARN("Something is messed up with the transformation.");
+        }
+
+        Eigen::Matrix3f rot   = transform.block<3, 3> (0, 0);
+        Eigen::Vector3f trans = transform.block<3, 1> (0, 3);
+
+        // Transform keypoints and rotate normals
+        for (size_t i=0; i<newKeypoints.size(); i++)
+        {
+            newKeypoints.points[i].getVector3fMap () = rot * newKeypoints.points[i].getVector3fMap () + trans;
+            newKeypointNormals.points[i].getNormalVector3fMap() = rot * newKeypointNormals.points[i].getNormalVector3fMap ();
+        }
+
+        std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_new_hyp;
+        for(it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
+        {
+            std::string id = it_new_hyp->second.model_->id_;
+            std::cout << id << std::endl;
+
+            std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_hyp;
+            it_hyp = hypotheses.find(id);
+            if (it_hyp == hypotheses.end())
+            {
+//                for(size_t kk=0; kk < it_new_hyp->second.correspondences_to_inputcloud->size(); kk++)
+//                {
+//                  pcl::Correspondence c = it_new_hyp->second.correspondences_to_inputcloud->at(kk);
+//                  c.index_match += keypoints.points.size();
+//                }
+                //this can't be just it, can it? have to add existing indices to idx_correspondences
+                    hypotheses.insert(std::pair<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >
+                                      (id, it_new_hyp->second));
+            }
+            else
+            { //merge hypotheses
+                for(size_t kk=0; kk < it_new_hyp->second.correspondences_to_inputcloud->size(); kk++)
+                {
+                  pcl::Correspondence c = it_new_hyp->second.correspondences_to_inputcloud->at(kk);
+                  c.index_match += keypoints.points.size();
+                  c.index_query += it_hyp->second.correspondences_pointcloud->points.size();
+                  it_hyp->second.correspondences_to_inputcloud->push_back(c);
+                }
+
+                *it_hyp->second.correspondences_pointcloud += * it_new_hyp->second.correspondences_pointcloud;
+                *it_hyp->second.normals_pointcloud += * it_new_hyp->second.normals_pointcloud;
+                it_hyp->second.feature_distances_->insert(it_hyp->second.feature_distances_->end(),
+                                                              it_hyp->second.feature_distances_->begin(),
+                                                              it_hyp->second.feature_distances_->end());
+                it_hyp->second.num_corr_ += it_new_hyp->second.num_corr_;
+            }
+        }
+        keypoints += newKeypoints;
+        keypointNormals += newKeypointNormals;
+    }
+
+
+    // insert hypotheses from current_vertex
+    std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_crnt_hyp;
+    for(it_crnt_hyp = grph[current_vertex].hypotheses_.begin(); it_crnt_hyp !=grph[current_vertex].hypotheses_.end(); ++it_crnt_hyp)
+    {
+        std::string id = it_crnt_hyp->second.model_->id_;
+        std::cout << id << std::endl;
+
+        std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_hyp;
+        it_hyp = hypotheses.find(id);
+        if (it_hyp == hypotheses.end())
+        {
+//                for(size_t kk=0; kk < it_new_hyp->second.correspondences_to_inputcloud->size(); kk++)
+//                {
+//                  pcl::Correspondence c = it_new_hyp->second.correspondences_to_inputcloud->at(kk);
+//                  c.index_match += keypoints.points.size();
+//                }
+            //this can't be just it, can it? have to add existing indices to idx_correspondences
+                hypotheses.insert(std::pair<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >
+                                  (id, it_crnt_hyp->second));
+        }
+        else
+        { //merge hypotheses
+            for(size_t kk=0; kk < it_crnt_hyp->second.correspondences_to_inputcloud->size(); kk++)
+            {
+              pcl::Correspondence c = it_crnt_hyp->second.correspondences_to_inputcloud->at(kk);
+              c.index_match += keypoints.points.size();
+              c.index_query += it_hyp->second.correspondences_pointcloud->points.size();
+              it_hyp->second.correspondences_to_inputcloud->push_back(c);
+            }
+
+            *it_hyp->second.correspondences_pointcloud += * it_crnt_hyp->second.correspondences_pointcloud;
+            *it_hyp->second.normals_pointcloud += * it_crnt_hyp->second.normals_pointcloud;
+            it_hyp->second.feature_distances_->insert(it_hyp->second.feature_distances_->end(),
+                                                          it_hyp->second.feature_distances_->begin(),
+                                                          it_hyp->second.feature_distances_->end());
+            it_hyp->second.num_corr_ += it_crnt_hyp->second.num_corr_;
+        }
+    }
+    keypoints += *(grph[current_vertex].pKeypointsMultipipe_);
+    pcl::PointCloud<pcl::Normal> crntKeypointNormals;
+    pcl::copyPointCloud(*(grph[current_vertex].pSceneNormals_f_), grph[current_vertex].keypointIndices_, crntKeypointNormals);
+    keypointNormals += crntKeypointNormals;
+//    for ( std::vector<Hypothesis>::const_iterator it_hyp = grph[current_vertex].hypothesis.begin (); it_hyp != grph[current_vertex].hypothesis.end (); ++it_hyp )
+//    {
+//        if(!it_hyp->verified_)
+//            continue;
+
+//        Eigen::Matrix4f tf;
+//        if ( grph[calling_out_edge].source_id.compare( grph[src].view_id_ ) == 0)
+//        {
+//            tf = grph[calling_out_edge].transformation.inverse () * it_hyp->transform_;
+//        }
+//        else if (grph[calling_out_edge].target_id.compare( grph[src].view_id_ ) == 0)
+//        {
+//            tf = grph[calling_out_edge].transformation * it_hyp->transform_;
+//        }
+//        else
+//        {
+//            ROS_WARN("Something is messed up with the transformation.");
+//        }
+//        Hypothesis ht_temp ( it_hyp->model_id_, tf, it_hyp->origin_, true );
+//        hyp_vec.push_back(ht_temp);
+//    }
+}
+
+
+void multiviewGraph::
+extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypothesis> &hyp_vec) //is directed edge (so the source of calling_edge is calling vertex)
+{
+    typename graph_traits<Graph>::out_edge_iterator out_i, out_end;
+    Vertex current_vertex = target ( calling_out_edge, grph );
+    Vertex src = source ( calling_out_edge, grph );
+
+    grph[current_vertex].has_been_hopped_ = true;
+    grph[current_vertex].cumulative_weight_to_new_vrtx_ = grph[src].cumulative_weight_to_new_vrtx_ + grph[calling_out_edge].edge_weight;
+
+    ROS_INFO("Current Vertex %s has a cumulative weight of %lf.", grph[current_vertex].view_id_.c_str(), grph[current_vertex].cumulative_weight_to_new_vrtx_);
+    for ( tie ( out_i, out_end ) = out_edges ( current_vertex, grph ); out_i != out_end; ++out_i )
+    {
+        Vertex new_trgt = target ( *out_i, grph );
+
+        if ( grph[new_trgt].has_been_hopped_ )
+        {
+            ROS_INFO("Vertex %s has already been hopped.", grph[new_trgt].view_id_.c_str());
+            continue;
+        }
+        ROS_INFO("Hopping to vertex %s...", grph[new_trgt].view_id_.c_str());
+        std::vector<Hypothesis> new_hypotheses;
+        extendHypothesisRecursive ( grph, *out_i, new_hypotheses);
         for(std::vector<Hypothesis>::iterator it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
         {
             if ( grph[calling_out_edge].source_id.compare( grph[src].view_id_ ) == 0)
@@ -504,10 +651,70 @@ extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge) //is directed ed
         Hypothesis ht_temp ( it_hyp->model_id_, tf, it_hyp->origin_, true );
         hyp_vec.push_back(ht_temp);
     }
-
-    return hyp_vec;
 }
 
+void multiviewGraph::visualizeGraph(const Graph &grph, pcl::visualization::PCLVisualizer::Ptr vis)
+{
+    //--(bottom: Scene; 2nd from bottom: Single-view-results; 2nd from top: transformed hypotheses; top: verified hypotheses coming from all views)--
+    //...
+
+    std::vector<int> viewportNr;
+    vis->removeAllPointClouds();
+    viewportNr = faat_pcl::utils::visualization_framework ( vis, num_vertices(grph), 4 );
+
+    std::pair<vertex_iter, vertex_iter> vp;
+    int view_id = -1;
+    for ( vp = vertices ( grph ); vp.first != vp.second; ++vp.first )
+    {
+        view_id++;
+        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb ( grph[*vp.first].pScenePCl );
+        std::stringstream cloud_name;
+        cloud_name << "view_cloud_" << grph[*vp.first].view_id_;
+        vis->addPointCloud<pcl::PointXYZRGB> ( grph[*vp.first].pScenePCl, handler_rgb, cloud_name.str (), viewportNr[view_id * 4 + 0] );
+
+        for ( size_t hyp_id = 0; hyp_id < grph[*vp.first].hypothesis.size(); hyp_id++ )
+        {
+            //visualize models
+            std::string model_id = grph[*vp.first].hypothesis[hyp_id].model_id_;
+            std::string origin = grph[*vp.first].hypothesis[hyp_id].origin_;
+            Eigen::Matrix4f trans = grph[*vp.first].hypothesis[hyp_id].transform_;
+
+            std::stringstream name;
+            name << cloud_name.str() << "___hypothesis_" << hyp_id << "___origin_" << origin;
+
+            // 		ModelTPtr m;
+
+            // 		models_source_->getModelById(model_id, m);
+            //
+            // 		ConstPointInTPtr model_cloud = m->getAssembled (0.003f);
+            typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
+            typename pcl::PointCloud<PointT>::Ptr model_aligned ( new pcl::PointCloud<PointT> );
+
+            pcl::io::loadPCDFile ( model_id, *pModelPCl );
+            pcl::transformPointCloud ( *pModelPCl, *model_aligned, trans );
+
+            pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler ( model_aligned );
+            vis->addPointCloud<PointT> ( model_aligned, rgb_handler, name.str (), viewportNr[view_id * 4 +2] );
+
+            if ( grph[*vp.first].hypothesis[hyp_id].origin_.compare ( grph[*vp.first].view_id_ ) == 0 )	//--show-hypotheses-from-single-view
+            {
+                name << "__extended";
+                pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2 ( model_aligned );
+                vis_->addPointCloud<PointT> ( model_aligned, rgb_handler, name.str (), viewportNr[view_id * 4 + 1] );
+            }
+
+            if ( grph[*vp.first].hypothesis[hyp_id].verified_ )	//--show-verified-extended-hypotheses
+            {
+                name << "__verified";
+                pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler3 ( model_aligned );
+                vis->addPointCloud<PointT> ( model_aligned, rgb_handler, name.str (), viewportNr[view_id * 4 + 3] );
+            }
+
+        }
+    }
+    vis->spin ();
+    //vis->getInteractorStyle()->saveScreenshot ( "singleview.png" );
+}
 
 void multiviewGraph::
 extendHypothesis ( Graph &grph )
@@ -704,69 +911,6 @@ createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std
     }
 }
 
-void multiviewGraph::visualizeGraph(const Graph &grph)
-{
-    //--(bottom: Scene; 2nd from bottom: Single-view-results; 2nd from top: transformed hypotheses; top: verified hypotheses coming from all views)--
-    //...
-
-    std::vector<int> viewportNr;
-    vis_->removeAllPointClouds();
-    viewportNr = faat_pcl::utils::visualization_framework ( vis_, num_vertices(grph), 4 );
-
-    std::pair<vertex_iter, vertex_iter> vp;
-    int view_id = -1;
-    for ( vp = vertices ( grph ); vp.first != vp.second; ++vp.first )
-    {
-        view_id++;
-        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb ( grph[*vp.first].pScenePCl );
-        std::stringstream cloud_name;
-        cloud_name << "view_cloud_" << grph[*vp.first].view_id_;
-        vis_->addPointCloud<pcl::PointXYZRGB> ( grph[*vp.first].pScenePCl, handler_rgb, cloud_name.str (), viewportNr[view_id * 4 + 0] );
-
-        for ( size_t hyp_id = 0; hyp_id < grph[*vp.first].hypothesis.size(); hyp_id++ )
-        {
-            //visualize models
-            std::string model_id = grph[*vp.first].hypothesis[hyp_id].model_id_;
-            std::string origin = grph[*vp.first].hypothesis[hyp_id].origin_;
-            Eigen::Matrix4f trans = grph[*vp.first].hypothesis[hyp_id].transform_;
-
-            std::stringstream name;
-            name << cloud_name.str() << "___hypothesis_" << hyp_id << "___origin_" << origin;
-
-            // 		ModelTPtr m;
-
-            // 		models_source_->getModelById(model_id, m);
-            //
-            // 		ConstPointInTPtr model_cloud = m->getAssembled (0.003f);
-            typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
-            typename pcl::PointCloud<PointT>::Ptr model_aligned ( new pcl::PointCloud<PointT> );
-
-            pcl::io::loadPCDFile ( model_id, *pModelPCl );
-            pcl::transformPointCloud ( *pModelPCl, *model_aligned, trans );
-
-            pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler ( model_aligned );
-            vis_->addPointCloud<PointT> ( model_aligned, rgb_handler, name.str (), viewportNr[view_id * 4 +2] );
-
-            if ( grph[*vp.first].hypothesis[hyp_id].origin_.compare ( grph[*vp.first].view_id_ ) == 0 )	//--show-hypotheses-from-single-view
-            {
-                name << "__extended";
-                pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2 ( model_aligned );
-                vis_->addPointCloud<PointT> ( model_aligned, rgb_handler, name.str (), viewportNr[view_id * 4 + 1] );
-            }
-
-            if ( grph[*vp.first].hypothesis[hyp_id].verified_ )	//--show-verified-extended-hypotheses
-            {
-                name << "__verified";
-                pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler3 ( model_aligned );
-                vis_->addPointCloud<PointT> ( model_aligned, rgb_handler, name.str (), viewportNr[view_id * 4 + 3] );
-            }
-
-        }
-    }
-    vis_->spin ();
-    //vis->getInteractorStyle()->saveScreenshot ( "singleview.png" );
-}
-
 void multiviewGraph::
 calcEdgeWeight ( Graph &grph, int max_distance, float z_dist, float max_overlap)
 {
@@ -901,6 +1045,18 @@ bool multiviewGraph::recognize
         pass_.filter (*(grph_[vrtx].pScenePCl_f));
     }
 
+    //-----Normal estimation actually redundant because is also calculated in the single view recognition service-----------
+    pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
+    ne.setRadiusSearch ( 0.02f );
+    ne.setInputCloud ( grph_[vrtx].pScenePCl );
+    ne.compute ( * ( grph_[vrtx].pSceneNormals ) );
+
+    ne.setRadiusSearch ( 0.02f );
+    ne.setInputCloud ( grph_[vrtx].pScenePCl_f );
+    ne.compute ( * ( grph_[vrtx].pSceneNormals_f_ ) );
+
+
+
     std::vector<Edge> new_edges;
 
     //--------------create-edges-between-views-by-Robot-Pose-----------------------------
@@ -958,7 +1114,94 @@ bool multiviewGraph::recognize
     //----------call-single-view-recognizer----------------------------------------------
     std::vector<Eigen::Matrix4f> trans_v;
     std::vector<std::string> model_ids_v;
-    pSingleview_recognizer_->recognize(grph_[vrtx].pScenePCl_f, trans_v, model_ids_v);
+    pSingleview_recognizer_->setISPK<flann::L1, pcl::Histogram<128> > (grph_[vrtx].pSignatures,
+                                                                       grph_[vrtx].pScenePCl_f,
+                                                                       grph_[vrtx].keypointIndices_,
+                                                                       faat_pcl::rec_3d_framework::SIFT);
+
+    pSingleview_recognizer_->setInputCloud(grph_[vrtx].pScenePCl_f, grph_[vrtx].pSceneNormals_f_);
+    pSingleview_recognizer_->recognize();
+    pSingleview_recognizer_->getModelsAndTransforms(model_ids_v, trans_v);
+
+    for(size_t model_id=0; model_id < model_ids_v.size(); model_id++)
+    {
+        std::cout << "I detected object " <<
+                    model_ids_v[model_id]<< " in the scene." << std::endl;
+
+        std::stringstream model_name;
+        model_name << models_dir_ << model_ids_v[model_id];
+        Hypothesis hypothesis ( model_name.str(), trans_v[model_id], grph_[vrtx].view_id_, false );
+        grph_[vrtx].hypothesis.push_back ( hypothesis );
+    }
+
+    visualizeGraph(grph_, vis_);
+    pSingleview_recognizer_->getSavedHypotheses(grph_[vrtx].hypotheses_);
+    pSingleview_recognizer_->getKeypointsMultipipe(grph_[vrtx].pKeypointsMultipipe_);
+    pSingleview_recognizer_->getKeypointIndices(grph_[vrtx].keypointIndices_);
+
+    boost::shared_ptr < pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
+    boost::shared_ptr < faat_pcl::GraphGeometricConsistencyGrouping<PointT, PointT> > gcg_alg (
+                                                                                               new faat_pcl::GraphGeometricConsistencyGrouping<
+                                                                                                   PointT, PointT>);
+
+    int cg_size = 3;
+    gcg_alg->setGCThreshold (cg_size);
+    gcg_alg->setGCSize (0.015);
+    gcg_alg->setRansacThreshold (0.015);
+    gcg_alg->setUseGraph (true);
+    gcg_alg->setDistForClusterFactor (0);
+    gcg_alg->setMaxTaken(2);
+    gcg_alg->setMaxTimeForCliquesComputation(100);
+    gcg_alg->setDotDistance (0.2);
+
+    cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
+     grph_[vrtx].hypothesis.clear();
+
+    typename std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_map;
+    for (it_map = grph_[vrtx].hypotheses_.begin (); it_map != grph_[vrtx].hypotheses_.end (); it_map++)
+    {
+      if(it_map->second.correspondences_to_inputcloud->size() < 3)
+        continue;
+
+      std::string id = it_map->second.model_->id_;
+      //std::cout << id << " " << it_map->second.correspondences_to_inputcloud->size() << std::endl;
+      std::vector < pcl::Correspondences > corresp_clusters;
+      cast_cg_alg->setSceneCloud (grph_[vrtx].pKeypointsMultipipe_);
+      cast_cg_alg->setInputCloud ((*it_map).second.correspondences_pointcloud);
+
+      if(cast_cg_alg->getRequiresNormals())
+      {
+          boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointsSceneNormals;
+          pKeypointsSceneNormals.reset(new pcl::PointCloud<pcl::Normal>());
+          pcl::copyPointCloud(*(grph_[vrtx].pSceneNormals_f_), grph_[vrtx].keypointIndices_.indices, *pKeypointsSceneNormals);
+          std::cout << "CG alg requires normals..." << ((*it_map).second.normals_pointcloud)->points.size() << " " << pKeypointsSceneNormals->points.size() << std::endl;
+          cast_cg_alg->setInputAndSceneNormals((*it_map).second.normals_pointcloud, pKeypointsSceneNormals);
+      }
+      //we need to pass the keypoints_pointcloud and the specific object hypothesis
+      cast_cg_alg->setModelSceneCorrespondences ((*it_map).second.correspondences_to_inputcloud);
+      cast_cg_alg->cluster (corresp_clusters);
+
+      std::cout << "Instances:" << corresp_clusters.size () << " Total correspondences:" << (*it_map).second.correspondences_to_inputcloud->size () << " " << it_map->first << std::endl;
+      for (size_t i = 0; i < corresp_clusters.size (); i++)
+      {
+        //std::cout << "size cluster:" << corresp_clusters[i].size() << std::endl;
+        Eigen::Matrix4f best_trans;
+        typename pcl::registration::TransformationEstimationSVD < PointT, PointT > t_est;
+        t_est.estimateRigidTransformation (*(*it_map).second.correspondences_pointcloud, *(grph_[vrtx].pKeypointsMultipipe_), corresp_clusters[i], best_trans);
+
+        std::stringstream model_name;
+        model_name << models_dir_ << (*it_map).second.model_->id_;
+        Hypothesis ht_temp ( model_name.str(), best_trans, grph_[vrtx].view_id_, true );
+        grph_[vrtx].hypothesis.push_back(ht_temp);
+//        std::cout << "Model: " << (*it_map).second.model_->id_ << std::endl
+//                  << "Trans: " << best_trans << std::endl;
+//        models_->push_back ((*it_map).second.model_);
+//        transforms_->push_back (best_trans);
+      }
+    }
+    visualizeGraph(grph_, vis_);
+
+
     if(model_ids_v.size())
     {
         for(size_t model_id=0; model_id < model_ids_v.size(); model_id++)
@@ -1005,12 +1248,6 @@ bool multiviewGraph::recognize
     //----------END-call-single-view-recognizer------------------------------------------
 
 
-    //-----Normal estimation actually redundant because is also calculated in the single view recognition service-----------
-    pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
-    ne.setRadiusSearch ( 0.02f );
-    ne.setInputCloud ( grph_[vrtx].pScenePCl );
-    ne.compute ( * ( grph_[vrtx].pSceneNormals ) );
-
     createEdgesFromHypothesisMatchOnline ( vrtx, grph_, new_edges );
     calcEdgeWeight (grph_);
     outputgraph ( grph_, "complete_graph.dot" );
@@ -1031,7 +1268,7 @@ bool multiviewGraph::recognize
 
         for ( size_t new_edge_id = 0; new_edge_id < new_edges.size(); new_edge_id ++ )
         {
-            visualizeEdge(new_edges[new_edge_id], grph_);
+            //visualizeEdge(new_edges[new_edge_id], grph_);
             edges_.push_back ( new_edges[new_edge_id] );
 
             if ( grph_[new_edges[new_edge_id]].edge_weight < grph_[best_edge].edge_weight )
@@ -1068,7 +1305,82 @@ bool multiviewGraph::recognize
         }
 
         grph_final_[vrtx_final].has_been_hopped_ = true;
-        std::vector<Hypothesis> all_hypotheses = extendHypothesisRecursive ( grph_final_, *out_i );
+        std::vector<Hypothesis> all_hypotheses;
+
+
+        std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > new_hypotheses;
+        pcl::PointCloud<PointT>::Ptr pNewKeypoints (new pcl::PointCloud<PointT>);
+        pcl::PointCloud<pcl::Normal>::Ptr pNewKeypointNormals (new pcl::PointCloud<pcl::Normal>);
+        extendFeatureMatchesRecursive(grph_final_, *out_i, new_hypotheses, *pNewKeypoints, *pNewKeypointNormals);
+        grph_final_[vrtx_final].hypothesis.clear();
+
+
+        boost::shared_ptr < pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
+        boost::shared_ptr < faat_pcl::GraphGeometricConsistencyGrouping<PointT, PointT> > gcg_alg (
+                                                                                                   new faat_pcl::GraphGeometricConsistencyGrouping<
+                                                                                                       PointT, PointT>);
+
+        int cg_size = 3;
+        gcg_alg->setGCThreshold (cg_size);
+        gcg_alg->setGCSize (0.015);
+        gcg_alg->setRansacThreshold (0.015);
+        gcg_alg->setUseGraph (true);
+        gcg_alg->setDistForClusterFactor (0);
+        gcg_alg->setMaxTaken(2);
+        gcg_alg->setMaxTimeForCliquesComputation(100);
+        gcg_alg->setDotDistance (0.2);
+
+        cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
+
+        typename std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_map;
+        for (it_map = new_hypotheses.begin (); it_map != new_hypotheses.end (); it_map++)
+        {
+          if(it_map->second.correspondences_to_inputcloud->size() < 3)
+            continue;
+
+          std::string id = it_map->second.model_->id_;
+          //std::cout << id << " " << it_map->second.correspondences_to_inputcloud->size() << std::endl;
+          std::vector < pcl::Correspondences > corresp_clusters;
+          cast_cg_alg->setSceneCloud (pNewKeypoints);
+          cast_cg_alg->setInputCloud ((*it_map).second.correspondences_pointcloud);
+
+          if(cast_cg_alg->getRequiresNormals())
+          {
+//              boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointsSceneNormals;
+//              pKeypointsSceneNormals.reset(new pcl::PointCloud<pcl::Normal>());
+//              pcl::copyPointCloud(*(grph_[vrtx].pSceneNormals_f_), grph_[vrtx].keypointIndices_.indices, *pKeypointsSceneNormals);
+              std::cout << "CG alg requires normals..." << ((*it_map).second.normals_pointcloud)->points.size() << " " << pNewKeypointNormals->points.size() << std::endl;
+              cast_cg_alg->setInputAndSceneNormals((*it_map).second.normals_pointcloud, pNewKeypointNormals);
+          }
+          //we need to pass the keypoints_pointcloud and the specific object hypothesis
+          cast_cg_alg->setModelSceneCorrespondences ((*it_map).second.correspondences_to_inputcloud);
+          cast_cg_alg->cluster (corresp_clusters);
+
+          std::cout << "Instances:" << corresp_clusters.size () << " Total correspondences:" << (*it_map).second.correspondences_to_inputcloud->size () << " " << it_map->first << std::endl;
+          for (size_t i = 0; i < corresp_clusters.size (); i++)
+          {
+            //std::cout << "size cluster:" << corresp_clusters[i].size() << std::endl;
+            Eigen::Matrix4f best_trans;
+            typename pcl::registration::TransformationEstimationSVD < PointT, PointT > t_est;
+            t_est.estimateRigidTransformation (*(*it_map).second.correspondences_pointcloud, *pNewKeypoints, corresp_clusters[i], best_trans);
+
+            std::stringstream model_name;
+            model_name << models_dir_ << (*it_map).second.model_->id_;
+            Hypothesis ht_temp ( model_name.str(), best_trans, grph_final_[vrtx_final].view_id_, true );
+            grph_final_[vrtx_final].hypothesis.push_back(ht_temp);
+    //        std::cout << "Model: " << (*it_map).second.model_->id_ << std::endl
+    //                  << "Trans: " << best_trans << std::endl;
+    //        models_->push_back ((*it_map).second.model_);
+    //        transforms_->push_back (best_trans);
+
+          }
+        }
+
+
+
+
+
+        //extendHypothesisRecursive ( grph_final_, *out_i, all_hypotheses );
 
         for(std::vector<Hypothesis>::const_iterator it_all_hyp = all_hypotheses.begin(); it_all_hyp != all_hypotheses.end(); ++it_all_hyp)
         {
@@ -1290,7 +1602,7 @@ bool multiviewGraph::recognize
                     //using SIFT keypoints
                 {
                     //compute indices to original cloud (to address normals) that are not farther away that 1.3
-                    std::vector<int> sift_indices = grph_final_[*vp.first].keypoints_indices_.indices;
+                    std::vector<int> sift_indices = grph_final_[*vp.first].siftKeypointIndices_.indices;
                     std::vector<int> original_indices;
                     std::vector<float> keypoint_scales = grph_final_[*vp.first].sift_keypoints_scales;
 
@@ -1999,8 +2311,9 @@ bool multiviewGraph::recognize
             std::pair<vertex_iter, vertex_iter> vp;
             for ( vp = vertices ( grph_final_ ); (vp.first != vp.second) && (!current_iteration_done); ++vp.first )
             {
-
                 Vertex vrtx_tmp;
+                std::vector<std::string> models_unverified_extended;
+                std::vector<Eigen::Matrix4f> transforms_unverified_extended;
 
                 if ( ! do_reverse_hyp_extension)	// It only applies ICP on the latest scene point cloud
                 {
@@ -2010,125 +2323,19 @@ bool multiviewGraph::recognize
                 else
                 {
                     vrtx_tmp = *vp.first;
+                    pSingleview_recognizer_->setInputCloud(grph_final_[vrtx_tmp].pScenePCl_f, grph_final_[vrtx_tmp].pSceneNormals_f_);
                 }
-
-                std::vector<pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr> aligned_models;
-                std::vector < std::string > ids;
 
                 for ( std::vector<Hypothesis>::iterator it_hyp = grph_final_[vrtx_tmp].hypothesis.begin (); it_hyp != grph_final_[vrtx_tmp].hypothesis.end (); ++it_hyp )
                 {
-                    PointInTPtr pModelPCl ( new pcl::PointCloud<pcl::PointXYZRGB> );
-                    PointInTPtr pModelPClTransformed ( new pcl::PointCloud<pcl::PointXYZRGB> );
-                    PointInTPtr pModelPCl2 ( new pcl::PointCloud<pcl::PointXYZRGB> );
-                    pcl::io::loadPCDFile ( it_hyp->model_id_, * ( pModelPCl ) );
-
-                    pcl::transformPointCloud ( *pModelPCl, *pModelPClTransformed, it_hyp->transform_ );
-
-                    pcl::VoxelGrid<pcl::PointXYZRGB> sor;
-                    float leaf = 0.005f;
-                    sor.setLeafSize ( leaf, leaf, leaf );
-                    sor.setInputCloud ( pModelPClTransformed );
-                    sor.filter ( *pModelPCl2 );
-
-                    aligned_models.push_back ( pModelPCl2 );
-                    ids.push_back ( it_hyp->model_id_ );
+                    models_unverified_extended.push_back(it_hyp->model_id_);
+                    transforms_unverified_extended.push_back(it_hyp->transform_);
                 }
-                std::cout << "View " << grph_final_[vrtx_tmp].view_id_ << " has " << grph_final_[vrtx_tmp].hypothesis.size ()
-                          << " hypothesis. " << std::endl;
-
-                //initialize go
-                float go_resolution_ = 0.005f;
-                bool add_planes = true;
-                float assembled_resolution = 0.003f;
-                float color_sigma = 0.5f;
-
-                boost::shared_ptr<faat_pcl::GlobalHypothesesVerification_1<PointT, PointT> > go (
-                            new faat_pcl::GlobalHypothesesVerification_1<PointT,
-                            PointT> );
-
-                go->setSmoothSegParameters ( 0.1, 0.035, 0.005 );
-                //go->setRadiusNormals(0.03f);
-                go->setResolution ( go_resolution_ );
-                go->setInlierThreshold ( 0.01 );
-                go->setRadiusClutter ( 0.03f );
-                go->setRegularizer ( 2 );
-                go->setClutterRegularizer ( 5 );
-                go->setDetectClutter ( true );
-                go->setOcclusionThreshold ( 0.01f );
-                go->setOptimizerType ( 0 );
-                go->setUseReplaceMoves ( true );
-                go->setRadiusNormals ( 0.02 );
-                go->setRequiresNormals ( false );
-                go->setInitialStatus ( false );
-                go->setIgnoreColor ( false );
-                go->setColorSigma ( color_sigma );
-                go->setUseSuperVoxels ( false );
-
-
-                //Multiplane segmentation
-                faat_pcl::MultiPlaneSegmentation<PointT> mps;
-                mps.setInputCloud ( grph_final_[vrtx_tmp].pScenePCl );
-                mps.setMinPlaneInliers ( 1000 );
-                mps.setResolution ( go_resolution_ );
-                mps.setNormals ( grph_final_[vrtx_tmp].pSceneNormals );
-                mps.setMergePlanes ( true );
-                std::vector<faat_pcl::PlaneModel<PointT> > planes_found;
-                mps.segment();
-                planes_found = mps.getModels();
-
-                if ( planes_found.size() == 0 && grph_final_[vrtx_tmp].pScenePCl->isOrganized() )
-                {
-                    PCL_WARN ( "No planes found, doing segmentation with standard method\n" );
-                    mps.segment ( true );
-                    planes_found = mps.getModels();
-                }
-
-                std::vector<pcl::PointIndices> indices;
-                Eigen::Vector4f table_plane;
-                doSegmentation<PointT> ( grph_final_[vrtx_tmp].pScenePCl, grph_final_[vrtx_tmp].pSceneNormals, indices, table_plane );
-
-                std::vector<int> indices_above_plane;
-                for ( int k = 0; k < grph_final_[vrtx_tmp].pScenePCl->points.size (); k++ )
-                {
-                    Eigen::Vector3f xyz_p = grph_final_[vrtx_tmp].pScenePCl->points[k].getVector3fMap ();
-                    if ( !pcl_isfinite ( xyz_p[0] ) || !pcl_isfinite ( xyz_p[1] ) || !pcl_isfinite ( xyz_p[2] ) )
-                        continue;
-
-                    float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
-                    if ( val >= 0.01 )
-                        indices_above_plane.push_back ( static_cast<int> ( k ) );
-                }
-
-                std::vector<std::string> model_ids;
-                typename pcl::PointCloud<PointT>::Ptr occlusion_cloud ( new pcl::PointCloud<PointT> ( *grph_final_[vrtx_tmp].pScenePCl ) );
-                go->setSceneCloud ( grph_final_[vrtx_tmp].pScenePCl );
-                go->setNormalsForClutterTerm ( grph_final_[vrtx_tmp].pSceneNormals );
-                go->setOcclusionCloud ( occlusion_cloud );
-                //addModels
-                go->addModels ( aligned_models, true );
-                //append planar models
-                if ( add_planes )
-                {
-                    go->addPlanarModels ( planes_found );
-                    for ( size_t kk=0; kk < planes_found.size(); kk++ )
-                    {
-                        std::stringstream plane_id;
-                        plane_id << "plane_" << kk;
-                        model_ids.push_back ( plane_id.str() );
-                    }
-                }
-
-                go->setObjectIds ( model_ids );
-                //verify
-                {
-                    pcl::ScopeTime t ( "Go verify" );
-                    go->verify ();
-                }
+                pSingleview_recognizer_->setModelsAndTransforms(models_unverified_extended, transforms_unverified_extended);
                 std::vector<bool> mask_hv;
-                go->getMask ( mask_hv );
+                pSingleview_recognizer_->hypothesesVerification(mask_hv);
 
-
-                for ( size_t hyp_id = 0; hyp_id < aligned_models.size(); hyp_id++ )
+                for ( size_t hyp_id = 0; hyp_id < models_unverified_extended.size(); hyp_id++ )
                 {
                     std::cout << hyp_id << "is" << static_cast<int> ( mask_hv[hyp_id] ) << std::endl;
                     //std::cout << static_cast<int> (mask_hv[j]) << std::endl;
@@ -2139,25 +2346,155 @@ bool multiviewGraph::recognize
                     else
                     {
                         grph_final_[vrtx_tmp].hypothesis[hyp_id].verified_ = true;
-//                        std_msgs::String ss;
-//                        ss.data = grph_final_[vrtx_tmp].hypothesis[hyp_id].model_id_;
-//                        response.ids.push_back(ss);
-
-//                        Eigen::Matrix4f trans = grph_final_[vrtx_tmp].hypothesis[hyp_id].transform_;
-//                        geometry_msgs::Transform tt;
-//                        tt.translation.x = trans(0,3);
-//                        tt.translation.y = trans(1,3);
-//                        tt.translation.z = trans(2,3);
-
-//                        Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
-//                        Eigen::Quaternionf q(rotation);
-//                        tt.rotation.x = q.x();
-//                        tt.rotation.y = q.y();
-//                        tt.rotation.z = q.z();
-//                        tt.rotation.w = q.w();
-//                        response.transforms.push_back(tt);
                     }
                 }
+
+//                std::vector<pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr> aligned_models;
+//                std::vector < std::string > ids;
+
+//                for ( std::vector<Hypothesis>::iterator it_hyp = grph_final_[vrtx_tmp].hypothesis.begin (); it_hyp != grph_final_[vrtx_tmp].hypothesis.end (); ++it_hyp )
+//                {
+//                    PointInTPtr pModelPCl ( new pcl::PointCloud<pcl::PointXYZRGB> );
+//                    PointInTPtr pModelPClTransformed ( new pcl::PointCloud<pcl::PointXYZRGB> );
+//                    PointInTPtr pModelPCl2 ( new pcl::PointCloud<pcl::PointXYZRGB> );
+//                    pcl::io::loadPCDFile ( it_hyp->model_id_, * ( pModelPCl ) );
+
+//                    pcl::transformPointCloud ( *pModelPCl, *pModelPClTransformed, it_hyp->transform_ );
+
+//                    pcl::VoxelGrid<pcl::PointXYZRGB> sor;
+//                    float leaf = 0.005f;
+//                    sor.setLeafSize ( leaf, leaf, leaf );
+//                    sor.setInputCloud ( pModelPClTransformed );
+//                    sor.filter ( *pModelPCl2 );
+
+//                    aligned_models.push_back ( pModelPCl2 );
+//                    ids.push_back ( it_hyp->model_id_ );
+//                }
+//                std::cout << "View " << grph_final_[vrtx_tmp].view_id_ << " has " << grph_final_[vrtx_tmp].hypothesis.size ()
+//                          << " hypothesis. " << std::endl;
+
+//                //initialize go
+//                float go_resolution_ = 0.005f;
+//                bool add_planes = true;
+//                float assembled_resolution = 0.003f;
+//                float color_sigma = 0.5f;
+
+//                boost::shared_ptr<faat_pcl::GlobalHypothesesVerification_1<PointT, PointT> > go (
+//                            new faat_pcl::GlobalHypothesesVerification_1<PointT,
+//                            PointT> );
+
+//                go->setSmoothSegParameters ( 0.1, 0.035, 0.005 );
+//                //go->setRadiusNormals(0.03f);
+//                go->setResolution ( go_resolution_ );
+//                go->setInlierThreshold ( 0.01 );
+//                go->setRadiusClutter ( 0.03f );
+//                go->setRegularizer ( 2 );
+//                go->setClutterRegularizer ( 5 );
+//                go->setDetectClutter ( true );
+//                go->setOcclusionThreshold ( 0.01f );
+//                go->setOptimizerType ( 0 );
+//                go->setUseReplaceMoves ( true );
+//                go->setRadiusNormals ( 0.02 );
+//                go->setRequiresNormals ( false );
+//                go->setInitialStatus ( false );
+//                go->setIgnoreColor ( false );
+//                go->setColorSigma ( color_sigma );
+//                go->setUseSuperVoxels ( false );
+
+
+//                //Multiplane segmentation
+//                faat_pcl::MultiPlaneSegmentation<PointT> mps;
+//                mps.setInputCloud ( grph_final_[vrtx_tmp].pScenePCl );
+//                mps.setMinPlaneInliers ( 1000 );
+//                mps.setResolution ( go_resolution_ );
+//                mps.setNormals ( grph_final_[vrtx_tmp].pSceneNormals );
+//                mps.setMergePlanes ( true );
+//                std::vector<faat_pcl::PlaneModel<PointT> > planes_found;
+//                mps.segment();
+//                planes_found = mps.getModels();
+
+//                if ( planes_found.size() == 0 && grph_final_[vrtx_tmp].pScenePCl->isOrganized() )
+//                {
+//                    PCL_WARN ( "No planes found, doing segmentation with standard method\n" );
+//                    mps.segment ( true );
+//                    planes_found = mps.getModels();
+//                }
+
+//                std::vector<pcl::PointIndices> indices;
+//                Eigen::Vector4f table_plane;
+//                doSegmentation<PointT> ( grph_final_[vrtx_tmp].pScenePCl, grph_final_[vrtx_tmp].pSceneNormals, indices, table_plane );
+
+//                std::vector<int> indices_above_plane;
+//                for ( int k = 0; k < grph_final_[vrtx_tmp].pScenePCl->points.size (); k++ )
+//                {
+//                    Eigen::Vector3f xyz_p = grph_final_[vrtx_tmp].pScenePCl->points[k].getVector3fMap ();
+//                    if ( !pcl_isfinite ( xyz_p[0] ) || !pcl_isfinite ( xyz_p[1] ) || !pcl_isfinite ( xyz_p[2] ) )
+//                        continue;
+
+//                    float val = xyz_p[0] * table_plane[0] + xyz_p[1] * table_plane[1] + xyz_p[2] * table_plane[2] + table_plane[3];
+//                    if ( val >= 0.01 )
+//                        indices_above_plane.push_back ( static_cast<int> ( k ) );
+//                }
+
+//                std::vector<std::string> model_ids;
+//                typename pcl::PointCloud<PointT>::Ptr occlusion_cloud ( new pcl::PointCloud<PointT> ( *grph_final_[vrtx_tmp].pScenePCl ) );
+//                go->setSceneCloud ( grph_final_[vrtx_tmp].pScenePCl );
+//                go->setNormalsForClutterTerm ( grph_final_[vrtx_tmp].pSceneNormals );
+//                go->setOcclusionCloud ( occlusion_cloud );
+//                //addModels
+//                go->addModels ( aligned_models, true );
+//                //append planar models
+//                if ( add_planes )
+//                {
+//                    go->addPlanarModels ( planes_found );
+//                    for ( size_t kk=0; kk < planes_found.size(); kk++ )
+//                    {
+//                        std::stringstream plane_id;
+//                        plane_id << "plane_" << kk;
+//                        model_ids.push_back ( plane_id.str() );
+//                    }
+//                }
+
+//                go->setObjectIds ( model_ids );
+//                //verify
+//                {
+//                    pcl::ScopeTime t ( "Go verify" );
+//                    go->verify ();
+//                }
+//                std::vector<bool> mask_hv;
+//                go->getMask ( mask_hv );
+
+
+//                for ( size_t hyp_id = 0; hyp_id < aligned_models.size(); hyp_id++ )
+//                {
+//                    std::cout << hyp_id << "is" << static_cast<int> ( mask_hv[hyp_id] ) << std::endl;
+//                    //std::cout << static_cast<int> (mask_hv[j]) << std::endl;
+//                    if ( !mask_hv[hyp_id] )
+//                    {
+//                        grph_final_[vrtx_tmp].hypothesis[hyp_id].verified_ = false;
+//                    }
+//                    else
+//                    {
+//                        grph_final_[vrtx_tmp].hypothesis[hyp_id].verified_ = true;
+////                        std_msgs::String ss;
+////                        ss.data = grph_final_[vrtx_tmp].hypothesis[hyp_id].model_id_;
+////                        response.ids.push_back(ss);
+
+////                        Eigen::Matrix4f trans = grph_final_[vrtx_tmp].hypothesis[hyp_id].transform_;
+////                        geometry_msgs::Transform tt;
+////                        tt.translation.x = trans(0,3);
+////                        tt.translation.y = trans(1,3);
+////                        tt.translation.z = trans(2,3);
+
+////                        Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
+////                        Eigen::Quaternionf q(rotation);
+////                        tt.rotation.x = q.x();
+////                        tt.rotation.y = q.y();
+////                        tt.rotation.z = q.z();
+////                        tt.rotation.w = q.w();
+////                        response.transforms.push_back(tt);
+//                    }
+//                }
             }
         }
     }
@@ -2171,7 +2508,7 @@ bool multiviewGraph::recognize
     }
 
     outputgraph ( grph_final_, "Final_with_Hypothesis_extension.dot" );
-    visualizeGraph(grph_final_);
+    visualizeGraph(grph_final_, vis_);
 
     //----respond-service-call-and-publish-all-recognized-models-(after-multiview-extension)-as-ROS-point-cloud-------------------
 //    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -2212,52 +2549,11 @@ bool multiviewGraph::recognize
     }
 
     //-------Clean-up-graph-------------------
-    if(num_vertices(grph_) > 2)
-    {
-        Vertex vrtxToKill = getFurthestVertex(grph_);
+    pruneGraph(grph_);
+    pruneGraph(grph_final_);
 
-        std::vector<Edge> edges_to_be_removed;
-        typename graph_traits<Graph>::out_edge_iterator out_i, out_end;
-        for ( tie ( out_i, out_end ) = out_edges ( vrtxToKill, grph_ ); out_i != out_end; ++out_i )
-        {
-            edges_to_be_removed.push_back(*out_i);
-        }
-        typename graph_traits<Graph>::in_edge_iterator in_i, in_end;
-        for ( tie ( in_i, in_end ) = in_edges ( vrtxToKill, grph_ ); in_i != in_end; ++in_i )
-        {
-            edges_to_be_removed.push_back(*in_i);
-        }
-
-
-        for(size_t remover_id = 0; remover_id < edges_to_be_removed.size(); remover_id++)
-        {
-            remove_edge(edges_to_be_removed[remover_id], grph_);
-        }
-
-        remove_vertex(vrtxToKill, grph_);
-
-        Vertex vrtxToKill_final = getFurthestVertex(grph_final_);
-
-        std::vector<Edge> edges_to_be_removed_final;
-
-        for ( tie ( out_i, out_end ) = out_edges ( vrtxToKill_final, grph_final_ ); out_i != out_end; ++out_i )
-        {
-            edges_to_be_removed_final.push_back(*out_i);
-        }
-        for ( tie ( in_i, in_end ) = in_edges ( vrtxToKill_final, grph_final_ ); in_i != in_end; ++in_i )
-        {
-            edges_to_be_removed_final.push_back(*in_i);
-        }
-
-        for(size_t remover_id = 0; remover_id < edges_to_be_removed_final.size(); remover_id++)
-        {
-            remove_edge(edges_to_be_removed_final[remover_id], grph_final_);
-        }
-
-        remove_vertex(vrtxToKill_final, grph_final_);
-        outputgraph ( grph_final_, "final_after_deleting_old_vertex.dot" );
-        outputgraph ( grph_, "grph_after_deleting_old_vertex.dot" );
-    }
+    outputgraph ( grph_final_, "final_after_deleting_old_vertex.dot" );
+    outputgraph ( grph_, "grph_after_deleting_old_vertex.dot" );
 
     return true;
 }

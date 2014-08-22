@@ -74,8 +74,7 @@ View::View ()
     pScenePCl.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pSceneNormals.reset ( new pcl::PointCloud<pcl::Normal> );
-    //    pSceneXYZRGBNormal.reset ( new pcl::PointCloud<pcl::PointXYZRGBNormal> );
-    //pScenePCl_f_ds.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
+    pSceneNormals_f_.reset ( new pcl::PointCloud<pcl::Normal> );
     pIndices_above_plane.reset ( new pcl::PointIndices );
     pSignatures.reset ( new pcl::PointCloud<FeatureT> );
     has_been_hopped_ = false;
@@ -109,13 +108,19 @@ void copyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Verte
     grph_target[vrtx_target].pScenePCl_f = grph_src[vrtx_src].pScenePCl_f;
     grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
     grph_target[vrtx_target].pSceneNormals = grph_src[vrtx_src].pSceneNormals;
+    grph_target[vrtx_target].pSceneNormals_f_ = grph_src[vrtx_src].pSceneNormals_f_;
     grph_target[vrtx_target].view_id_ = grph_src[vrtx_src].view_id_;
     grph_target[vrtx_target].hypothesis = grph_src[vrtx_src].hypothesis;
     grph_target[vrtx_target].pKeypoints = grph_src[vrtx_src].pKeypoints;
-    grph_target[vrtx_target].keypoints_indices_ = grph_src[vrtx_src].keypoints_indices_;
+    grph_target[vrtx_target].pKeypointsMultipipe_ = grph_src[vrtx_src].pKeypointsMultipipe_;
     grph_target[vrtx_target].sift_keypoints_scales = grph_src[vrtx_src].sift_keypoints_scales;
     grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
-    grph_target[vrtx_target].timestamp_nsec = grph_src[vrtx_src].timestamp_nsec;
+    grph_target[vrtx_target].hypotheses_ = grph_src[vrtx_src].hypotheses_;
+    grph_target[vrtx_target].keypointIndices_.header = grph_src[vrtx_src].keypointIndices_.header;
+    grph_target[vrtx_target].keypointIndices_.indices = grph_src[vrtx_src].keypointIndices_.indices;
+
+    grph_target[vrtx_target].siftKeypointIndices_.header = grph_src[vrtx_src].siftKeypointIndices_.header;
+    grph_target[vrtx_target].siftKeypointIndices_.indices = grph_src[vrtx_src].siftKeypointIndices_.indices;
   }
 
 void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target)
@@ -126,6 +131,54 @@ void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edg
     grph_target[edge_target].source_id = grph_src[edge_src].source_id;
     grph_target[edge_target].target_id = grph_src[edge_src].target_id;
     grph_target[edge_target].edge_weight_has_been_calculated_ = grph_src[edge_src].edge_weight_has_been_calculated_;
+}
+
+void pruneGraph (Graph &grph, size_t num_remaining_vertices)
+{
+    if(num_vertices(grph) > num_remaining_vertices)
+    {
+        Vertex vrtxToKill = getFurthestVertex(grph);
+
+        std::vector<Edge> edges_to_be_removed;
+        typename graph_traits<Graph>::out_edge_iterator out_i, out_end;
+        for ( tie ( out_i, out_end ) = out_edges ( vrtxToKill, grph ); out_i != out_end; ++out_i )
+        {
+            edges_to_be_removed.push_back(*out_i);
+        }
+        typename graph_traits<Graph>::in_edge_iterator in_i, in_end;
+        for ( tie ( in_i, in_end ) = in_edges ( vrtxToKill, grph ); in_i != in_end; ++in_i )
+        {
+            edges_to_be_removed.push_back(*in_i);
+        }
+
+
+        for(size_t remover_id = 0; remover_id < edges_to_be_removed.size(); remover_id++)
+        {
+            remove_edge(edges_to_be_removed[remover_id], grph);
+        }
+
+        remove_vertex(vrtxToKill, grph);
+    }
+}
+
+
+Vertex getFurthestVertex ( Graph &grph)
+{
+    std::pair<vertex_iter, vertex_iter> vp; //vp.first = running iterator..... vp.second = last iterator
+
+    vp = vertices ( grph );
+    Vertex furthest_vrtx = *vp.first;
+    ++vp.first;
+
+    for (; vp.first != vp.second; ++vp.first )
+    {
+        if(grph[*vp.first].cumulative_weight_to_new_vrtx_ > grph[furthest_vrtx].cumulative_weight_to_new_vrtx_)
+        {
+            furthest_vrtx = *vp.first;
+        }
+    }
+
+    return furthest_vrtx;
 }
 
 //std::vector<Vertex> my_node_reader ( std::string filename, Graph &g )

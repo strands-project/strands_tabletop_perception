@@ -34,7 +34,6 @@
 #include <pcl/segmentation/edge_aware_plane_comparator.h>
 #include <pcl/segmentation/euclidean_cluster_comparator.h>
 #include <pcl/segmentation/organized_connected_component_segmentation.h>
-#include <pcl/visualization/pcl_visualizer.h>
 
 #include <faat_pcl/3d_rec_framework/defines/faat_3d_rec_framework_defines.h>
 #include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
@@ -42,6 +41,7 @@
 #include <faat_pcl/3d_rec_framework/pc_source/partial_pcd_source.h>
 #include <faat_pcl/3d_rec_framework/pipeline/multi_pipeline_recognizer.h>
 #include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
+#include <faat_pcl/recognition/cg/graph_geometric_consistency.h>
 #include <faat_pcl/recognition/hv/hv_go.h>
 #include <faat_pcl/recognition/hv/hv_go_1.h>
 #include <faat_pcl/recognition/hv/hv_go_3D.h>
@@ -201,15 +201,19 @@ public:
     void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, std::vector<Edge> & edges, bool use_gc=false );
     void estimateViewTransformationByRobotPose ( const Vertex &src, const Vertex &trgt, Graph &grph, Edge &edge );
     void extendHypothesis ( Graph &grph );
-    std::vector<Hypothesis> extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge);
+    void extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypothesis> &hyp_vec);
+    void extendFeatureMatchesRecursive ( Graph &grph,
+                                         Edge calling_out_edge,
+                                         std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > &hypotheses,
+                                         pcl::PointCloud<PointT> &keypoints,
+                                         pcl::PointCloud<pcl::Normal> &keypointNormals);
     //    void calcMST ( const std::vector<Edge> &edges, const Graph &grph, std::vector<Edge> &edges_final );
     //    void createEdgesFromHypothesisMatch ( Graph &grph, std::vector<Edge> &edges );
     //    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
     void createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges );
     void calcEdgeWeight (Graph &grph, int max_distance=-1, float z_dist=3.f, float max_overlap=0.75f);
     void createBigPointCloud ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud );
-    void visualizeGraph ( const Graph & grph);
-    Vertex getFurthestVertex ( Graph &grph);
+    void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr vis);
 
     std::string getSceneName()
     {

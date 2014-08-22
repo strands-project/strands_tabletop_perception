@@ -24,9 +24,9 @@ def load_class(full_class_string):
 class MongoConnection(object):
     def __init__(self, database_name="world_state", server=None, port=None):
         if server is None:
-            server = rospy.get_param("datacentre_host")
+            server = rospy.get_param("mongodb_host")
         if port is None:
-            port = rospy.get_param("datacentre_port")
+            port = rospy.get_param("mongodb_port")
             
         rospy.loginfo("Connecting to mongo: %s,%s"%(server, port))
         self.client = pymongo.MongoClient(server, port)
