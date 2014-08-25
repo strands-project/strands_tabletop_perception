@@ -63,7 +63,7 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
             global_trans(row, col) = req.transform[4*row + col];
         }
     }
-    std::vector<Eigen::Matrix4f> hyp_transforms_local;
+    std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > hyp_transforms_local;
     std::vector<std::string> hyp_model_ids;
 
     multiviewGraph &currentGraph = get_current_graph(scene_name);

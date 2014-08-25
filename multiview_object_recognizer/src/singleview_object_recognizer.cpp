@@ -181,15 +181,15 @@ bool Recognizer::recognize ()
 
     constructHypotheses();
 
-    std::vector<std::string> full_model_path (model_ids_.size());
-    for(size_t model_id=0; model_id < model_ids_.size(); model_id++)
-    {
-        std::stringstream model_name;
-        model_name << models_dir_ << model_ids_[model_id];
-        full_model_path[model_id] = model_name.str();
-    }
+//    std::vector<std::string> full_model_path (model_ids_.size());
+//    for(size_t model_id=0; model_id < model_ids_.size(); model_id++)
+//    {
+//        std::stringstream model_name;
+//        model_name << models_dir_ << model_ids_[model_id];
+//        full_model_path[model_id] = model_name.str();
+//    }
 
-    setModelsAndTransforms(full_model_path, *transforms_);
+    setModelsAndTransforms(*models_, *transforms_);
     hypothesesVerification(mask_hv);
 
     //boost::shared_ptr<std::vector<ModelTPtr> > verified_models(new std::vector<ModelTPtr>);

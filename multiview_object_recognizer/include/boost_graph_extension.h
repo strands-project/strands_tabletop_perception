@@ -20,7 +20,7 @@ typedef pcl::Histogram<128> FeatureT;
 class Hypothesis
 {
 public:
-    Hypothesis ( std::string model_id, Eigen::Matrix4f transform, std::string origin, bool extended = false, bool verified = false );
+    Hypothesis ( std::string model_id, Eigen::Matrix4f transform, std::string origin="", bool extended = false, bool verified = false );
     std::string model_id_, origin_;
     Eigen::Matrix4f transform_;
     bool extended_;
@@ -38,25 +38,22 @@ public:
     boost::shared_ptr< pcl::PointCloud<PointT> > pScenePCl;
     boost::shared_ptr< pcl::PointCloud<PointT> > pScenePCl_f;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals;
-    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals_f_;
-    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormals_;
-    boost::shared_ptr< pcl::PointCloud<FeatureT > > pSignatures;
+    pcl::PointIndices filteredSceneIndices_;
+//    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals_f_;
+//    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormals_;
     boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;
-    boost::shared_ptr< pcl::PointCloud<PointT> > pKeypoints;
+//    boost::shared_ptr< pcl::PointCloud<PointT> > pSiftKeypoints;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypotheses_;
+    boost::shared_ptr< pcl::PointCloud<FeatureT > > pSiftSignatures_;
     std::vector<float> sift_keypoints_scales;
     pcl::PointIndices siftKeypointIndices_;
-    std::string view_id_;
-    //std::vector<std::string> model_ids_;
-    std::vector<double> modelToViewCost;
     std::vector<Hypothesis> hypothesis;
     std::vector<Hypothesis> hypothesis_single_unverified;
     Eigen::Matrix4f absolute_pose;
     Eigen::Matrix4f transform_to_world_co_system_;
     bool has_been_hopped_;
     double cumulative_weight_to_new_vrtx_;
-    size_t timestamp_nsec;
     pcl::PointIndices keypointIndices_;
 };
 

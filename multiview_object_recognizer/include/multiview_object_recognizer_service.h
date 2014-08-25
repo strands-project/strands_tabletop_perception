@@ -90,6 +90,9 @@ private:
     std::string models_dir_;
     std::string scene_name_;
     boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> > models_source_;
+    boost::shared_ptr< pcl::PointCloud<PointT> > pAccumulatedKeypoints_;
+    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pAccumulatedKeypointNormals_;
+    std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > accumulatedHypotheses_;
     pcl::visualization::PCLVisualizer::Ptr edge_vis;
     bool visualize_output_;
     bool go_3d_;
@@ -104,6 +107,7 @@ private:
     bool scene_to_scene_;
     bool use_robot_pose_;
     bool use_gc_s2s_;
+    std::vector<Hypothesis> mv_hypotheses_;
 
     cv::Ptr<SiftGPU> sift_;
 
@@ -195,6 +199,8 @@ public:
         use_table_plane_ = true;
 
         edge_vis.reset (new pcl::visualization::PCLVisualizer());
+        pAccumulatedKeypoints_.reset (new pcl::PointCloud<PointT>);
+        pAccumulatedKeypointNormals_.reset (new pcl::PointCloud<pcl::Normal>);
     }
 
     bool calcFeatures(Vertex &src, Graph &grph, bool use_table_plane=true);
@@ -205,7 +211,7 @@ public:
     void extendFeatureMatchesRecursive ( Graph &grph,
                                          Vertex &vrtx_start,
                                          std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > &hypotheses,
-                                         pcl::PointCloud<PointT> &keypoints,
+                                         pcl::PointCloud<PointT>::Ptr keypoints,
                                          pcl::PointCloud<pcl::Normal> &keypointNormals);
     //    void calcMST ( const std::vector<Edge> &edges, const Graph &grph, std::vector<Edge> &edges_final );
     //    void createEdgesFromHypothesisMatch ( Graph &grph, std::vector<Edge> &edges );
@@ -214,7 +220,10 @@ public:
     void calcEdgeWeight (Graph &grph, int max_distance=-1, float z_dist=3.f, float max_overlap=0.75f);
     void createBigPointCloud ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud );
     void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr vis);
-    void constructHypothesesFromFeatureMatches(Graph &grph, Vertex &vrtx);
+    void constructHypothesesFromFeatureMatches(std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypothesesInput,
+                                               pcl::PointCloud<PointT>::Ptr pKeypoints,
+                                               pcl::PointCloud<pcl::Normal>::Ptr pKeypointNormals,
+                                               std::vector<Hypothesis> &hypothesesOutput);
 
     std::string getSceneName()
     {
@@ -229,7 +238,7 @@ public:
     bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
 
     bool recognize ( pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloud,
-                     std::vector<Eigen::Matrix4f> &hyp_transforms_local,
+                     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &hyp_transforms_local,
                      std::vector<std::string> &hyp_model_ids,
                      const std::string view_name = "",
                      const Eigen::Matrix4f global_transform = Eigen::Matrix4f::Identity(),
@@ -257,6 +266,7 @@ public:
     void setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value);
     cv::Ptr<SiftGPU> sift() const;
     void setSift(const cv::Ptr<SiftGPU> &sift);
+    void mergeKeypointCloud();
 };
 
 namespace multiview

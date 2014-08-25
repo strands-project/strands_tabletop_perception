@@ -41,10 +41,10 @@ struct my_node_writer
 	void
 	operator() ( std::ostream& out, Vertex v )
 	{
-		out << " [label=\"" << g[v].view_id_ << "(" << boost::filesystem::path ( g[v].view_id_ ).stem ().string () << ")\"]"
+        out << " [label=\"" << g[v].pScenePCl->header.frame_id << "(" << boost::filesystem::path ( g[v].pScenePCl->header.frame_id ).stem ().string () << ")\"]"
 		    << std::endl;
-		out << " [file=\"" << g[v].view_id_ << "\"]" << std::endl;
-		out << " [index=\"" << g[v].view_id_ << "\"]" << std::endl;
+        out << " [file=\"" << g[v].pScenePCl->header.frame_id << "\"]" << std::endl;
+        out << " [index=\"" << g[v].pScenePCl->header.frame_id << "\"]" << std::endl;
 
 		for ( std::vector<Hypothesis>::iterator it_hyp = g[v].hypothesis.begin (); it_hyp != g[v].hypothesis.end (); ++it_hyp )
 		{
@@ -74,13 +74,12 @@ View::View ()
     pScenePCl.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pSceneNormals.reset ( new pcl::PointCloud<pcl::Normal> );
-    pSceneNormals_f_.reset ( new pcl::PointCloud<pcl::Normal> );
-    pKeypointNormals_.reset ( new pcl::PointCloud<pcl::Normal> );
+//    pSceneNormals_f_.reset ( new pcl::PointCloud<pcl::Normal> );
+//    pKeypointNormals_.reset ( new pcl::PointCloud<pcl::Normal> );
     pIndices_above_plane.reset ( new pcl::PointIndices );
-    pSignatures.reset ( new pcl::PointCloud<FeatureT> );
+    pSiftSignatures_.reset ( new pcl::PointCloud<FeatureT> );
     has_been_hopped_ = false;
     cumulative_weight_to_new_vrtx_ = 0;
-    timestamp_nsec = 0;
 }
 
 Hypothesis::Hypothesis ( const std::string model_id, const Eigen::Matrix4f transform, const std::string origin, const bool extended, const bool verified )
@@ -104,26 +103,25 @@ myEdge::myEdge()
 
 void copyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target)
 {
-    grph_target[vrtx_target].view_id_ = grph_src[vrtx_src].view_id_;
     grph_target[vrtx_target].pScenePCl = grph_src[vrtx_src].pScenePCl;
     grph_target[vrtx_target].pScenePCl_f = grph_src[vrtx_src].pScenePCl_f;
     grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
     grph_target[vrtx_target].pSceneNormals = grph_src[vrtx_src].pSceneNormals;
-    grph_target[vrtx_target].pSceneNormals_f_ = grph_src[vrtx_src].pSceneNormals_f_;
-    grph_target[vrtx_target].pKeypointNormals_ = grph_src[vrtx_src].pKeypointNormals_;
-    grph_target[vrtx_target].view_id_ = grph_src[vrtx_src].view_id_;
+//    grph_target[vrtx_target].pSceneNormals_f_ = grph_src[vrtx_src].pSceneNormals_f_;
+//    grph_target[vrtx_target].pKeypointNormals_ = grph_src[vrtx_src].pKeypointNormals_;
     grph_target[vrtx_target].hypothesis = grph_src[vrtx_src].hypothesis;
-    grph_target[vrtx_target].pKeypoints = grph_src[vrtx_src].pKeypoints;
+//    grph_target[vrtx_target].pKeypoints = grph_src[vrtx_src].pKeypoints;
     grph_target[vrtx_target].pKeypointsMultipipe_ = grph_src[vrtx_src].pKeypointsMultipipe_;
     grph_target[vrtx_target].sift_keypoints_scales = grph_src[vrtx_src].sift_keypoints_scales;
     grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
     grph_target[vrtx_target].hypotheses_ = grph_src[vrtx_src].hypotheses_;
     grph_target[vrtx_target].keypointIndices_.header = grph_src[vrtx_src].keypointIndices_.header;
     grph_target[vrtx_target].keypointIndices_.indices = grph_src[vrtx_src].keypointIndices_.indices;
-
     grph_target[vrtx_target].siftKeypointIndices_.header = grph_src[vrtx_src].siftKeypointIndices_.header;
     grph_target[vrtx_target].siftKeypointIndices_.indices = grph_src[vrtx_src].siftKeypointIndices_.indices;
-  }
+    grph_target[vrtx_target].filteredSceneIndices_.header = grph_src[vrtx_src].filteredSceneIndices_.header;
+    grph_target[vrtx_target].filteredSceneIndices_.indices = grph_src[vrtx_src].filteredSceneIndices_.indices;
+}
 
 void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target)
 {
