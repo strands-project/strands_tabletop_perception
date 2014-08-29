@@ -12,19 +12,42 @@
 #include <opencv2/nonfree/features2d.hpp>
 #include <pcl/visualization/pcl_visualizer.h>
 
+#include <faat_pcl/3d_rec_framework/pc_source/source.h>
 #include <faat_pcl/3d_rec_framework/pipeline/recognizer.h>
 
 typedef pcl::Histogram<128> FeatureT;
 
 
+template<typename PointInT>
 class Hypothesis
 {
+    typedef faat_pcl::rec_3d_framework::Model<PointInT> ModelT;
+    typedef boost::shared_ptr<ModelT> ModelTPtr;
 public:
-    Hypothesis ( std::string model_id, Eigen::Matrix4f transform, std::string origin="", bool extended = false, bool verified = false );
+    ModelTPtr model_;
     std::string model_id_, origin_;
     Eigen::Matrix4f transform_;
     bool extended_;
     bool verified_;
+
+    Hypothesis ( const std::string model_id, const Eigen::Matrix4f transform, const std::string origin = "", const bool extended = false, const bool verified = false )
+    {
+        model_id_ = model_id;
+        transform_ = transform;
+        origin_ = origin;
+        extended_ = extended;
+        verified_ = verified;
+    }
+
+    Hypothesis ( const ModelTPtr model, const Eigen::Matrix4f transform, const std::string origin = "", const bool extended = false, const bool verified = false )
+    {
+        model_ = model;
+        model_id_ = model->id_;
+        transform_ = transform;
+        origin_ = origin;
+        extended_ = extended;
+        verified_ = verified;
+    }
 };
 
 class View
@@ -41,15 +64,15 @@ public:
     pcl::PointIndices filteredSceneIndices_;
 //    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals_f_;
 //    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormals_;
-    boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;
+//    boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;
 //    boost::shared_ptr< pcl::PointCloud<PointT> > pSiftKeypoints;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypotheses_;
     boost::shared_ptr< pcl::PointCloud<FeatureT > > pSiftSignatures_;
     std::vector<float> sift_keypoints_scales;
     pcl::PointIndices siftKeypointIndices_;
-    std::vector<Hypothesis> hypothesis;
-    std::vector<Hypothesis> hypothesis_single_unverified;
+    std::vector<Hypothesis<PointT> > hypothesis;
+    std::vector<Hypothesis<PointT> > hypothesis_mv_;
     Eigen::Matrix4f absolute_pose;
     Eigen::Matrix4f transform_to_world_co_system_;
     bool has_been_hopped_;
@@ -84,7 +107,7 @@ void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr
 void pruneGraph (Graph &grph, size_t num_remaining_vertices=2);
 void outputgraph ( Graph& map, const char* filename );
 Vertex getFurthestVertex ( Graph &grph);
-void copyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target);
+void shallowCopyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target);
 void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target);
 //std::vector<Vertex> my_node_reader ( std::string filename, Graph &g )
 #endif

@@ -86,7 +86,7 @@ class multiviewGraph
 private:
     boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     Graph grph_, grph_final_;
-    std::vector<Edge> edges_, best_edges_;
+    std::vector<Edge> edges_;//, best_edges_;
     std::string models_dir_;
     std::string scene_name_;
     boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> > models_source_;
@@ -100,6 +100,7 @@ private:
     int opt_type_;
     std::string gt_or_ouput_dir_;
     double chop_at_z_;
+    float distance_keypoints_get_discarded_;
     float icp_resolution_;
     float icp_max_correspondence_distance_;
     bool do_reverse_hyp_extension;
@@ -107,7 +108,8 @@ private:
     bool scene_to_scene_;
     bool use_robot_pose_;
     bool use_gc_s2s_;
-    std::vector<Hypothesis> mv_hypotheses_;
+    std::vector<Hypothesis<PointT> > mv_hypotheses_;
+    Eigen::Matrix4f current_global_transform_;
 
     cv::Ptr<SiftGPU> sift_;
 
@@ -159,7 +161,7 @@ public:
         icp_resolution_ = 0.005f;
         icp_max_correspondence_distance_ = 0.02f;
         scene_to_scene_ = true;
-        use_robot_pose_ = true;
+        use_robot_pose_ = false;
         use_gc_s2s_ = true;
 
         use_unverified_single_view_hypotheses = false;
@@ -195,6 +197,7 @@ public:
 
         //Other parameters
         output_dir_3d_results_ = "";
+        distance_keypoints_get_discarded_ = 0.005*0.005;
 
         use_table_plane_ = true;
 
@@ -203,29 +206,29 @@ public:
         pAccumulatedKeypointNormals_.reset (new pcl::PointCloud<pcl::Normal>);
     }
 
-    bool calcFeatures(Vertex &src, Graph &grph, bool use_table_plane=true);
+    bool calcSiftFeatures(Vertex &src, Graph &grph);
     void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, std::vector<Edge> & edges, bool use_gc=false );
     void estimateViewTransformationByRobotPose ( const Vertex &src, const Vertex &trgt, Graph &grph, Edge &edge );
     void extendHypothesis ( Graph &grph );
-    void extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypothesis> &hyp_vec);
+    void extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypothesis<PointT> > &hyp_vec);
     void extendFeatureMatchesRecursive ( Graph &grph,
                                          Vertex &vrtx_start,
                                          std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > &hypotheses,
                                          pcl::PointCloud<PointT>::Ptr keypoints,
-                                         pcl::PointCloud<pcl::Normal> &keypointNormals);
+                                         pcl::PointCloud<pcl::Normal>::Ptr keypointNormals);
     //    void calcMST ( const std::vector<Edge> &edges, const Graph &grph, std::vector<Edge> &edges_final );
     //    void createEdgesFromHypothesisMatch ( Graph &grph, std::vector<Edge> &edges );
     //    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
     void createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges );
     void calcEdgeWeight (Graph &grph, int max_distance=-1, float z_dist=3.f, float max_overlap=0.75f);
-    void createBigPointCloud ( Graph & grph_final, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & big_cloud );
     void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr vis);
     void constructHypothesesFromFeatureMatches(std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypothesesInput,
                                                pcl::PointCloud<PointT>::Ptr pKeypoints,
                                                pcl::PointCloud<pcl::Normal>::Ptr pKeypointNormals,
-                                               std::vector<Hypothesis> &hypothesesOutput);
+                                               std::vector<Hypothesis<PointT> > &hypothesesOutput,
+                                               std::vector <pcl::Correspondences> &corresp_clusters);
 
-    std::string getSceneName()
+    std::string getSceneName() const
     {
         return scene_name_;
     }
@@ -235,14 +238,21 @@ public:
     }
 
     void visualizeEdge (const Edge &edge, const Graph &grph);
-    bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
+//    bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
 
-    bool recognize ( pcl::PointCloud<pcl::PointXYZRGB>::Ptr inputCloud,
+
+    bool recognize ( const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud,
                      std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &hyp_transforms_local,
                      std::vector<std::string> &hyp_model_ids,
-                     const std::string view_name = "",
-                     const Eigen::Matrix4f global_transform = Eigen::Matrix4f::Identity(),
-                     const size_t timestamp = 0);
+                     const std::string view_name,
+                     const size_t timestamp);
+
+    bool recognize ( const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud,
+                     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &hyp_transforms_local,
+                     std::vector<std::string> &hyp_model_ids,
+                     const std::string view_name,
+                     const size_t timestamp,
+                     const Eigen::Matrix4f global_transform);
 
     void loadModels();
 
@@ -266,7 +276,7 @@ public:
     void setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value);
     cv::Ptr<SiftGPU> sift() const;
     void setSift(const cv::Ptr<SiftGPU> &sift);
-    void mergeKeypointCloud();
+//    void mergeKeypointCloud();
 };
 
 namespace multiview

@@ -3,9 +3,8 @@
 #include <pcl_conversions.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/io/pcd_io.h>
-#include <ros/ros.h>
+#include "ros/ros.h"
 #include <faat_pcl/utils/filesystem_utils.h>
-#include <faat_pcl/utils/pcl_visualization_utils.h>
 #include <vector>
 #include <sstream>
 #include <recognition_srv_definitions/multiview_recognize.h>
@@ -38,15 +37,11 @@ main (int argc, char **argv)
     ros::NodeHandle *n;
     n = new ros::NodeHandle("~");
     std::string scenes_dir, camera_topic;
-    bool visualize_output;
     ros::ServiceClient mv_recognition_client = n->serviceClient<recognition_srv_definitions::multiview_recognize>("/multiview_object_recognizer_node/multiview_recognotion_servcice");
     recognition_srv_definitions::multiview_recognize srv;
 
-
     if(!n->getParam("scenes_dir", scenes_dir))
         ROS_ERROR("No scenes directory given (arg \"scenes_dir\"). ");
-    if(!n->getParam("visualize_output", visualize_output))
-        visualize_output = true;
     if(!n->getParam("topic", camera_topic))
         camera_topic = "/camera/depth_registered/points";
 
@@ -68,7 +63,6 @@ main (int argc, char **argv)
         faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, start, files_intern, ext);
 
         ros::Publisher vis_pc_pub_ = n->advertise<sensor_msgs::PointCloud2>( "multiview_point_cloud_input", 0 );
-        ros::Rate loop_rate(1);
 
         for (size_t file_id=0; file_id < files_intern.size(); file_id++)
         {
@@ -88,11 +82,11 @@ main (int argc, char **argv)
             pc2.is_dense = false;
             vis_pc_pub_.publish(pc2);
             ros::spinOnce(); // Why does the point cloud not get published immediately?
-            loop_rate.sleep();
 
             srv.request.cloud = pc2;
             srv.request.scene_name.data = scenes_dir;
             srv.request.view_name.data = files_intern[file_id];
+
             if (mv_recognition_client.call(srv))
             {
                 if ( srv.response.ids.size() == 0 )
@@ -135,70 +129,6 @@ main (int argc, char **argv)
                 ROS_ERROR("Failed to call multiview recognition server.");
                 return -1;
             }
-        }
-
-        if(visualize_output)
-        {
-            pcl::visualization::PCLVisualizer::Ptr vis (new pcl::visualization::PCLVisualizer("vis"));
-            std::vector<int> viewportNr = faat_pcl::utils::visualization_framework (vis, files_intern.size(), 1);
-            //        vis->setWindowName ("Hypotheses transformation and verification for multiple views");
-            //        for (std::vector<Vertex>::iterator it_vrtx = vertices_v.begin (); it_vrtx != vertices_v.end (); ++it_vrtx)
-            //        {
-            //            std::stringstream cloud_name_tmp;
-            //            cloud_name_tmp << "scene_cloud_" << grph_final[*it_vrtx].scene_filename;
-            //            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb (grph_final[*it_vrtx].pScenePCl);
-            //            vis->addPointCloud<pcl::PointXYZRGB> (grph_final[*it_vrtx].pScenePCl, handler_rgb, cloud_name_tmp.str (),
-            //                                                  viewportNr[boost::get (vertex_index, grph_final, *it_vrtx) * SUBWINDOWS_PER_VIEW_HT_FROM_FILE + 0]);
-
-            //            for (size_t hypVec_id = 0; hypVec_id < grph_final[*it_vrtx].hypothesis.size (); hypVec_id++)
-            //            {
-
-            //                PointInTPtr pHypothesisPCl (new pcl::PointCloud<pcl::PointXYZRGB>);
-            //                PointInTPtr pHypothesisPCl_vx (new pcl::PointCloud<pcl::PointXYZRGB>);
-            //                PointInTPtr pHypothesisAlignedPCl (new pcl::PointCloud<pcl::PointXYZRGB>);
-            //                pcl::io::loadPCDFile (grph_final[*it_vrtx].hypothesis[hypVec_id].model_id_, *pHypothesisPCl);
-
-            //                pcl::VoxelGrid<pcl::PointXYZRGB> sor;
-            //                float leaf = 0.0025f;
-            //                sor.setLeafSize (leaf, leaf, leaf);
-            //                sor.setInputCloud (pHypothesisPCl);
-            //                sor.filter (*pHypothesisPCl_vx);
-
-            //                pcl::transformPointCloud (*pHypothesisPCl_vx, *pHypothesisAlignedPCl, grph_final[*it_vrtx].hypothesis[hypVec_id].transform_);
-            //                pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified (pHypothesisAlignedPCl);
-            //                std::stringstream basename;
-            //                basename << "Hypothesis_model_" << grph_final[*it_vrtx].hypothesis[hypVec_id].model_id_ << "__forScene_" << grph_final[*it_vrtx].scene_filename
-            //                         << "__origin_" << grph_final[*it_vrtx].hypothesis[hypVec_id].origin_ << "__with_vector_id_" << hypVec_id;
-
-            //                if(grph_final[*it_vrtx].hypothesis[hypVec_id].origin_.compare(grph_final[*it_vrtx].scene_filename) == 0)	//--show-hypotheses-from-single-view
-            //                {
-            //                    std::stringstream name;
-            //                    name << "Single_View_" << basename.str();
-            //                    vis->addPointCloud<pcl::PointXYZRGB> (pHypothesisAlignedPCl, handler_rgb_verified, name.str (),
-            //                                                          viewportNr[boost::get (vertex_index, grph_final, *it_vrtx) * SUBWINDOWS_PER_VIEW_HT_FROM_FILE + 1]);
-            //                }
-
-            //                /*std::stringstream name;
-            //      name << "After_Hyp_Extension_" << basename.str();
-            //      vis->addPointCloud<pcl::PointXYZRGB> (pHypothesisAlignedPCl, handler_rgb_verified, name.str (),
-            //                          viewportNr[boost::get (vertex_index, grph_final, *it_vrtx) * SUBWINDOWS_PER_VIEW_HT_FROM_FILE + 2]);*/
-
-
-            //                if(grph_final[*it_vrtx].hypothesis[hypVec_id].verified_)	//--show-verified-hypotheses
-            //                {
-            //                    //std::cout << grph_final[*it_vrtx].hypothesis[hypVec_id].transform_ << std::endl;
-            //                    std::stringstream name;
-            //                    name << "After_Hyp_Extension_and_Verification_" << basename.str();
-            //                    vis->addPointCloud<pcl::PointXYZRGB> (pHypothesisAlignedPCl, handler_rgb_verified, name.str (),
-            //                                                          viewportNr[boost::get (vertex_index, grph_final, *it_vrtx) * SUBWINDOWS_PER_VIEW_HT_FROM_FILE + 3]);
-            //                }
-            //            }
-            //        }
-            vis->setBackgroundColor(1,1,1);
-            vis->resetCamera();
-            //vis->setFullScreen(true);
-            vis->spin ();
-            vis->getInteractorStyle()->saveScreenshot("multiview.png");
         }
     }
     ros::   spin();

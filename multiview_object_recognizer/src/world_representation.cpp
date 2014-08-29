@@ -55,19 +55,29 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
     std::string view_name = req.view_name.data;
     size_t timestamp = req.timestamp.data.toNSec();
 
-    Eigen::Matrix4f global_trans;
-    for (size_t row=0; row <4; row++)
-    {
-        for(size_t col=0; col<4; col++)
-        {
-            global_trans(row, col) = req.transform[4*row + col];
-        }
-    }
+    multiviewGraph &currentGraph = get_current_graph(scene_name);
     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > hyp_transforms_local;
     std::vector<std::string> hyp_model_ids;
 
-    multiviewGraph &currentGraph = get_current_graph(scene_name);
-    bool mv_recognize_error = currentGraph.recognize(pInputCloud, hyp_transforms_local, hyp_model_ids, view_name, global_trans, timestamp);//req, response);
+    bool mv_recognize_error;
+
+    Eigen::Matrix4f global_trans;
+    if(req.transform.size() == 16)
+    {
+        for (size_t row=0; row <4; row++)
+        {
+            for(size_t col=0; col<4; col++)
+            {
+                global_trans(row, col) = req.transform[4*row + col];
+            }
+        }
+        mv_recognize_error = currentGraph.recognize(pInputCloud, hyp_transforms_local, hyp_model_ids, view_name, timestamp, global_trans);//req, response);
+    }
+    else
+    {
+        std::cout << "No transform (16x1 float vector) provided. " << std::endl;
+        mv_recognize_error = currentGraph.recognize(pInputCloud, hyp_transforms_local, hyp_model_ids, view_name, timestamp);
+    }
 
 //    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
 //    for(size_t hyp_id = 0; hyp_id < hyp_model_ids.size(); hyp_id++)

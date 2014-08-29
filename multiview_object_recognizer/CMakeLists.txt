@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(multiview_object_recognizer)
-SET (CMAKE_BUILD_TYPE Debug)
+SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -94,8 +94,13 @@ add_definitions(-std=c++0x)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(include
-  ${PCL_INCLUDE_DIRS}
-  ${catkin_INCLUDE_DIRS}
+    ${PCL_INCLUDE_DIRS}
+    ${catkin_INCLUDE_DIRS}
+    ${CUDA_TOOLKIT_INCLUDE}
+    ${PCL_SRC_DIR}/gpu/octree/include
+    ${PCL_SRC_DIR}/gpu/containers/include
+    ${PCL_SRC_DIR}/gpu/octree/src/
+    ${PCL_SRC_DIR}/gpu/utils/include/
 )
 
 set(incs
@@ -123,7 +128,11 @@ add_executable(multiview_object_recognizer_node
                 ${incs}
 )
 
-add_executable(multiview_object_recognizer_test_node src/test_multiview_recognizer.cpp ${incs})
+## Declare a cpp executable
+add_executable(multiview_object_recognizer_test_node
+                src/test_multiview_recognizer.cpp
+                ${incs}
+)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

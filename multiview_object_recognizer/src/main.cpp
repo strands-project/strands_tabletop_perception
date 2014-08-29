@@ -20,8 +20,8 @@ int main (int argc, char **argv)
     std::string gt_or_ouput_dir;
     double chop_at_z;
     int mv_keypoints;
-    std::string training_dir_sift, sift_structure, training_dir_ourcvfh;
-    bool do_sift, do_ourcvfh, ignore_color;
+    std::string training_dir_sift, training_dir_shot, sift_structure, training_dir_ourcvfh;
+    bool do_sift, do_ourcvfh, do_shot, ignore_color;
 
     ros::init ( argc, argv, "multiview_object_recognizer_node" );
     n_.reset( new ros::NodeHandle ( "~" ) );
@@ -40,9 +40,11 @@ int main (int argc, char **argv)
     n_->getParam ( "chop_z", chop_at_z);
 
     n_->getParam ( "training_dir_sift", training_dir_sift);
+    n_->getParam ( "training_dir_shot", training_dir_shot);
     n_->getParam ( "recognizer_structure_sift", sift_structure);
     n_->getParam ( "training_dir_ourcvfh", training_dir_ourcvfh);
     n_->getParam ( "do_sift", do_sift);
+    n_->getParam ( "do_shot", do_shot);
     n_->getParam ( "do_ourcvfh", do_ourcvfh);
     n_->getParam ( "ignore_color", ignore_color);
 
@@ -81,6 +83,7 @@ int main (int argc, char **argv)
     boost::shared_ptr<Recognizer> pSingleview_recognizer (new Recognizer());
     pSingleview_recognizer->setTraining_dir_ourcvfh(training_dir_ourcvfh);
     pSingleview_recognizer->setTraining_dir_sift(training_dir_sift);
+    pSingleview_recognizer->setTraining_dir_shot(training_dir_shot);
     pSingleview_recognizer->setModels_dir(models_dir);
     pSingleview_recognizer->setSift_structure(sift_structure);
     pSingleview_recognizer->setChop_at_z(chop_at_z);
@@ -89,6 +92,7 @@ int main (int argc, char **argv)
     {
         pSingleview_recognizer->setSift(sift);
     }
+    pSingleview_recognizer->setDo_shot(do_shot);
     pSingleview_recognizer->setDo_ourcvfh(do_ourcvfh);
     pSingleview_recognizer->setIgnore_color(ignore_color);
     pSingleview_recognizer->setIcp_iterations(icp_iter);

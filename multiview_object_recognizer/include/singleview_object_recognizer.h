@@ -3,33 +3,34 @@
 
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 
+#include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/common/common.h>
+#include <pcl/filters/passthrough.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl_conversions.h>
-#include <pcl/filters/passthrough.h>
+#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
+#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
+#include <faat_pcl/3d_rec_framework/feature_wrapper/local/shot_local_estimator.h>
+#include <faat_pcl/3d_rec_framework/feature_wrapper/local/shot_local_estimator_omp.h>
+//#include <faat_pcl/3d_rec_framework/feature_wrapper/global/color_ourcvfh_estimator.h>
+#include <faat_pcl/3d_rec_framework/feature_wrapper/global/organized_color_ourcvfh_estimator.h>
+#include <faat_pcl/3d_rec_framework/feature_wrapper/global/ourcvfh_estimator.h>
 #include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
 #include <faat_pcl/3d_rec_framework/pc_source/partial_pcd_source.h>
-#include "segmenter.h"
 #include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
 #include <faat_pcl/3d_rec_framework/pipeline/local_recognizer.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/ourcvfh_estimator.h>
-#include "faat_pcl/3d_rec_framework/utils/metrics.h"
-#include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/recognition/cg/graph_geometric_consistency.h>
 #include <faat_pcl/3d_rec_framework/pipeline/multi_pipeline_recognizer.h>
-#include <faat_pcl/recognition/hv/hv_go_1.h>
 #include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/organized_color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
 #include <faat_pcl/3d_rec_framework/utils/metrics.h>
-#include "recognition_srv_definitions/recognize.h"
-#include <pcl/apps/dominant_plane_segmentation.h>
+#include <faat_pcl/recognition/cg/graph_geometric_consistency.h>
+#include <faat_pcl/recognition/hv/ghv_cuda_wrapper.h>
+#include <faat_pcl/recognition/hv/hv_go_1.h>
+#include <faat_pcl/registration/visibility_reasoning.h>
+#include <faat_pcl/utils/miscellaneous.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
-
+#include "segmenter.h"
+#include "recognition_srv_definitions/recognize.h"
 
 
 struct camPosConstraints
@@ -57,9 +58,11 @@ private:
     boost::shared_ptr<faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT> > multi_recog_;
     std::string models_dir_;
     std::string training_dir_sift_;
+    std::string training_dir_shot_;
     std::string sift_structure_;
     std::string training_dir_ourcvfh_;
     bool do_sift_;
+    bool do_shot_;
     bool do_ourcvfh_;
     double chop_at_z_;
     int icp_iterations_;
@@ -81,6 +84,7 @@ private:
     std::vector<faat_pcl::PlaneModel<PointT> > planes_found_;
     float go_resolution_;
     bool add_planes_;
+    int knn_shot_;
 
 #ifdef SOC_VISUALIZE
     boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
@@ -95,11 +99,17 @@ public:
         //default values
         chop_at_z_ = 1.5;
         do_sift_ = true;
+        do_shot_ = false;
         do_ourcvfh_ = false;
         icp_iterations_ = 0;
         cg_size_ = 3;
         go_resolution_ = 0.005f;
         add_planes_ = true;
+        knn_shot_ = 1;
+
+
+        pInputCloud_.reset(new pcl::PointCloud<PointT>);
+        pSceneNormals_.reset(new pcl::PointCloud<pcl::Normal>);
 
 #ifdef SOC_VISUALIZE
         vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
@@ -121,6 +131,16 @@ public:
     void setTraining_dir_sift(const std::string &training_dir_sift)
     {
         training_dir_sift_ = training_dir_sift;
+    }
+
+    std::string training_dir_shot() const
+    {
+        return training_dir_shot_;
+    }
+
+    void setTraining_dir_shot(const std::string &training_dir_shot)
+    {
+        training_dir_shot_ = training_dir_shot;
     }
 
     std::string models_dir() const
@@ -320,10 +340,12 @@ public:
 //        }
     }
 
-    void setInputCloud(pcl::PointCloud<PointT>::Ptr pInputCloud, pcl::PointCloud<pcl::Normal>::Ptr pSceneNormals = new pcl::PointCloud<pcl::Normal>())
+    void setInputCloud(pcl::PointCloud<PointT>::ConstPtr pInputCloud, pcl::PointCloud<pcl::Normal>::Ptr pSceneNormals = new pcl::PointCloud<pcl::Normal>())
     {
-        pInputCloud_ = pInputCloud;
-        pSceneNormals_ = pSceneNormals;
+        pcl::copyPointCloud(*pInputCloud, *pInputCloud_);
+//        pInputCloud_ = pInputCloud;
+        pcl::copyPointCloud(*pSceneNormals, *pSceneNormals_);
+//        pSceneNormals_ = pSceneNormals;
         model_ids_verified_.clear();
         transforms_verified_.clear();
 
@@ -337,13 +359,22 @@ public:
             models_->clear();
     }
 
+    void poseRefinement(boost::shared_ptr<std::vector<ModelTPtr> > models,
+                        boost::shared_ptr<std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > > transforms)
+    {
+        multi_recog_->getPoseRefinement(models, transforms);
+    }
+
     bool hypothesesVerification(std::vector<bool> &mask_hv);
+    bool hypothesesVerificationGpu(std::vector<bool> &mask_hv);
 
     bool multiplaneSegmentation();
 
     void visualizeHypotheses();
 
     void constructHypotheses();
+    bool do_shot() const;
+    void setDo_shot(bool do_shot);
 };
 
 #endif //SINGLEVIEW_OBJECT_RECOGNIZER_H
