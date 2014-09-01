@@ -24,7 +24,7 @@ $for n,session in enumerate(observations):
     <div id="collapse$n" class="panel-collapse collapse">
       <ul>
         $for obs, observation in enumerate(session):
-            <li>${chr(65+obs)} - <a href="../observation/$table_name/${obs}/${len(session)}/$observation[1]/${'%f'%observation[0]}">$observation[1]</a></li>
+            <li>${chr(65+obs)} - <a href="../observation/$table_name/${'%f'%observation[0]}">$observation[1]</a></li>
     </ul>
     </div>
   </div>

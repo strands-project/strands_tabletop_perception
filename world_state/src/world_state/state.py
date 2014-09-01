@@ -110,6 +110,18 @@ class Object(MongoDocument):
             return self.identification
         return self.identifications[classifier_id][-1]
     
+    def get_parent(self):
+        world =  World()
+        parent = world.get_object(self._parent)
+        return parent
+    
+    def remove_child(self, child_name):
+        try:
+            self._children.remove(child_name)
+        except:
+            raise Exception("Trying to remove child from object, but"
+                            "parent object is not parent of this child.")
+        
     def get_children_names(self):
         return copy.copy(self._children)  
     
@@ -184,6 +196,8 @@ class World(object):
         if not isinstance(obj, Object):
             obj = self.get_object(obj)
         new_id = self._mongo.database.ObjectWasteland.save(Object._mongo_encode(obj))
+        # Remove the object from its parent
+        obj.get_parent().remove_child(obj.name)
         self._mongo.database.Objects.remove({
             "__pyobject_class_type": Object.get_pyoboject_class_string(),
              'key': obj.name, })

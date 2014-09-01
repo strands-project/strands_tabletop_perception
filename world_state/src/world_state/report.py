@@ -209,6 +209,45 @@ def create_table_observation_image(table_name, observation_timestamp):
 #    cv2.imshow('image', rgb_image)
 #    cv2.waitKey(30)
     return rgb_image
+
+def get_next_stamp(table_name, observation_timestamp):
+    """
+    return the timestamp for the observation of the table after the given one.
+    """
+    w = World()
+    table =  w.get_object(table_name)
+    # Which table observation is closest to timestamp going forward
+    if len(table._observations) < 1:
+        raise Exception("Table has no observations")
+    forwards =  [ (ob, (ob.stamp - observation_timestamp))
+                    for ob in table._observations
+                    if ob.stamp > observation_timestamp ] 
+
+    if len(forwards) < 1:
+        return None
+    if len(forwards) == 1:
+        return forwards[0]
+    return min(*forwards,  key=lambda x: x[1])
+
+def get_prev_stamp(table_name, observation_timestamp):
+    """
+    return the timestamp for the observation of the table before the given one.
+    """
+
+    w = World()
+    table =  w.get_object(table_name)
+    # Which table observation is closest to timestamp going forward
+    if len(table._observations) < 1:
+        raise Exception("Table has no observations")
+    backwards =  [(ob, ( observation_timestamp - ob.stamp))
+                    for ob in table._observations
+                    if ob.stamp < observation_timestamp ]
+    if len(backwards) < 1:
+        return None
+    if len(backwards) == 1:
+        return backwards[0]
+
+    return min(*backwards,  key=lambda x: x[1])
         
 def get_tabletop_object_clouds(table_name, observation_timestamp):
     """
