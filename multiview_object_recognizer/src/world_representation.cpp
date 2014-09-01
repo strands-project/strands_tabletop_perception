@@ -11,16 +11,16 @@ multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_n
     }
 
     multiviewGraph newGraph;
-    newGraph.setModels_dir(models_dir_);
+//    newGraph.setModels_dir(models_dir_);
     newGraph.setVisualize_output(visualize_output_);
-    newGraph.setGo_3d(go_3d_);
+//    newGraph.setGo_3d(go_3d_);
     newGraph.setGt_or_ouput_dir(gt_or_ouput_dir_);
     newGraph.setIcp_iter(icp_iter_);
-    newGraph.setMv_keypoints(mv_keypoints_);
-    newGraph.setOpt_type(opt_type_);
+//    newGraph.setMv_keypoints(mv_keypoints_);
+//    newGraph.setOpt_type(opt_type_);
     newGraph.setChop_at_z(chop_at_z_);
     newGraph.setSceneName(scene_name);
-    newGraph.loadModels();
+//    newGraph.loadModels();
     newGraph.setPSingleview_recognizer(pSingleview_recognizer_);
     newGraph.setSift(sift_);
     graph_v.push_back(newGraph);

@@ -76,7 +76,7 @@ View::View ()
     pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pSceneNormals.reset ( new pcl::PointCloud<pcl::Normal> );
 //    pSceneNormals_f_.reset ( new pcl::PointCloud<pcl::Normal> );
-//    pKeypointNormals_.reset ( new pcl::PointCloud<pcl::Normal> );
+    pKeypointNormalsMultipipe_.reset ( new pcl::PointCloud<pcl::Normal> );
 //    pIndices_above_plane.reset ( new pcl::PointIndices );
     pSiftSignatures_.reset ( new pcl::PointCloud<FeatureT> );
     has_been_hopped_ = false;
@@ -89,43 +89,43 @@ myEdge::myEdge()
     model_name = "";
     source_id = "";
     target_id = "";
-    edge_weight_has_been_calculated_ = false;
-    std::vector <cv::DMatch> matches;
+//    edge_weight_has_been_calculated_ = false;
+//    std::vector <cv::DMatch> matches;
 }
 
-void shallowCopyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target)
-{
-    grph_target[vrtx_target].pScenePCl = grph_src[vrtx_src].pScenePCl;
-    grph_target[vrtx_target].pScenePCl_f = grph_src[vrtx_src].pScenePCl_f;
-    grph_target[vrtx_target].pSceneNormals = grph_src[vrtx_src].pSceneNormals;
-    grph_target[vrtx_target].filteredSceneIndices_ = grph_src[vrtx_src].filteredSceneIndices_;
-    grph_target[vrtx_target].pKeypointsMultipipe_ = grph_src[vrtx_src].pKeypointsMultipipe_;
-    grph_target[vrtx_target].hypotheses_ = grph_src[vrtx_src].hypotheses_;
-    grph_target[vrtx_target].pSiftSignatures_ = grph_src[vrtx_src].pSiftSignatures_;
-    grph_target[vrtx_target].sift_keypoints_scales = grph_src[vrtx_src].sift_keypoints_scales;
-    grph_target[vrtx_target].siftKeypointIndices_ = grph_src[vrtx_src].siftKeypointIndices_;
-    grph_target[vrtx_target].hypothesis = grph_src[vrtx_src].hypothesis;
-    grph_target[vrtx_target].hypothesis_mv_ = grph_src[vrtx_src].hypothesis_mv_;
-    grph_target[vrtx_target].absolute_pose = grph_src[vrtx_src].absolute_pose;
-    grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
-    grph_target[vrtx_target].has_been_hopped_ = grph_src[vrtx_src].has_been_hopped_;
-    grph_target[vrtx_target].cumulative_weight_to_new_vrtx_ = grph_src[vrtx_src].cumulative_weight_to_new_vrtx_;
-    grph_target[vrtx_target].keypointIndices_ = grph_src[vrtx_src].keypointIndices_;
-}
+//void shallowCopyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target)
+//{
+//    grph_target[vrtx_target].pScenePCl = grph_src[vrtx_src].pScenePCl;
+//    grph_target[vrtx_target].pScenePCl_f = grph_src[vrtx_src].pScenePCl_f;
+//    grph_target[vrtx_target].pSceneNormals = grph_src[vrtx_src].pSceneNormals;
+//    grph_target[vrtx_target].filteredSceneIndices_ = grph_src[vrtx_src].filteredSceneIndices_;
+//    grph_target[vrtx_target].pKeypointsMultipipe_ = grph_src[vrtx_src].pKeypointsMultipipe_;
+//    grph_target[vrtx_target].hypotheses_ = grph_src[vrtx_src].hypotheses_;
+//    grph_target[vrtx_target].pSiftSignatures_ = grph_src[vrtx_src].pSiftSignatures_;
+//    grph_target[vrtx_target].sift_keypoints_scales = grph_src[vrtx_src].sift_keypoints_scales;
+//    grph_target[vrtx_target].siftKeypointIndices_ = grph_src[vrtx_src].siftKeypointIndices_;
+//    grph_target[vrtx_target].hypothesis = grph_src[vrtx_src].hypothesis;
+//    grph_target[vrtx_target].hypothesis_mv_ = grph_src[vrtx_src].hypothesis_mv_;
+//    grph_target[vrtx_target].absolute_pose = grph_src[vrtx_src].absolute_pose;
+//    grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;
+//    grph_target[vrtx_target].has_been_hopped_ = grph_src[vrtx_src].has_been_hopped_;
+//    grph_target[vrtx_target].cumulative_weight_to_new_vrtx_ = grph_src[vrtx_src].cumulative_weight_to_new_vrtx_;
+//    grph_target[vrtx_target].keypointIndices_ = grph_src[vrtx_src].keypointIndices_;
+//}
 
-void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target)
-{
-    grph_target[edge_target].transformation = grph_src[edge_src].transformation;
-    grph_target[edge_target].edge_weight = grph_src[edge_src].edge_weight;
-    grph_target[edge_target].model_name = grph_src[edge_src].model_name;
-    grph_target[edge_target].source_id = grph_src[edge_src].source_id;
-    grph_target[edge_target].target_id = grph_src[edge_src].target_id;
-    grph_target[edge_target].edge_weight_has_been_calculated_ = grph_src[edge_src].edge_weight_has_been_calculated_;
-}
+//void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target)
+//{
+//    grph_target[edge_target].transformation = grph_src[edge_src].transformation;
+//    grph_target[edge_target].edge_weight = grph_src[edge_src].edge_weight;
+//    grph_target[edge_target].model_name = grph_src[edge_src].model_name;
+//    grph_target[edge_target].source_id = grph_src[edge_src].source_id;
+//    grph_target[edge_target].target_id = grph_src[edge_src].target_id;
+//    grph_target[edge_target].edge_weight_has_been_calculated_ = grph_src[edge_src].edge_weight_has_been_calculated_;
+//}
 
 void pruneGraph (Graph &grph, size_t num_remaining_vertices)
 {
-    if(num_vertices(grph) > num_remaining_vertices)
+    while(num_vertices(grph) > num_remaining_vertices)
     {
         Vertex vrtxToKill = getFurthestVertex(grph);
 

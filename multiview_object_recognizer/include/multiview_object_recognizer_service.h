@@ -86,122 +86,121 @@ class multiviewGraph
 private:
     boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     Graph grph_, grph_final_;
-    std::vector<Edge> edges_;//, best_edges_;
-    std::string models_dir_;
+//    std::vector<Edge> edges_;//, best_edges_;
+//    std::string models_dir_;
     std::string scene_name_;
     boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> > models_source_;
     boost::shared_ptr< pcl::PointCloud<PointT> > pAccumulatedKeypoints_;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pAccumulatedKeypointNormals_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > accumulatedHypotheses_;
-    pcl::visualization::PCLVisualizer::Ptr edge_vis;
+    pcl::visualization::PCLVisualizer::Ptr edge_vis_;
     bool visualize_output_;
-    bool go_3d_;
+//    bool go_3d_;
     int icp_iter_;
-    int opt_type_;
+//    int opt_type_;
     std::string gt_or_ouput_dir_;
-    double chop_at_z_;
+    float chop_at_z_;
     float distance_keypoints_get_discarded_;
     float icp_resolution_;
-    float icp_max_correspondence_distance_;
+//    float icp_max_correspondence_distance_;
     bool do_reverse_hyp_extension;
     pcl::visualization::PCLVisualizer::Ptr vis_;
     bool scene_to_scene_;
     bool use_robot_pose_;
     bool use_gc_s2s_;
-    std::vector<Hypothesis<PointT> > mv_hypotheses_;
+//    std::vector<Hypothesis<PointT> > mv_hypotheses_;
     Eigen::Matrix4f current_global_transform_;
 
     cv::Ptr<SiftGPU> sift_;
 
-    bool use_unverified_single_view_hypotheses;
+//    bool use_unverified_single_view_hypotheses;
 
     //GO3D parameters
-    float go3d_color_sigma_;
-    float go3d_outlier_regularizer_;
-    float go3d_clutter_regularizer_;
-    float go3d_clutter_radius_;
-    float go3d_inlier_threshold_;
+//    float go3d_color_sigma_;
+//    float go3d_outlier_regularizer_;
+//    float go3d_clutter_regularizer_;
+//    float go3d_clutter_radius_;
+//    float go3d_inlier_threshold_;
 
-    bool go3d_detect_clutter_;
-    bool go3d_add_planes_;
-    bool go3d_icp_;
-    bool go3d_icp_model_to_scene_;
-    bool go3d_use_supervoxels_;
+//    bool go3d_detect_clutter_;
+//    bool go3d_add_planes_;
+//    bool go3d_icp_;
+//    bool go3d_icp_model_to_scene_;
+//    bool go3d_use_supervoxels_;
 
-    float go3d_and_icp_resolution_;
+//    float go3d_and_icp_resolution_;
 
 
     //Noise model parameters
-    float max_angle_;
-    float lateral_sigma_;
-    float nm_integration_min_weight_;
+//    float max_angle_;
+//    float lateral_sigma_;
+//    float nm_integration_min_weight_;
 
     //Multiview refinement parameters
-    bool mv_icp_;
-    float max_keypoint_dist_mv_;
-    int mv_iterations_;
-    float min_overlap_mv_;
-    int mv_keypoints_;
-    float inlier_threshold_ ;
-    float max_corresp_dist_;
+//    bool mv_icp_;
+//    float max_keypoint_dist_mv_;
+//    int mv_iterations_;
+//    float min_overlap_mv_;
+//    int mv_keypoints_;
+//    float inlier_threshold_ ;
+//    float max_corresp_dist_;
 
     //Other parameters
-    std::string output_dir_3d_results_;
+//    std::string output_dir_3d_results_;
 
-    bool use_table_plane_;
+//    bool use_table_plane_;
     
 public:
     multiviewGraph(){
         do_reverse_hyp_extension = false;
-        go_3d_ = false;
-        mv_keypoints_ = 0;
-        opt_type_ = 0;
+//        go_3d_ = false;
+//        mv_keypoints_ = 0;
+//        opt_type_ = 0;
         gt_or_ouput_dir_ = "";
         chop_at_z_ = 1.5f;
         icp_resolution_ = 0.005f;
-        icp_max_correspondence_distance_ = 0.02f;
+//        icp_max_correspondence_distance_ = 0.02f;
         scene_to_scene_ = true;
         use_robot_pose_ = false;
         use_gc_s2s_ = true;
 
-        use_unverified_single_view_hypotheses = false;
+//        use_unverified_single_view_hypotheses = false;
 
-        //GO3D parameters
-        go3d_color_sigma_ = 0.3f;
-        go3d_outlier_regularizer_ = 3.f;
-        go3d_clutter_regularizer_ = 3.f;
-        go3d_clutter_radius_ = 0.04f;
-        go3d_inlier_threshold_ = 0.01f;
+//        //GO3D parameters
+//        go3d_color_sigma_ = 0.3f;
+//        go3d_outlier_regularizer_ = 3.f;
+//        go3d_clutter_regularizer_ = 3.f;
+//        go3d_clutter_radius_ = 0.04f;
+//        go3d_inlier_threshold_ = 0.01f;
 
-        go3d_detect_clutter_ = true;
-        go3d_add_planes_ = false;
-        go3d_icp_ = true;
-        go3d_icp_model_to_scene_ = false;
-        go3d_use_supervoxels_ = true;
+//        go3d_detect_clutter_ = true;
+//        go3d_add_planes_ = false;
+//        go3d_icp_ = true;
+//        go3d_icp_model_to_scene_ = false;
+//        go3d_use_supervoxels_ = true;
 
-        go3d_and_icp_resolution_ = 0.005f;
+//        go3d_and_icp_resolution_ = 0.005f;
 
-        //Noise model parameters
-        max_angle_ = 70.f;
-        lateral_sigma_ = 0.0015f;
-        nm_integration_min_weight_ = 0.25f;
+//        //Noise model parameters
+//        max_angle_ = 70.f;
+//        lateral_sigma_ = 0.0015f;
+//        nm_integration_min_weight_ = 0.25f;
 
-        //Multiview refinement parameters
-        mv_icp_ = true;
-        max_keypoint_dist_mv_ = 2.5f;
-        mv_iterations_ = 5;
-        min_overlap_mv_ = 0.3f;
-        mv_keypoints_ = 0;
-        inlier_threshold_ = 0.003f;
-        max_corresp_dist_ = 0.01f;
+//        //Multiview refinement parameters
+//        mv_icp_ = true;
+//        max_keypoint_dist_mv_ = 2.5f;
+//        mv_iterations_ = 5;
+//        min_overlap_mv_ = 0.3f;
+//        mv_keypoints_ = 0;
+//        inlier_threshold_ = 0.003f;
+//        max_corresp_dist_ = 0.01f;
 
-        //Other parameters
-        output_dir_3d_results_ = "";
+//        //Other parameters
+//        output_dir_3d_results_ = "";
         distance_keypoints_get_discarded_ = 0.005*0.005;
 
-        use_table_plane_ = true;
+//        use_table_plane_ = true;
 
-        edge_vis.reset (new pcl::visualization::PCLVisualizer());
         pAccumulatedKeypoints_.reset (new pcl::PointCloud<PointT>);
         pAccumulatedKeypointNormals_.reset (new pcl::PointCloud<pcl::Normal>);
     }
@@ -220,8 +219,8 @@ public:
     //    void createEdgesFromHypothesisMatch ( Graph &grph, std::vector<Edge> &edges );
     //    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
     void createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges );
-    void calcEdgeWeight (Graph &grph, int max_distance=-1, float z_dist=3.f, float max_overlap=0.75f);
-    void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr vis);
+    void calcEdgeWeight (Graph &grph, std::vector<Edge> &edges);
+    void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr &vis);
     void constructHypothesesFromFeatureMatches(std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypothesesInput,
                                                pcl::PointCloud<PointT>::Ptr pKeypoints,
                                                pcl::PointCloud<pcl::Normal>::Ptr pKeypointNormals,
@@ -254,7 +253,7 @@ public:
                      const size_t timestamp,
                      const Eigen::Matrix4f global_transform);
 
-    void loadModels();
+//    void loadModels();
 
     // getter and setter functions
     std::string models_dir() const;

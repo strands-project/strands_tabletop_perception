@@ -67,6 +67,7 @@ public:
 //    boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;
 //    boost::shared_ptr< pcl::PointCloud<PointT> > pSiftKeypoints;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
+    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormalsMultipipe_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypotheses_;
     boost::shared_ptr< pcl::PointCloud<FeatureT > > pSiftSignatures_;
     std::vector<float> sift_keypoints_scales;
@@ -88,8 +89,8 @@ public:
     double edge_weight;
     std::string model_name;
     std::string source_id, target_id;
-    std::vector <cv::DMatch> matches;
-    bool edge_weight_has_been_calculated_;
+//    std::vector <cv::DMatch> matches;
+//    bool edge_weight_has_been_calculated_;
 };
 
 
@@ -105,9 +106,9 @@ typedef property_map<Graph, vertex_index_t>::type IndexMap;
 
 void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr vis);
 void pruneGraph (Graph &grph, size_t num_remaining_vertices=2);
-void outputgraph ( Graph& map, const char* filename );
+void outputgraph ( Graph &map, const char* filename );
 Vertex getFurthestVertex ( Graph &grph);
-void shallowCopyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target);
-void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target);
+//void shallowCopyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target);
+//void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target);
 //std::vector<Vertex> my_node_reader ( std::string filename, Graph &g )
 #endif

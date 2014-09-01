@@ -273,7 +273,7 @@ public:
         transforms = *transforms_;
     }
 
-    void setModelsAndTransforms(const std::vector<std::string> models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> transforms)
+    void setModelsAndTransforms(const std::vector<std::string> &models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> &transforms)
     {
         aligned_models_.resize(models.size());
         model_ids_.resize(models.size());
@@ -304,7 +304,7 @@ public:
         }
     }
 
-    void setModelsAndTransforms(const std::vector<ModelTPtr> models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> transforms)
+    void setModelsAndTransforms(const std::vector<ModelTPtr> &models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> &transforms)
     {
         aligned_models_.resize(models.size());
         model_ids_.resize(models.size());
@@ -317,7 +317,7 @@ public:
             typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
             pcl::transformPointCloud (*model_cloud, *model_aligned, transforms[i]);
             aligned_models_[i] = model_aligned;
-            model_ids_.push_back(models.at(i)->id_);
+            model_ids_[i] = models.at(i)->id_;
         }
 //            boost::filesystem::path modelpath(models[i]);
 //            model_ids_[i] =  modelpath.filename().string();
@@ -340,7 +340,7 @@ public:
 //        }
     }
 
-    void setInputCloud(pcl::PointCloud<PointT>::ConstPtr pInputCloud, pcl::PointCloud<pcl::Normal>::Ptr pSceneNormals = new pcl::PointCloud<pcl::Normal>())
+    void setInputCloud(const pcl::PointCloud<PointT>::ConstPtr pInputCloud, const pcl::PointCloud<pcl::Normal>::ConstPtr pSceneNormals = new pcl::PointCloud<pcl::Normal>())
     {
         pcl::copyPointCloud(*pInputCloud, *pInputCloud_);
 //        pInputCloud_ = pInputCloud;
