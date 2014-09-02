@@ -66,7 +66,7 @@ private:
     bool do_ourcvfh_;
     double chop_at_z_;
     int icp_iterations_;
-    std::vector<std::string> text_3d_;
+//    std::vector<std::string> text_3d_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypotheses_;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
     pcl::PointIndices keypointIndices_;
@@ -238,12 +238,6 @@ public:
         hypotheses = hypotheses_;
     }
 
-    void setHypotheses(const std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > &hypotheses)
-    {
-        hypotheses_ = hypotheses;
-    }
-
-
     void getKeypointsMultipipe (boost::shared_ptr<pcl::PointCloud<PointT> > &pKeypointsMultipipe ) const
     {
         pKeypointsMultipipe = pKeypointsMultipipe_;
@@ -319,44 +313,22 @@ public:
             aligned_models_[i] = model_aligned;
             model_ids_[i] = models.at(i)->id_;
         }
-//            boost::filesystem::path modelpath(models[i]);
-//            model_ids_[i] =  modelpath.filename().string();
-//            PointInTPtr pModelPCl ( new pcl::PointCloud<pcl::PointXYZRGB> );
-//            PointInTPtr pModelPClTransformed ( new pcl::PointCloud<pcl::PointXYZRGB> );
-//            PointInTPtr pModelPCl2 ( new pcl::PointCloud<pcl::PointXYZRGB> );
-//            pcl::io::loadPCDFile ( models[i], * ( pModelPCl ) );
-
-//            pcl::transformPointCloud ( *pModelPCl, *pModelPClTransformed, transforms[i] );
-
-//            pcl::VoxelGrid<pcl::PointXYZRGB> sor;
-//            float leaf = 0.005f;
-//            sor.setLeafSize ( leaf, leaf, leaf );
-//            sor.setInputCloud ( pModelPClTransformed );
-//            sor.filter ( *pModelPCl2 );
-
-//            aligned_models_[i] = pModelPCl2;
-//            //models_ = models;
-//            //transforms_ = transforms;
-//        }
     }
 
     void setInputCloud(const pcl::PointCloud<PointT>::ConstPtr pInputCloud, const pcl::PointCloud<pcl::Normal>::ConstPtr pSceneNormals = new pcl::PointCloud<pcl::Normal>())
     {
         pcl::copyPointCloud(*pInputCloud, *pInputCloud_);
-//        pInputCloud_ = pInputCloud;
         pcl::copyPointCloud(*pSceneNormals, *pSceneNormals_);
-//        pSceneNormals_ = pSceneNormals;
         model_ids_verified_.clear();
         transforms_verified_.clear();
-
         aligned_models_.clear();
         model_ids_.clear();
 
         if(transforms_)
             transforms_->clear();
 
-        if(models_)
-            models_->clear();
+//        if(models_)
+//            models_->clear();
     }
 
     void poseRefinement(boost::shared_ptr<std::vector<ModelTPtr> > models,

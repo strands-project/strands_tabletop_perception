@@ -209,27 +209,19 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
     float res = 0.005f;
 
     assert(pInputCloud_->points.size() == pSceneNormals_->points.size());
+    pInputCloudWithNormals->points.resize(pInputCloud_->points.size());
     size_t kept=0;
     for(size_t i=0; i<pInputCloud_->points.size(); i++)
     {
         if(pcl::isFinite(pInputCloud_->points[i])  && pcl::isFinite(pSceneNormals_->points[i]))
-                kept++;
-    }
-    pInputCloudWithNormals->points.resize(kept);
-
-    size_t kept_idx=0;
-    for(size_t i=0; i<pInputCloud_->points.size(); i++)
-    {
-        if(pcl::isFinite(pInputCloud_->points[i])  && pcl::isFinite(pSceneNormals_->points[i]))
         {
-            pInputCloudWithNormals->points[kept_idx].getVector3fMap() = pInputCloud_->points[i].getVector3fMap();
-            pInputCloudWithNormals->points[kept_idx].getRGBVector3i() = pInputCloud_->points[i].getRGBVector3i();
-            pInputCloudWithNormals->points[kept_idx].getNormalVector3fMap() = pSceneNormals_->points[i].getNormalVector3fMap();
-            kept_idx++;
+            pInputCloudWithNormals->points[kept].getVector3fMap() = pInputCloud_->points[i].getVector3fMap();
+            pInputCloudWithNormals->points[kept].getRGBVector3i() = pInputCloud_->points[i].getRGBVector3i();
+            pInputCloudWithNormals->points[kept].getNormalVector3fMap() = pSceneNormals_->points[i].getNormalVector3fMap();
+            kept++;
         }
     }
-
-    assert(kept==kept_idx);
+    pInputCloudWithNormals->points.resize(kept);
 
     float VOXEL_SIZE_ICP_ = res;
     pcl::VoxelGrid<pcl::PointXYZRGBNormal> voxel_grid_icp;
@@ -249,7 +241,6 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
         pInputNormals_ds->points[i].getNormalVector3fMap() = pInputCloudWithNormals_ds->points[i].getNormalVector3fMap();
     }
 
-//setColorSigma
     std::cout << "cloud is organized:" << pInputCloud_ds->isOrganized() << std::endl;
 
     {
@@ -272,7 +263,7 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
 //    ne.compute (*pInputNormals_ds);
 
     typename faat_pcl::recognition::GHVCudaWrapper<PointT> ghv;
-    ghv.setInlierThreshold(0.015f);
+    ghv.setInlierThreshold(0.01f);
     ghv.setOutlierWewight(3.f);
     ghv.setClutterWeight(5.f);
     ghv.setclutterRadius(0.03f);
@@ -351,6 +342,7 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
 //    for(size_t j=0; j < planes_found_.size(); j++)
 //        coming_from[transforms_.size() + j] = 1;
 
+    mask_hv.resize(transforms_->size ());
     for (size_t j = 0; j < transforms_->size (); j++)
     {
 //        if(coming_from[j] == 1) // it is a plane - therefore discard
@@ -362,7 +354,7 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
 ////            }
 //            continue;
 //        }
-        mask_hv.push_back(mask_hv_with_planes[j]);
+        mask_hv[j] = mask_hv_with_planes[j];
     }
     return true;
 }
