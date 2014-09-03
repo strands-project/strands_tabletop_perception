@@ -1,15 +1,20 @@
 #include <iostream>
 #include <boost/filesystem.hpp>
+#include <fstream>
+#include "ros/ros.h"
+#include <vector>
+#include <sstream>
+#include <string>
+#include <faat_pcl/utils/filesystem_utils.h>
 #include <pcl_conversions.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/io/pcd_io.h>
-#include "ros/ros.h"
-#include <faat_pcl/utils/filesystem_utils.h>
-#include <vector>
-#include <sstream>
 #include <recognition_srv_definitions/multiview_recognize.h>
 #include "scitos_apps_msgs/action_buttons.h"
 
+
+
+const std::string transform_prefix_ = "transformation_";
 
 void joyCallback ( const scitos_apps_msgs::action_buttons& msg );
 void kinectCallback ( const sensor_msgs::PointCloud2& msg );
@@ -86,6 +91,33 @@ main (int argc, char **argv)
             srv.request.cloud = pc2;
             srv.request.scene_name.data = scenes_dir;
             srv.request.view_name.data = files_intern[file_id];
+
+            std::stringstream transform_ss;
+            transform_ss << scenes_dir << "/" << transform_prefix_ << files_intern[file_id].substr(0, files_intern[file_id].length() - ext.length()) << "txt";
+            std::cout << "Checking if path " << transform_ss.str() << " for transform exists. " << std::endl;
+            if ( boost::filesystem::exists( transform_ss.str() ) )
+            {
+                std::cout << "File exists." << std::endl;
+                std::ifstream is(transform_ss.str());
+                std::istream_iterator<double> start(is), end;
+                std::vector<double> numbers(start, end);
+                std::cout << "Read " << numbers.size() << " numbers" << std::endl;
+
+                // print the numbers to stdout
+                std::cout << "Transform to world coordinate system: " << std::endl;
+                for(size_t i=0; i<numbers.size(); i++)
+                {
+                    std::cout << numbers[i];
+                    srv.request.transform.push_back(numbers[i]);
+                }
+                std::cout << std::endl;
+
+            }
+            else
+            {
+                std::cout << "File does not exist. Using it without world transform." << std::endl;
+            }
+
 
             if (mv_recognition_client.call(srv))
             {

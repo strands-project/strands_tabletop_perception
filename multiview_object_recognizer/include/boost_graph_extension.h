@@ -79,6 +79,7 @@ public:
     bool has_been_hopped_;
     double cumulative_weight_to_new_vrtx_;
     pcl::PointIndices keypointIndices_;
+    std::vector<pcl::PointCloud<PointT>::Ptr> verified_planes_;
 };
 
 class myEdge

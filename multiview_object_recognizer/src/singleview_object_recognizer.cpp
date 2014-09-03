@@ -95,7 +95,7 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
 {
     typename pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT>(*pInputCloud_));
 
-    mask_hv.clear();
+    mask_hv.resize(aligned_models_.size());
     //initialize go
     boost::shared_ptr<faat_pcl::GlobalHypothesesVerification_1<PointT, PointT> > go (
                     new faat_pcl::GlobalHypothesesVerification_1<PointT,
@@ -126,6 +126,24 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     go->setOcclusionCloud (occlusion_cloud);
     //addModels
     go->addModels (aligned_models_, true);
+
+    std::vector<pcl::PointCloud<pcl::Normal>::ConstPtr> aligned_normals;
+    aligned_normals.resize(aligned_models_.size());
+    for(size_t i=0; i<aligned_models_.size(); i++)
+    {
+        pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud_const = models_->at(i)->getNormalsAssembled (go_resolution_);
+        pcl::PointCloud<pcl::Normal>::Ptr normal_cloud(new pcl::PointCloud<pcl::Normal>(*normal_cloud_const) );
+
+        const Eigen::Matrix3f rot   = transforms_->at(i).block<3, 3> (0, 0);
+        const Eigen::Vector3f trans = transforms_->at(i).block<3, 1> (0, 3);
+        for(size_t jj=0; jj < normal_cloud->points.size(); jj++)
+        {
+            const pcl::Normal norm_pt = normal_cloud->points[jj];
+            normal_cloud->points[jj].getNormalVector3fMap() = rot * norm_pt.getNormalVector3fMap();
+        }
+        aligned_normals[i] = normal_cloud;
+    }
+    go->addNormalsClouds(aligned_normals);
 
 //    pcl::visualization::PCLVisualizer::Ptr vis_temp (new pcl::visualization::PCLVisualizer);
 //    int v1,v2;
@@ -171,6 +189,7 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
         go->verify ();
     }
     std::vector<bool> mask_hv_with_planes;
+    verified_planes_.clear();
     go->getMask (mask_hv_with_planes);
 
     std::vector<int> coming_from;
@@ -181,22 +200,143 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     for(size_t j=0; j < planes_found_.size(); j++)
         coming_from[aligned_models_.size() + j] = 1;
 
-    for (size_t j = 0; j < mask_hv_with_planes.size (); j++)
+    for (size_t j = 0; j < aligned_models_.size (); j++)
     {
-        if(coming_from[j] == 1) // it is a plane - therefore discard
-        {
-//            mask_hv[j]=0;
-            if(j < aligned_models_.size())
-            {
-                std::cerr << "Model plane not at the end of hypotheses vector!! Check this part of code again!" << std::endl;
-            }
-            continue;
-        }
-        mask_hv.push_back(mask_hv_with_planes[j]);
+        mask_hv[j]=mask_hv_with_planes[j];
     }
+    for (size_t j = 0; j < planes_found_.size(); j++)
+    {
+        if(mask_hv_with_planes[aligned_models_.size () + j])
+            verified_planes_.push_back(planes_found_[j].plane_cloud_);
+    }
+
     return true;
 }
 
+/*
+ * Correspondence grouping (clustering) for existing feature matches. If enough points (>cg_size) are
+ * in the same cluster and vote for the same model, a hypothesis (with pose estimate) is constructed.
+ */
+void Recognizer::constructHypothesesFromFeatureMatches(std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypothesesInput,
+                                                           pcl::PointCloud<PointT>::Ptr pKeypoints,
+                                                           pcl::PointCloud<pcl::Normal>::Ptr pKeypointNormals,
+                                                           std::vector<Hypothesis<PointT> > &hypothesesOutput,
+                                                           std::vector <pcl::Correspondences>  &corresp_clusters_hyp)
+{
+    boost::shared_ptr < pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
+    boost::shared_ptr < faat_pcl::GraphGeometricConsistencyGrouping<PointT, PointT> > gcg_alg (
+                new faat_pcl::GraphGeometricConsistencyGrouping<
+                PointT, PointT>);
+
+    aligned_models_.clear();
+    model_ids_.clear();
+    transforms_->clear();
+    models_->clear();
+
+    int cg_size = 7;
+    gcg_alg->setGCThreshold (cg_size);
+    gcg_alg->setGCSize (0.015);
+    gcg_alg->setRansacThreshold (0.015);
+    gcg_alg->setUseGraph (true);
+    gcg_alg->setDistForClusterFactor (0);
+    gcg_alg->setMaxTaken(2);
+    gcg_alg->setMaxTimeForCliquesComputation(100);
+    gcg_alg->setDotDistance (0.2);
+
+    cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
+
+    hypothesesOutput.clear();
+    typename std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_map;
+    std::cout << "I have " << hypothesesInput.size() << " hypotheses. " << std::endl;
+
+#pragma omp parallel
+    for (it_map = hypothesesInput.begin (); it_map != hypothesesInput.end (); it_map++)
+    {
+        if(it_map->second.correspondences_to_inputcloud->size() < 3)
+            continue;
+
+        std::vector <pcl::Correspondences> corresp_clusters;
+        std::string id = it_map->second.model_->id_;
+        std::cout << id << ": " << it_map->second.correspondences_to_inputcloud->size() << std::endl;
+        cast_cg_alg->setSceneCloud (pKeypoints);
+        cast_cg_alg->setInputCloud ((*it_map).second.correspondences_pointcloud);
+
+        if(cast_cg_alg->getRequiresNormals())
+        {
+            std::cout << "CG alg requires normals..." << ((*it_map).second.normals_pointcloud)->points.size() << " " << pKeypointNormals->points.size() << std::endl;
+            assert(pKeypoints->points.size() == pKeypointNormals->points.size());
+            cast_cg_alg->setInputAndSceneNormals((*it_map).second.normals_pointcloud, pKeypointNormals);
+        }
+        //we need to pass the keypoints_pointcloud and the specific object hypothesis
+
+        cast_cg_alg->setModelSceneCorrespondences ((*it_map).second.correspondences_to_inputcloud);
+        cast_cg_alg->cluster (corresp_clusters);
+
+        std::cout << "Instances:" << corresp_clusters.size () << " Total correspondences:" << (*it_map).second.correspondences_to_inputcloud->size () << " " << it_map->first << std::endl;
+        for (size_t i = 0; i < corresp_clusters.size (); i++)
+        {
+            //std::cout << "size cluster:" << corresp_clusters[i].size() << std::endl;
+            Eigen::Matrix4f best_trans;
+            typename pcl::registration::TransformationEstimationSVD < PointT, PointT > t_est;
+            t_est.estimateRigidTransformation (*(*it_map).second.correspondences_pointcloud, *pKeypoints, corresp_clusters[i], best_trans);
+
+            Hypothesis<PointT> ht_temp ( (*it_map).second.model_, best_trans);
+            hypothesesOutput.push_back(ht_temp);
+            corresp_clusters_hyp.push_back(corresp_clusters[i]);
+            models_->push_back((*it_map).second.model_);
+            model_ids_.push_back((*it_map).second.model_->id_);
+            transforms_->push_back(best_trans);
+
+            ConstPointInTPtr model_cloud = (*it_map).second.model_->getAssembled (go_resolution_);
+            typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
+            pcl::transformPointCloud (*model_cloud, *model_aligned, best_trans);
+            aligned_models_.push_back(model_aligned);
+        }
+    }
+}
+
+void Recognizer::preFilterWithFSV(const pcl::PointCloud<PointT>::ConstPtr scene_cloud, std::vector<float> &fsv)
+{
+    pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT> (*scene_cloud));
+    fsv.resize(models_->size());
+
+    if(occlusion_cloud->isOrganized())
+    {
+        //compute FSV for the model and occlusion_cloud
+        faat_pcl::registration::VisibilityReasoning<PointT> vr (525.f, 640, 480);
+        vr.setThresholdTSS (0.01f);
+
+        for(size_t i=0; i < models_->size(); i++)
+        {
+            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = models_->at(i)->getNormalsAssembled (go_resolution_);
+            typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>);
+            faat_pcl::utils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms_->at(i));
+
+            if(models_->at(i)->getFlipNormalsBasedOnVP())
+            {
+                const Eigen::Vector3f viewpoint = Eigen::Vector3f(0,0,0);
+
+                for(size_t kk=0; kk < aligned_models_[i]->points.size(); kk++)
+                {
+                    Eigen::Vector3f n = normal_aligned->points[kk].getNormalVector3fMap();
+                    n.normalize();
+                    const Eigen::Vector3f p = aligned_models_[i]->points[kk].getVector3fMap();
+                    Eigen::Vector3f d = viewpoint - p;
+                    d.normalize();
+                    if(n.dot(d) < 0)
+                    {
+                        normal_aligned->points[kk].getNormalVector3fMap() = normal_aligned->points[kk].getNormalVector3fMap() * -1;
+                    }
+                }
+            }
+            fsv[i] = vr.computeFSVWithNormals (occlusion_cloud, aligned_models_[i], normal_aligned);
+        }
+    }
+    else
+    {
+        PCL_ERROR("Occlusion cloud is not organized. Cannot compute FSV.");
+    }
+}
 
 bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
 {

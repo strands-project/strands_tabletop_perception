@@ -61,7 +61,7 @@ if __name__ == '__main__':
                                         for col in range(0,4):
                                                 transf_1d[4*row + col] = trans_homo[row][col]
 
-                                rospy.wait_for_service("/segment_table")
+				rospy.wait_for_service("/segment_table")
                                 try:
                                         table_segment_client = rospy.ServiceProxy("/segment_table", SegmentTable)
                                         resp = table_segment_client(pointcloud, scene_name, transf_1d)

@@ -7,19 +7,15 @@
 #include <pcl/io/pcd_io.h>
 ros::ServiceClient client_;
 boost::shared_ptr<ros::NodeHandle> n_;
-ros::ServiceServer ros_mv_rec_server_;
-ros::Publisher vis_pc_pub_;
 
 int main (int argc, char **argv)
 {
     std::string models_dir;
     bool visualize_output;
-    bool go_3d;
+    bool scene_to_scene;
     int icp_iter;
     int opt_type;
-    std::string gt_or_ouput_dir;
     double chop_at_z;
-    int mv_keypoints;
     std::string training_dir_sift, training_dir_shot, sift_structure, training_dir_ourcvfh;
     bool do_sift, do_ourcvfh, do_shot, ignore_color;
 
@@ -32,10 +28,8 @@ int main (int argc, char **argv)
     }
 
     n_->getParam ( "visualize_output", visualize_output);
-    n_->getParam ( "go_3d", go_3d);
-    n_->getParam ( "gt_or_output_dir", gt_or_ouput_dir);
+    n_->getParam ( "scene_to_scene", scene_to_scene);
     n_->getParam ( "icp_iterations", icp_iter);
-    n_->getParam ( "mv_keypoints", mv_keypoints);
     n_->getParam ( "opt_type", opt_type);
     n_->getParam ( "chop_z", chop_at_z);
 
@@ -99,23 +93,23 @@ int main (int argc, char **argv)
     pSingleview_recognizer->initialize();
 
 
-
     worldRepresentation myWorld;
     myWorld.setModels_dir(models_dir);
     myWorld.setVisualize_output(visualize_output);
-    myWorld.setGo_3d(go_3d);
-    myWorld.setGt_or_ouput_dir(gt_or_ouput_dir);
     myWorld.setIcp_iter(icp_iter);
-    myWorld.setMv_keypoints(mv_keypoints);
     myWorld.setOpt_type(opt_type);
     myWorld.setChop_at_z(chop_at_z);
     myWorld.setPSingleview_recognizer(pSingleview_recognizer);
     myWorld.setSift(sift);
+    myWorld.set_scene_to_scene(scene_to_scene);
 
     //client_ = n_->serviceClient<recognition_srv_definitions::recognize> ( "/recognition_service/mp_recognition" );
-    ros_mv_rec_server_ = n_->advertiseService("multiview_recognotion_servcice", &worldRepresentation::recognize, &myWorld);
+    ros::ServiceServer ros_mv_rec_server;
+    ros_mv_rec_server = n_->advertiseService("multiview_recognotion_servcice", &worldRepresentation::recognize, &myWorld);
 
-    vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "test", 0 );
+    ros::Publisher vis_pc_pub;
+    vis_pc_pub = n_->advertise<sensor_msgs::PointCloud2>( "test", 0 );
+    myWorld.set_vis_pc_pub(vis_pc_pub);
 
     ROS_INFO("Multiview object recognizer is ready to get service calls.");
     ros::spin();

@@ -11,18 +11,13 @@ multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_n
     }
 
     multiviewGraph newGraph;
-//    newGraph.setModels_dir(models_dir_);
     newGraph.setVisualize_output(visualize_output_);
-//    newGraph.setGo_3d(go_3d_);
-    newGraph.setGt_or_ouput_dir(gt_or_ouput_dir_);
     newGraph.setIcp_iter(icp_iter_);
-//    newGraph.setMv_keypoints(mv_keypoints_);
-//    newGraph.setOpt_type(opt_type_);
     newGraph.setChop_at_z(chop_at_z_);
     newGraph.setSceneName(scene_name);
-//    newGraph.loadModels();
     newGraph.setPSingleview_recognizer(pSingleview_recognizer_);
     newGraph.setSift(sift_);
+    newGraph.set_scene_to_scene(scene_to_scene_);
     graph_v.push_back(newGraph);
     return graph_v.back();
 }
@@ -79,22 +74,47 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
         mv_recognize_error = currentGraph.recognize(pInputCloud, hyp_transforms_local, hyp_model_ids, view_name, timestamp);
     }
 
-//    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
-//    for(size_t hyp_id = 0; hyp_id < hyp_model_ids.size(); hyp_id++)
-//    {
-//        typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
-//        typename pcl::PointCloud<PointT>::Ptr pModel_aligned ( new pcl::PointCloud<PointT> );
-//        pcl::io::loadPCDFile ( hyp_model_ids[hyp_id], *pModelPCl );
-//        pcl::transformPointCloud ( *pModelPCl, *pModel_aligned, global_trans * hyp_transforms_local[hyp_id] );
-//        *pRecognizedModels += *pModel_aligned;
-//    }
+    std::vector<ModelTPtr> models;
+    std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > transforms;
+    currentGraph.getVerifiedHypotheses(models, transforms);
 
-//    sensor_msgs::PointCloud2  pc2;
-//    pcl::toROSMsg (*pRecognizedModels, pc2);
-//    pc2.header.frame_id = "map";
-//    pc2.header.stamp = req.timestamp.data;
-//    pc2.is_dense = false;
-//    vis_pc_pub_.publish(pc2);
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
+    std::cout << "In the most current vertex I detected " << models.size() << " verified models. " << std::endl;
+    for(size_t i = 0; i < models.size(); i++)
+    {
+        ConstPointInTPtr pModelCloud = models.at (i)->getAssembled (0.005f);
+        typename pcl::PointCloud<PointT>::Ptr pModelAligned (new pcl::PointCloud<PointT>);
+        if(req.transform.size() == 16)
+            pcl::transformPointCloud (*pModelCloud, *pModelAligned, global_trans * transforms[i]);
+        else
+            pcl::transformPointCloud (*pModelCloud, *pModelAligned, transforms[i]);
+        *pRecognizedModels += *pModelAligned;
+
+        std_msgs::String ros_string;
+        ros_string.data = models.at(i)->id_;
+        response.ids.push_back(ros_string);
+
+        Eigen::Matrix4f trans = transforms[i];
+        geometry_msgs::Transform tt;
+        tt.translation.x = trans(0,3);
+        tt.translation.y = trans(1,3);
+        tt.translation.z = trans(2,3);
+
+        Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
+        Eigen::Quaternionf q(rotation);
+        tt.rotation.x = q.x();
+        tt.rotation.y = q.y();
+        tt.rotation.z = q.z();
+        tt.rotation.w = q.w();
+        response.transforms.push_back(tt);
+    }
+
+    sensor_msgs::PointCloud2  pc2;
+    pcl::toROSMsg (*pRecognizedModels, pc2);
+    pc2.header.frame_id = "map";
+    pc2.header.stamp = req.timestamp.data;
+    pc2.is_dense = false;
+    vis_pc_pub_.publish(pc2);
 
     return mv_recognize_error;
 }
@@ -121,16 +141,6 @@ void worldRepresentation::setVisualize_output(bool visualize_output)
     visualize_output_ = visualize_output;
 }
 
-bool worldRepresentation::go_3d() const
-{
-    return go_3d_;
-}
-
-void worldRepresentation::setGo_3d(bool go_3d)
-{
-    go_3d_ = go_3d;
-}
-
 int worldRepresentation::opt_type() const
 {
     return opt_type_;
@@ -139,16 +149,6 @@ int worldRepresentation::opt_type() const
 void worldRepresentation::setOpt_type(int opt_type)
 {
     opt_type_ = opt_type;
-}
-
-std::string worldRepresentation::gt_or_ouput_dir() const
-{
-    return gt_or_ouput_dir_;
-}
-
-void worldRepresentation::setGt_or_ouput_dir(const std::string &gt_or_ouput_dir)
-{
-    gt_or_ouput_dir_ = gt_or_ouput_dir;
 }
 
 double worldRepresentation::chop_at_z() const
@@ -160,17 +160,6 @@ void worldRepresentation::setChop_at_z(double chop_at_z)
 {
     chop_at_z_ = chop_at_z;
 }
-
-int worldRepresentation::mv_keypoints() const
-{
-    return mv_keypoints_;
-}
-
-void worldRepresentation::setMv_keypoints(int mv_keypoints)
-{
-    mv_keypoints_ = mv_keypoints;
-}
-
 
 std::string worldRepresentation::models_dir() const
 {

@@ -31,6 +31,7 @@
 #include <boost/lexical_cast.hpp>
 #include "segmenter.h"
 #include "recognition_srv_definitions/recognize.h"
+#include "boost_graph_extension.h"
 
 
 struct camPosConstraints
@@ -82,6 +83,7 @@ private:
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr> aligned_models_;
     std::vector<std::string> model_ids_;
     std::vector<faat_pcl::PlaneModel<PointT> > planes_found_;
+    std::vector<pcl::PointCloud<PointT>::Ptr> verified_planes_;
     float go_resolution_;
     bool add_planes_;
     int knn_shot_;
@@ -122,6 +124,11 @@ public:
     bool recognize ();
 
     void initialize();
+
+    void getVerifiedPlanes(std::vector<pcl::PointCloud<PointT>::Ptr> &planes) const
+    {
+        planes = verified_planes_;
+    }
 
     std::string training_dir_sift() const
     {
@@ -331,10 +338,9 @@ public:
 //            models_->clear();
     }
 
-    void poseRefinement(boost::shared_ptr<std::vector<ModelTPtr> > models,
-                        boost::shared_ptr<std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > > transforms)
+    void poseRefinement()
     {
-        multi_recog_->getPoseRefinement(models, transforms);
+        multi_recog_->getPoseRefinement(models_, transforms_);
     }
 
     bool hypothesesVerification(std::vector<bool> &mask_hv);
@@ -347,6 +353,14 @@ public:
     void constructHypotheses();
     bool do_shot() const;
     void setDo_shot(bool do_shot);
+
+    void preFilterWithFSV(const pcl::PointCloud<PointT>::ConstPtr scene_cloud, std::vector<float> &fsv);
+
+    void constructHypothesesFromFeatureMatches(std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypothesesInput,
+                                               pcl::PointCloud<PointT>::Ptr pKeypoints,
+                                               pcl::PointCloud<pcl::Normal>::Ptr pKeypointNormals,
+                                               std::vector<Hypothesis<PointT> > &hypothesesOutput,
+                                               std::vector <pcl::Correspondences> &corresp_clusters);
 };
 
 #endif //SINGLEVIEW_OBJECT_RECOGNIZER_H

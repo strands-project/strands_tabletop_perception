@@ -10,40 +10,41 @@ class worldRepresentation
 private:
     boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     std::vector <multiviewGraph > graph_v;
-    bool visualize_output_;
-    bool go_3d_;
+    bool visualize_output_, scene_to_scene_;
     int icp_iter_;
     int opt_type_;
-    std::string gt_or_ouput_dir_;
     double chop_at_z_;
-    int mv_keypoints_;
     std::string models_dir_;
     cv::Ptr<SiftGPU> sift_;
+    ros::Publisher vis_pc_pub_;
 
 public:
     bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
     multiviewGraph& get_current_graph(const std::string scene_name);
 
     // getter and setter functions
+    void set_vis_pc_pub(const ros::Publisher &vis_pc_pub)
+    {
+        vis_pc_pub_ = vis_pc_pub;
+    }
+
     int icp_iter() const;
     void setIcp_iter(int icp_iter);
     bool visualize_output() const;
     void setVisualize_output(bool visualize_output);
-    bool go_3d() const;
-    void setGo_3d(bool go_3d);
     int opt_type() const;
     void setOpt_type(int opt_type);
-    std::string gt_or_ouput_dir() const;
-    void setGt_or_ouput_dir(const std::string &gt_or_ouput_dir);
     double chop_at_z() const;
     void setChop_at_z(double chop_at_z);
-    int mv_keypoints() const;
-    void setMv_keypoints(int mv_keypoints);
     std::string models_dir() const;
     void setModels_dir(const std::string &models_dir);
     void setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value);
     cv::Ptr<SiftGPU> sift() const;
     void setSift(const cv::Ptr<SiftGPU> &sift);
+    void set_scene_to_scene(const bool scene_to_scene)
+    {
+        scene_to_scene_ = scene_to_scene;
+    }
 };
 
 #endif
