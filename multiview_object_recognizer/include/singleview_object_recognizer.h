@@ -65,14 +65,14 @@ private:
     bool do_sift_;
     bool do_shot_;
     bool do_ourcvfh_;
-    double chop_at_z_;
+
     int icp_iterations_;
-//    std::vector<std::string> text_3d_;
+    int icp_type_;
+    float icp_voxel_size_;
+
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypotheses_;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
     pcl::PointIndices keypointIndices_;
-    int cg_size_;
-    bool ignore_color_;
     cv::Ptr<SiftGPU> sift_;
     pcl::PointCloud<PointT>::Ptr pInputCloud_;
     pcl::PointCloud<pcl::Normal>::Ptr pSceneNormals_;
@@ -84,9 +84,30 @@ private:
     std::vector<std::string> model_ids_;
     std::vector<faat_pcl::PlaneModel<PointT> > planes_found_;
     std::vector<pcl::PointCloud<PointT>::Ptr> verified_planes_;
-    float go_resolution_;
     bool add_planes_;
     int knn_shot_;
+
+    struct hv_params{
+            float resolution_;
+            float inlier_threshold_;
+            float radius_clutter_;
+            float regularizer_;
+            float clutter_regularizer_;
+            float occlusion_threshold_;
+            int optimizer_type_;
+            float color_sigma_l_;
+            float color_sigma_ab_;
+    }hv_params_;
+
+    struct cg_params{
+        int cg_size_threshold_;
+        float cg_size_;
+        float ransac_threshold_;
+        float dist_for_clutter_factor_;
+        int max_taken_;
+        float max_time_for_cliques_computation_;
+        float dot_distance_;
+    }cg_params_;
 
 #ifdef SOC_VISUALIZE
     boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
@@ -99,16 +120,34 @@ public:
     Recognizer ()
     {
         //default values
-        chop_at_z_ = 1.5;
         do_sift_ = true;
         do_shot_ = false;
         do_ourcvfh_ = false;
+
         icp_iterations_ = 0;
-        cg_size_ = 3;
-        go_resolution_ = 0.005f;
+        icp_type_ = 1;
+        icp_voxel_size_ = 0.005;
+
+        hv_params_.resolution_ = 0.005f;
+        hv_params_.inlier_threshold_ = 0.015;
+        hv_params_.radius_clutter_ = 0.03;
+        hv_params_.regularizer_ = 3;
+        hv_params_.clutter_regularizer_ = 5;
+        hv_params_.occlusion_threshold_ = 0.01;
+        hv_params_.optimizer_type_ = 0;
+        hv_params_.color_sigma_l_ = 0.5;
+        hv_params_.color_sigma_ab_ = 0.5;
+
+        cg_params_.cg_size_threshold_ = 3;
+        cg_params_.cg_size_ = 0.015;
+        cg_params_.ransac_threshold_ = 0.015;
+        cg_params_.dist_for_clutter_factor_ = 0;
+        cg_params_.max_taken_ = 2;
+        cg_params_.max_time_for_cliques_computation_ = 100;
+        cg_params_.dot_distance_ = 0.2;
+
         add_planes_ = true;
         knn_shot_ = 1;
-
 
         pInputCloud_.reset(new pcl::PointCloud<PointT>);
         pSceneNormals_.reset(new pcl::PointCloud<pcl::Normal>);
@@ -120,6 +159,88 @@ public:
         vis_->createViewPort(0.66,0,1,1.f, v3_);
 #endif
     }
+
+    void set_hv_resolution(const float res)
+    {
+        hv_params_.resolution_ = res;
+    }
+
+    void set_hv_inlier_threshold(const float thres)
+    {
+        hv_params_.inlier_threshold_ = thres;
+    }
+
+    void set_hv_radius_clutter(const float radius_clutter)
+    {
+        hv_params_.radius_clutter_ = radius_clutter;
+    }
+
+    void set_hv_regularizer(const float regularizer)
+    {
+        hv_params_.regularizer_ = regularizer;
+    }
+
+    void set_hv_clutter_regularizer (const float clutter_reg)
+    {
+        hv_params_.clutter_regularizer_ = clutter_reg;
+    }
+
+    void set_hv_occlusion_threshold ( const float occ_thresh)
+    {
+        hv_params_.occlusion_threshold_ = occ_thresh;
+    }
+
+    void set_hv_optimizer_type (const int opt_type)
+    {
+        hv_params_.optimizer_type_ = opt_type;
+    }
+
+    void set_hv_color_sigma_L ( const float sigma_l)
+    {
+        hv_params_.color_sigma_l_ = sigma_l;
+    }
+
+    void set_hv_color_sigma_AB ( const float sigma_ab)
+    {
+        hv_params_.color_sigma_ab_ = sigma_ab;
+    }
+
+
+    void set_cg_size_threshold ( const int cg_size)
+    {
+        cg_params_.cg_size_threshold_ = cg_size;
+    }
+
+    void set_cg_size (const float cg_size)
+    {
+        cg_params_.cg_size_ = cg_size;
+    }
+
+    void set_cg_ransac_threshold ( const float ransac_thresh)
+    {
+        cg_params_.ransac_threshold_ = ransac_thresh;
+    }
+
+    void set_cg_dist_for_clutter_factor ( const float dist_for_clutter_factor )
+    {
+        cg_params_.dist_for_clutter_factor_ = dist_for_clutter_factor;
+    }
+
+    void set_cg_max_taken (const int max_taken)
+    {
+        cg_params_.max_taken_ = max_taken;
+    }
+
+    void set_cg_max_time_for_cliques_computation (const float max_time)
+    {
+        cg_params_.max_time_for_cliques_computation_ = max_time;
+    }
+
+    void set_cg_dot_distance (const float dist)
+    {
+        cg_params_.dot_distance_ = dist;
+    }
+
 
     bool recognize ();
 
@@ -185,39 +306,25 @@ public:
         return do_sift_;
     }
 
-    void setDo_sift(bool do_sift)
+    void set_do_sift(const bool do_sift)
     {
         do_sift_ = do_sift;
     }
 
-    double chop_at_z() const
-    {
-        return chop_at_z_;
-    }
-
-    void setChop_at_z(double chop_at_z)
-    {
-        chop_at_z_ = chop_at_z;
-    }
-
-    int icp_iterations() const
-    {
-        return icp_iterations_;
-    }
-
-    void setIcp_iterations(int icp_iterations)
+    void set_icp_iterations(int icp_iterations)
     {
         icp_iterations_ = icp_iterations;
     }
 
-    bool ignore_color() const
+
+    void set_icp_type (const int type)
     {
-        return ignore_color_;
+        icp_type_ = type;
     }
 
-    void setIgnore_color(bool ignore_color)
+    void set_icp_voxel_size (const float size)
     {
-        ignore_color_ = ignore_color;
+        icp_voxel_size_ = size;
     }
 
     bool do_ourcvfh() const
@@ -225,9 +332,19 @@ public:
         return do_ourcvfh_;
     }
 
-    void setDo_ourcvfh(bool do_ourcvfh)
+    void set_do_ourcvfh(const bool do_ourcvfh)
     {
         do_ourcvfh_ = do_ourcvfh;
+    }
+
+    bool do_shot() const
+    {
+        return do_shot_;
+    }
+
+    void set_do_shot(const bool do_shot)
+    {
+        do_shot_ = do_shot;
     }
 
     cv::Ptr<SiftGPU> getSift() const
@@ -235,7 +352,7 @@ public:
         return sift_;
     }
 
-    void setSift(const cv::Ptr<SiftGPU> &value)
+    void set_sift(const cv::Ptr<SiftGPU> &value)
     {
         sift_ = value;
     }
@@ -314,7 +431,7 @@ public:
 
         for(size_t i=0; i<models.size(); i++)
         {
-            ConstPointInTPtr model_cloud = models.at (i)->getAssembled (go_resolution_);
+            ConstPointInTPtr model_cloud = models.at (i)->getAssembled (hv_params_.resolution_);
             typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
             pcl::transformPointCloud (*model_cloud, *model_aligned, transforms[i]);
             aligned_models_[i] = model_aligned;
@@ -351,8 +468,6 @@ public:
     void visualizeHypotheses();
 
     void constructHypotheses();
-    bool do_shot() const;
-    void setDo_shot(bool do_shot);
 
     void preFilterWithFSV(const pcl::PointCloud<PointT>::ConstPtr scene_cloud, std::vector<float> &fsv);
 

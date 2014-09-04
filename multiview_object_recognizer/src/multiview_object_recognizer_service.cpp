@@ -15,16 +15,6 @@ void multiviewGraph::setVisualize_output(bool visualize_output)
     visualize_output_ = visualize_output;
 }
 
-int multiviewGraph::icp_iter() const
-{
-    return icp_iter_;
-}
-
-void multiviewGraph::setIcp_iter(int icp_iter)
-{
-    icp_iter_ = icp_iter;
-}
-
 double multiviewGraph::chop_at_z() const
 {
     return chop_at_z_;
@@ -350,7 +340,7 @@ extendFeatureMatchesRecursive ( Graph &grph,
             }
             else
             {
-                PCL_WARN("Something is messed up with the transformation.");
+                PCL_ERROR("Something is messed up with the transformation.");
             }
 
             //------ Transform keypoints and rotate normals----------
@@ -507,7 +497,7 @@ extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypo
         }
     }
 
-    for ( std::vector<Hypothesis<PointT>>::const_iterator it_hyp = grph[current_vertex].hypothesis.begin (); it_hyp != grph[current_vertex].hypothesis.end (); ++it_hyp )
+    for ( std::vector<Hypothesis<PointT>>::const_iterator it_hyp = grph[current_vertex].hypothesis_sv_.begin (); it_hyp != grph[current_vertex].hypothesis_sv_.end (); ++it_hyp )
     {
         if(!it_hyp->verified_)
             continue;
@@ -555,12 +545,12 @@ void multiviewGraph::visualizeGraph(const Graph &grph, pcl::visualization::PCLVi
         cloud_name << "view_cloud_" << grph[*vp.first].pScenePCl->header.frame_id;
         vis->addPointCloud<pcl::PointXYZRGB> ( grph[*vp.first].pScenePCl_f, handler_rgb, cloud_name.str (), viewportNr[view_id * vis_rows + 0] );
 
-        for ( size_t hyp_id = 0; hyp_id < grph[*vp.first].hypothesis.size(); hyp_id++ )
+        for ( size_t hyp_id = 0; hyp_id < grph[*vp.first].hypothesis_sv_.size(); hyp_id++ )
         {
             //visualize models
-            //            std::string model_id = grph[*vp.first].hypothesis[hyp_id].model_id_;
-            Eigen::Matrix4f trans = grph[*vp.first].hypothesis[hyp_id].transform_;
-            ModelTPtr model = grph[*vp.first].hypothesis[hyp_id].model_;
+            //            std::string model_id = grph[*vp.first].hypothesis_sv_[hyp_id].model_id_;
+            Eigen::Matrix4f trans = grph[*vp.first].hypothesis_sv_[hyp_id].transform_;
+            ModelTPtr model = grph[*vp.first].hypothesis_sv_[hyp_id].model_;
 
             std::stringstream name;
             name << cloud_name.str() << "_sv__hypothesis_" << hyp_id;
@@ -572,7 +562,7 @@ void multiviewGraph::visualizeGraph(const Graph &grph, pcl::visualization::PCLVi
             pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler1 ( model_aligned );
             vis->addPointCloud<PointT> ( model_aligned, rgb_handler1, name.str (), viewportNr[view_id * vis_rows + 1] );
 
-            if ( grph[*vp.first].hypothesis[hyp_id].verified_ )	//--show-verified-extended-hypotheses
+            if ( grph[*vp.first].hypothesis_sv_[hyp_id].verified_ )	//--show-verified-extended-hypotheses
             {
                 name << "__verified";
                 pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2 ( model_aligned );
@@ -582,7 +572,7 @@ void multiviewGraph::visualizeGraph(const Graph &grph, pcl::visualization::PCLVi
         for(size_t plane_id=0; plane_id < grph[*vp.first].verified_planes_.size(); plane_id++)
         {
             std::stringstream plane_name;
-            plane_name << "plane_sv_" << plane_id;
+            plane_name << "plane_sv_" << plane_id << "_vrtx" << grph[*vp.first].pScenePCl->header.frame_id;
             pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler ( grph[*vp.first].verified_planes_[plane_id] );
             vis->addPointCloud<PointT> ( grph[*vp.first].verified_planes_[plane_id], rgb_handler, plane_name.str (), viewportNr[view_id * vis_rows + 2] );
         }
@@ -613,7 +603,7 @@ void multiviewGraph::visualizeGraph(const Graph &grph, pcl::visualization::PCLVi
         for(size_t plane_id=0; plane_id < grph[*vp.first].verified_planes_.size(); plane_id++)
         {
             std::stringstream plane_name;
-            plane_name << "plane_mv_" << plane_id;
+            plane_name << "plane_mv_" << plane_id << "_vrtx" << grph[*vp.first].pScenePCl->header.frame_id;
             pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler ( grph[*vp.first].verified_planes_[plane_id] );
             vis->addPointCloud<PointT> ( grph[*vp.first].verified_planes_[plane_id], rgb_handler, plane_name.str (), viewportNr[view_id * vis_rows + 4] );
         }
@@ -643,16 +633,16 @@ extendHypothesis ( Graph &grph )
                 if ( grph[src].pScenePCl->header.frame_id != grph[*vp.first].pScenePCl->header.frame_id )
                     PCL_WARN("something's wrong");
 
-                size_t hypothesis_length_before_extension = grph[src].hypothesis.size ();
+                size_t hypothesis_length_before_extension = grph[src].hypothesis_sv_.size ();
 
-                for ( std::vector<Hypothesis<PointT> >::iterator it_hypB = grph[targ].hypothesis.begin (); it_hypB != grph[targ].hypothesis.end (); ++it_hypB )
+                for ( std::vector<Hypothesis<PointT> >::iterator it_hypB = grph[targ].hypothesis_sv_.begin (); it_hypB != grph[targ].hypothesis_sv_.end (); ++it_hypB )
                 {
                     bool hypotheses_from_view_exist = false;
 
                     //---check-if-hypotheses-from-updating-view-already-exist-in-current-view------------------------
                     for ( size_t id_hypA = 0; id_hypA < hypothesis_length_before_extension; id_hypA++ )
                     {
-                        if ( grph[src].hypothesis[id_hypA].origin_ == it_hypB->origin_ )
+                        if ( grph[src].hypothesis_sv_[id_hypA].origin_ == it_hypB->origin_ )
                         {
                             hypotheses_from_view_exist = true;
                         }
@@ -670,7 +660,7 @@ extendHypothesis ( Graph &grph )
                         }
 
                         Hypothesis<PointT> ht_temp ( it_hypB->model_id_, tf, it_hypB->origin_, true );
-                        grph[*vp.first].hypothesis.push_back ( ht_temp );
+                        grph[*vp.first].hypothesis_sv_.push_back ( ht_temp );
                         something_has_been_updated = true;
                     }
                 }
@@ -690,10 +680,10 @@ createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std
             continue;
         }
 
-        ROS_INFO("Checking vertex %s, which has %ld hypotheses.", grph[*vertexItA].pScenePCl->header.frame_id.c_str(), grph[*vertexItA].hypothesis.size());
-        for ( std::vector<Hypothesis<PointT> >::iterator it_hypA = grph[*vertexItA].hypothesis.begin (); it_hypA != grph[*vertexItA].hypothesis.end (); ++it_hypA )
+        ROS_INFO("Checking vertex %s, which has %ld hypotheses.", grph[*vertexItA].pScenePCl->header.frame_id.c_str(), grph[*vertexItA].hypothesis_sv_.size());
+        for ( std::vector<Hypothesis<PointT> >::iterator it_hypA = grph[*vertexItA].hypothesis_sv_.begin (); it_hypA != grph[*vertexItA].hypothesis_sv_.end (); ++it_hypA )
         {
-            for ( std::vector<Hypothesis<PointT> >::iterator it_hypB = grph[new_vertex].hypothesis.begin (); it_hypB != grph[new_vertex].hypothesis.end (); ++it_hypB )
+            for ( std::vector<Hypothesis<PointT> >::iterator it_hypB = grph[new_vertex].hypothesis_sv_.begin (); it_hypB != grph[new_vertex].hypothesis_sv_.end (); ++it_hypB )
             {
                 if ( it_hypB->model_id_.compare (it_hypA->model_id_ ) == 0 ) //model exists in other file (same id) --> create connection
                 {
@@ -809,25 +799,32 @@ Eigen::Matrix4f GeometryMsgToMatrix4f(const geometry_msgs::Transform & tt)
  */
 bool multiviewGraph::recognize
 (const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pInputCloud,
- std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &hyp_transforms_local,
- std::vector<std::string> &hyp_model_ids,
  const std::string view_name,
  const size_t timestamp,
  const Eigen::Matrix4f global_transform)
 {
     use_robot_pose_ = true;
     current_global_transform_ = global_transform;
-    recognize(pInputCloud, hyp_transforms_local, hyp_model_ids, view_name, timestamp);
+    recognize(pInputCloud, view_name, timestamp);
 }
 
 
 bool multiviewGraph::recognize
 (const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pInputCloud,
- std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &hyp_transforms_local,
- std::vector<std::string> &hyp_model_ids,
  const std::string view_name,
  const size_t timestamp)
 {
+    std::cout << "=================================================================" << std::endl <<
+                 "Started recognition for view " << view_name << " in scene " << scene_name_ << " with timestamp " << timestamp <<
+                 " and following settings for mv_recognizer: " << std::endl <<
+                 "***Max vertices kept in graph: " << max_vertices_in_graph_ << std::endl <<
+                 "***euclidean distance keypoints get discarded during extension: " << distance_keypoints_get_discarded_ << std::endl <<
+                 "***chop at z: " << chop_at_z_ << std::endl <<
+                 "***scene to scene calculation: " << scene_to_scene_ << std::endl <<
+                 "***robot pose for transform calculation: " << use_robot_pose_ << std::endl <<
+                 "=========================================================" << std::endl << std::endl;
+
+
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals_f (new pcl::PointCloud<pcl::Normal> );
 
     assert(pInputCloud->width == 640 && pInputCloud->height == 480);
@@ -837,6 +834,8 @@ bool multiviewGraph::recognize
     //    grph_[vrtx].pScenePCl = pInputCloud;
     grph_[vrtx].pScenePCl->header.stamp = timestamp;
     grph_[vrtx].pScenePCl->header.frame_id = view_name;
+    most_current_view_id_ = view_name;
+
     if(use_robot_pose_)
         grph_[vrtx].transform_to_world_co_system_ = current_global_transform_;
 
@@ -940,7 +939,7 @@ bool multiviewGraph::recognize
         pSingleview_recognizer_->constructHypothesesFromFeatureMatches(grph_[vrtx].hypotheses_,
                                                                    grph_[vrtx].pKeypointsMultipipe_,
                                                                    grph_[vrtx].pKeypointNormalsMultipipe_,
-                                                                   grph_[vrtx].hypothesis,
+                                                                   grph_[vrtx].hypothesis_sv_,
                                                                    corresp_clusters_sv);
     }
 //    std::vector<float> fsv_mask_sv;
@@ -954,9 +953,9 @@ bool multiviewGraph::recognize
 //            std::cout << "fsv " << i << ": " << fsv_mask_sv[i] << std::endl;
 //            std::stringstream model_id;
 //            model_id << "cloud " << i;
-//            ConstPointInTPtr model_cloud = grph_[vrtx].hypothesis[i].model_->getAssembled (0.005f);
+//            ConstPointInTPtr model_cloud = grph_[vrtx].hypothesis_sv_[i].model_->getAssembled (0.005f);
 //            typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
-//            pcl::transformPointCloud (*model_cloud, *model_aligned, grph_[vrtx].hypothesis[i].transform_);
+//            pcl::transformPointCloud (*model_cloud, *model_aligned, grph_[vrtx].hypothesis_sv_[i].transform_);
 //            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified2 (model_aligned);
 //            vis_fsv->addPointCloud<pcl::PointXYZRGB> (model_aligned, handler_rgb_verified2, model_id.str());
 //            vis_fsv->spin();
@@ -969,9 +968,9 @@ bool multiviewGraph::recognize
         pSingleview_recognizer_->hypothesesVerification(mask_hv_sv);
         pSingleview_recognizer_->getVerifiedPlanes(grph_[vrtx].verified_planes_);
     }
-    for (size_t j = 0; j < grph_[vrtx].hypothesis.size(); j++)
+    for (size_t j = 0; j < grph_[vrtx].hypothesis_sv_.size(); j++)
     {
-        grph_[vrtx].hypothesis[j].verified_ = mask_hv_sv[j];
+        grph_[vrtx].hypothesis_sv_[j].verified_ = mask_hv_sv[j];
     }
     //----------END-call-single-view-recognizer------------------------------------------
 
@@ -993,7 +992,7 @@ bool multiviewGraph::recognize
 
             for ( size_t i = 1; i < new_edges.size(); i++ )
             {
-                //visualizeEdge(new_edges[new_edge_id], grph_);
+//                visualizeEdge(new_edges[i], grph_);
 
                 if ( grph_[new_edges[i]].edge_weight < grph_[best_edge].edge_weight )
                 {
@@ -1001,6 +1000,7 @@ bool multiviewGraph::recognize
                 }
             }
         }
+//        visualizeEdge(new_edges[0], grph_);
         Vertex vrtx_src, vrtx_trgt;
         vrtx_src = source ( best_edge, grph_ );
         vrtx_trgt = target ( best_edge, grph_ );
@@ -1090,8 +1090,10 @@ bool multiviewGraph::recognize
         }
     }
 
-    visualizeGraph(grph_final_, vis_);
-//    grph_[vrtx].cumulative_weight_to_new_vrtx_ = grph_final_[vrtx_final].cumulative_weight_to_new_vrtx_;
+    if(visualize_output_)
+        visualizeGraph(grph_final_, vis_);
+
+    //    grph_[vrtx].cumulative_weight_to_new_vrtx_ = grph_final_[vrtx_final].cumulative_weight_to_new_vrtx_;
 
     std::pair<vertex_iter, vertex_iter> vp;
     for ( vp = vertices ( grph_final_ ); vp.first != vp.second; ++vp.first )
@@ -1133,7 +1135,7 @@ bool multiviewGraph::recognize
 
             //            typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
             //            typename pcl::PointCloud<PointT>::Ptr model_aligned ( new pcl::PointCloud<PointT> );
-            //            pcl::io::loadPCDFile ( grph_final_[vrtx_final].hypothesis[hyp_id].model_id_, *pModelPCl );
+            //            pcl::io::loadPCDFile ( grph_final_[vrtx_final].hypothesis_sv_[hyp_id].model_id_, *pModelPCl );
             //            pcl::transformPointCloud ( *pModelPCl, *model_aligned, trans_2_world );
             //            *pRecognizedModels += *model_aligned;
         }
@@ -1142,12 +1144,11 @@ bool multiviewGraph::recognize
     //-------Clean-up-graph-------------------
     outputgraph ( grph_, "complete_graph.dot" );
     outputgraph ( grph_final_, "Final_with_Hypothesis_extension.dot" );
-    pruneGraph(grph_, 2);
-    pruneGraph(grph_final_, 2);
+    pruneGraph(grph_, max_vertices_in_graph_);
+    pruneGraph(grph_final_, max_vertices_in_graph_);
 
     outputgraph ( grph_final_, "final_after_deleting_old_vertex.dot" );
     outputgraph ( grph_, "grph_after_deleting_old_vertex.dot" );
-    most_current_vertex_ = vrtx;
 
     return true;
 }

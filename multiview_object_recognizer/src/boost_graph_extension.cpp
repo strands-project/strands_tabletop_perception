@@ -47,7 +47,7 @@ struct my_node_writer
         out << " [file=\"" << g[v].pScenePCl->header.frame_id << "\"]" << std::endl;
         out << " [index=\"" << g[v].pScenePCl->header.frame_id << "\"]" << std::endl;
 
-        for ( std::vector<Hypothesis<PointT> >::iterator it_hyp = g[v].hypothesis.begin (); it_hyp != g[v].hypothesis.end (); ++it_hyp )
+        for ( std::vector<Hypothesis<PointT> >::iterator it_hyp = g[v].hypothesis_sv_.begin (); it_hyp != g[v].hypothesis_sv_.end (); ++it_hyp )
 		{
 		    out << " [hypothesis_model_id=\"" << it_hyp->model_id_ << "\"]" << std::endl;
 		    out << " [hypothesis_transform=\"" << it_hyp->transform_ ( 0, 0 ) << " " << it_hyp->transform_ ( 0, 1 ) << " " << it_hyp->transform_ ( 0, 2 )
@@ -104,7 +104,7 @@ myEdge::myEdge()
 //    grph_target[vrtx_target].pSiftSignatures_ = grph_src[vrtx_src].pSiftSignatures_;
 //    grph_target[vrtx_target].sift_keypoints_scales = grph_src[vrtx_src].sift_keypoints_scales;
 //    grph_target[vrtx_target].siftKeypointIndices_ = grph_src[vrtx_src].siftKeypointIndices_;
-//    grph_target[vrtx_target].hypothesis = grph_src[vrtx_src].hypothesis;
+//    grph_target[vrtx_target].hypothesis_sv_ = grph_src[vrtx_src].hypothesis_sv_;
 //    grph_target[vrtx_target].hypothesis_mv_ = grph_src[vrtx_src].hypothesis_mv_;
 //    grph_target[vrtx_target].absolute_pose = grph_src[vrtx_src].absolute_pose;
 //    grph_target[vrtx_target].transform_to_world_co_system_ = grph_src[vrtx_src].transform_to_world_co_system_;

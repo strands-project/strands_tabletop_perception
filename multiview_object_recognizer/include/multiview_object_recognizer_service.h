@@ -53,23 +53,22 @@ class multiviewGraph
 private:
     boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     Graph grph_, grph_final_;
-    Vertex most_current_vertex_;
-    std::string scene_name_;
+    std::string most_current_view_id_, scene_name_;
     boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> > models_source_;
     boost::shared_ptr< pcl::PointCloud<PointT> > pAccumulatedKeypoints_;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pAccumulatedKeypointNormals_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > accumulatedHypotheses_;
     pcl::visualization::PCLVisualizer::Ptr edge_vis_;
     bool visualize_output_;
-    int icp_iter_;
     float chop_at_z_;
     float distance_keypoints_get_discarded_;
     float icp_resolution_;
-    bool do_reverse_hyp_extension;
+//    bool do_reverse_hyp_extension;
     pcl::visualization::PCLVisualizer::Ptr vis_;
     bool scene_to_scene_;
     bool use_robot_pose_;
     bool use_gc_s2s_;
+    size_t max_vertices_in_graph_;
 
     Eigen::Matrix4f current_global_transform_;
 
@@ -77,13 +76,15 @@ private:
     
 public:
     multiviewGraph(){
-        do_reverse_hyp_extension = false;
+//        do_reverse_hyp_extension = false;
         chop_at_z_ = 1.5f;
         icp_resolution_ = 0.005f;
         scene_to_scene_ = true;
         use_robot_pose_ = false;
         use_gc_s2s_ = true;
         distance_keypoints_get_discarded_ = 0.005*0.005;
+        max_vertices_in_graph_ = 4;
+        visualize_output_ = false;
 
         pAccumulatedKeypoints_.reset (new pcl::PointCloud<PointT>);
         pAccumulatedKeypointNormals_.reset (new pcl::PointCloud<pcl::Normal>);
@@ -106,13 +107,9 @@ public:
     void calcEdgeWeight (Graph &grph, std::vector<Edge> &edges);
     void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr &vis);
 
-    std::string getSceneName() const
+    void set_max_vertices_in_graph(const size_t num)
     {
-        return scene_name_;
-    }
-    void setSceneName(const std::string scene_name)
-    {
-        scene_name_ = scene_name;
+        max_vertices_in_graph_ = num;
     }
 
     void set_scene_to_scene(const bool scene_to_scene)
@@ -120,17 +117,33 @@ public:
         scene_to_scene_ = scene_to_scene;
     }
 
+    void set_distance_keypoints_get_discarded(const double distance)
+    {
+        distance_keypoints_get_discarded_ = distance;
+    }
+
+    void set_visualize_output(const bool vis_output)
+    {
+        visualize_output_ = vis_output;
+    }
+
+    void set_scene_name(const std::string scene_name)
+    {
+        scene_name_ = scene_name;
+    }
+
+    std::string get_scene_name() const
+    {
+        return scene_name_;
+    }
+
     void visualizeEdge (const Edge &edge, const Graph &grph);
 
     bool recognize ( const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud,
-                     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &hyp_transforms_local,
-                     std::vector<std::string> &hyp_model_ids,
                      const std::string view_name,
                      const size_t timestamp);
 
     bool recognize ( const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud,
-                     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &hyp_transforms_local,
-                     std::vector<std::string> &hyp_model_ids,
                      const std::string view_name,
                      const size_t timestamp,
                      const Eigen::Matrix4f global_transform);
@@ -140,8 +153,6 @@ public:
     void setModels_dir(const std::string &models_dir);
     bool visualize_output() const;
     void setVisualize_output(bool visualize_output);
-    int icp_iter() const;
-    void setIcp_iter(int icp_iter);
     int opt_type() const;
     void setOpt_type(int opt_type);
     double chop_at_z() const;
@@ -152,27 +163,61 @@ public:
     cv::Ptr<SiftGPU> sift() const;
     void setSift(const cv::Ptr<SiftGPU> &sift);
 
-    void getVerifiedHypotheses(std::vector<ModelTPtr> &models, std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &transforms)
+    bool getVerifiedHypotheses(std::vector<ModelTPtr> &models, std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &transforms)
     {
         models.clear();
         transforms.clear();
 
         if(num_vertices(grph_))
         {
-            for(size_t i=0; i < grph_[most_current_vertex_].hypothesis_mv_.size(); i++)
+            std::pair<vertex_iter, vertex_iter> vp;
+            for ( vp = vertices ( grph_ ); vp.first != vp.second; ++vp.first )
             {
-                if(grph_[most_current_vertex_].hypothesis_mv_[i].verified_)
+                if (grph_[*vp.first].pScenePCl->header.frame_id.compare(most_current_view_id_) == 0)
                 {
-                    models.push_back(grph_[most_current_vertex_].hypothesis_mv_[i].model_);
-                    transforms.push_back(grph_[most_current_vertex_].hypothesis_mv_[i].transform_);
+                    for(size_t i=0; i < grph_[*vp.first].hypothesis_mv_.size(); i++)
+                    {
+                        if(grph_[*vp.first].hypothesis_mv_[i].verified_)
+                        {
+                            models.push_back(grph_[*vp.first].hypothesis_mv_[i].model_);
+                            transforms.push_back(grph_[*vp.first].hypothesis_mv_[i].transform_);
+                        }
+                    }
+                    return true;
                 }
             }
         }
-        else
-        {
-            PCL_ERROR("There is no most current vertex in the graph.");
-        }
+        PCL_ERROR("There is no most current vertex in the graph.");
+        return false;
+    }
 
+
+    bool getVerifiedHypothesesSingleView(std::vector<ModelTPtr> &models, std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &transforms)
+    {
+        models.clear();
+        transforms.clear();
+
+        if(num_vertices(grph_))
+        {
+            std::pair<vertex_iter, vertex_iter> vp;
+            for ( vp = vertices ( grph_ ); vp.first != vp.second; ++vp.first )
+            {
+                if (grph_[*vp.first].pScenePCl->header.frame_id.compare(most_current_view_id_) == 0)
+                {
+                    for(size_t i=0; i < grph_[*vp.first].hypothesis_sv_.size(); i++)
+                    {
+                        if(grph_[*vp.first].hypothesis_sv_[i].verified_)
+                        {
+                            models.push_back(grph_[*vp.first].hypothesis_sv_[i].model_);
+                            transforms.push_back(grph_[*vp.first].hypothesis_sv_[i].transform_);
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+        PCL_ERROR("There is no most current vertex in the graph.");
+        return false;
     }
 
 };

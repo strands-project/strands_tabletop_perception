@@ -1,10 +1,12 @@
 #include "world_representation.h"
+#include <iostream>
+#include <fstream>
 
 multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_name)
 {
     for (size_t scene_id = 0; scene_id < graph_v.size(); scene_id++)
     {
-        if( graph_v[scene_id].getSceneName().compare ( scene_name) == 0 )	//--show-hypotheses-from-single-view
+        if( graph_v[scene_id].get_scene_name().compare ( scene_name) == 0 )	//--show-hypotheses-from-single-view
         {
             return graph_v[scene_id];
         }
@@ -12,12 +14,15 @@ multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_n
 
     multiviewGraph newGraph;
     newGraph.setVisualize_output(visualize_output_);
-    newGraph.setIcp_iter(icp_iter_);
+//    newGraph.setIcp_iter(icp_iter_);
     newGraph.setChop_at_z(chop_at_z_);
-    newGraph.setSceneName(scene_name);
+    newGraph.set_scene_name(scene_name);
     newGraph.setPSingleview_recognizer(pSingleview_recognizer_);
     newGraph.setSift(sift_);
     newGraph.set_scene_to_scene(scene_to_scene_);
+    newGraph.set_max_vertices_in_graph(max_vertices_in_graph_);
+    newGraph.set_distance_keypoints_get_discarded(distance_keypoints_get_discarded_);
+    newGraph.set_visualize_output(visualize_output_);
     graph_v.push_back(newGraph);
     return graph_v.back();
 }
@@ -51,8 +56,6 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
     size_t timestamp = req.timestamp.data.toNSec();
 
     multiviewGraph &currentGraph = get_current_graph(scene_name);
-    std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > hyp_transforms_local;
-    std::vector<std::string> hyp_model_ids;
 
     bool mv_recognize_error;
 
@@ -66,12 +69,12 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
                 global_trans(row, col) = req.transform[4*row + col];
             }
         }
-        mv_recognize_error = currentGraph.recognize(pInputCloud, hyp_transforms_local, hyp_model_ids, view_name, timestamp, global_trans);//req, response);
+        mv_recognize_error = currentGraph.recognize(pInputCloud, view_name, timestamp, global_trans);//req, response);
     }
     else
     {
         std::cout << "No transform (16x1 float vector) provided. " << std::endl;
-        mv_recognize_error = currentGraph.recognize(pInputCloud, hyp_transforms_local, hyp_model_ids, view_name, timestamp);
+        mv_recognize_error = currentGraph.recognize(pInputCloud, view_name, timestamp);
     }
 
     std::vector<ModelTPtr> models;
@@ -80,8 +83,43 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
     std::cout << "In the most current vertex I detected " << models.size() << " verified models. " << std::endl;
+
+    std::map<std::string, size_t> rec_models_per_id;
+
     for(size_t i = 0; i < models.size(); i++)
     {
+        std::string model_id = models.at(i)->id_;
+        Eigen::Matrix4f tf = transforms[i];
+
+        size_t num_models_per_model_id;
+
+        std::map<std::string, size_t>::iterator it_rec_mod;
+        it_rec_mod = rec_models_per_id.find(model_id);
+        if(it_rec_mod == rec_models_per_id.end())
+        {
+            rec_models_per_id.insert(std::pair<std::string, size_t>(model_id, 1));
+            num_models_per_model_id = 0;
+        }
+        else
+        {
+            num_models_per_model_id = it_rec_mod->second;
+            it_rec_mod->second++;
+        }
+
+        // Save object recogniton result in file
+        std::stringstream or_filepath_ss;
+        or_filepath_ss << "/home/thomas/Projects/thomas.faeulhammer/eval/" << view_name << "_" << model_id.substr(0, model_id.length() - 4) << "_" << num_models_per_model_id <<".txt";
+        ofstream or_file;
+        or_file.open (or_filepath_ss.str());
+        for (size_t row=0; row <4; row++)
+        {
+            for(size_t col=0; col<4; col++)
+            {
+                or_file << tf(row, col) << " ";
+            }
+        }
+        or_file.close();
+
         ConstPointInTPtr pModelCloud = models.at (i)->getAssembled (0.005f);
         typename pcl::PointCloud<PointT>::Ptr pModelAligned (new pcl::PointCloud<PointT>);
         if(req.transform.size() == 16)
@@ -94,13 +132,12 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
         ros_string.data = models.at(i)->id_;
         response.ids.push_back(ros_string);
 
-        Eigen::Matrix4f trans = transforms[i];
         geometry_msgs::Transform tt;
-        tt.translation.x = trans(0,3);
-        tt.translation.y = trans(1,3);
-        tt.translation.z = trans(2,3);
+        tt.translation.x = tf(0,3);
+        tt.translation.y = tf(1,3);
+        tt.translation.z = tf(2,3);
 
-        Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
+        Eigen::Matrix3f rotation = tf.block<3,3>(0,0);
         Eigen::Quaternionf q(rotation);
         tt.rotation.x = q.x();
         tt.rotation.y = q.y();
@@ -121,26 +158,6 @@ bool worldRepresentation::recognize (recognition_srv_definitions::multiview_reco
 
 
 // getter and setter functions
-int worldRepresentation::icp_iter() const
-{
-    return icp_iter_;
-}
-
-void worldRepresentation::setIcp_iter(int icp_iter)
-{
-    icp_iter_ = icp_iter;
-}
-
-bool worldRepresentation::visualize_output() const
-{
-    return visualize_output_;
-}
-
-void worldRepresentation::setVisualize_output(bool visualize_output)
-{
-    visualize_output_ = visualize_output;
-}
-
 int worldRepresentation::opt_type() const
 {
     return opt_type_;

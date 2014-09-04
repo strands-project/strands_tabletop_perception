@@ -7,6 +7,7 @@
 #include <string>
 #include <faat_pcl/utils/filesystem_utils.h>
 #include <pcl_conversions.h>
+#include <pcl/common/transforms.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/io/pcd_io.h>
 #include <recognition_srv_definitions/multiview_recognize.h>
@@ -41,14 +42,22 @@ main (int argc, char **argv)
     ros::init(argc, argv, "multiview_object_recognizer_test_node");
     ros::NodeHandle *n;
     n = new ros::NodeHandle("~");
-    std::string scenes_dir, camera_topic;
+    std::string dataset_path, sequence_name, camera_topic;
     ros::ServiceClient mv_recognition_client = n->serviceClient<recognition_srv_definitions::multiview_recognize>("/multiview_object_recognizer_node/multiview_recognotion_servcice");
     recognition_srv_definitions::multiview_recognize srv;
 
-    if(!n->getParam("scenes_dir", scenes_dir))
-        ROS_ERROR("No scenes directory given (arg \"scenes_dir\"). ");
+    if(!n->getParam("dataset_path", dataset_path))
+        ROS_ERROR("No dataset path given (arg \"dataset_path\"). ");
+
+    if(!n->getParam("sequence_name", sequence_name))
+        ROS_ERROR("No sequence name given (arg \"sequence_name\"). ");
+
     if(!n->getParam("topic", camera_topic))
         camera_topic = "/camera/depth_registered/points";
+
+    std::stringstream scenes_dir_ss;
+    scenes_dir_ss << dataset_path << "/" << sequence_name;
+    std::string scenes_dir = scenes_dir_ss.str();
 
     boost::filesystem::path scenes_dir_bf = scenes_dir;
     if (!boost::filesystem::exists (scenes_dir_bf)) //no hypothesis exist yet --> create
@@ -75,6 +84,7 @@ main (int argc, char **argv)
             full_file_name << scenes_dir << "/" << files_intern[file_id];
             pcl::PointCloud<pcl::PointXYZRGB>::Ptr pScene (new pcl::PointCloud<pcl::PointXYZRGB>);
             pcl::io::loadPCDFile(full_file_name.str(), *pScene);
+
 //            pcl::visualization::PCLVisualizer::Ptr vis (new pcl::visualization::PCLVisualizer("vis"));
 //            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb (pScene);
 //            vis->addPointCloud<pcl::PointXYZRGB> (pScene, handler_rgb, "scnene");
@@ -89,8 +99,9 @@ main (int argc, char **argv)
             ros::spinOnce(); // Why does the point cloud not get published immediately?
 
             srv.request.cloud = pc2;
-            srv.request.scene_name.data = scenes_dir;
-            srv.request.view_name.data = files_intern[file_id];
+            srv.request.scene_name.data = sequence_name;
+            srv.request.view_name.data = files_intern[file_id].substr(0, files_intern[file_id].length() - ext.length() - 1);
+            srv.request.transform.clear();
 
             std::stringstream transform_ss;
             transform_ss << scenes_dir << "/" << transform_prefix_ << files_intern[file_id].substr(0, files_intern[file_id].length() - ext.length()) << "txt";
@@ -107,7 +118,7 @@ main (int argc, char **argv)
                 std::cout << "Transform to world coordinate system: " << std::endl;
                 for(size_t i=0; i<numbers.size(); i++)
                 {
-                    std::cout << numbers[i];
+                    std::cout << numbers[i] << " ";
                     srv.request.transform.push_back(numbers[i]);
                 }
                 std::cout << std::endl;

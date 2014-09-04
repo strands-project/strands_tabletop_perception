@@ -72,7 +72,7 @@ public:
     boost::shared_ptr< pcl::PointCloud<FeatureT > > pSiftSignatures_;
     std::vector<float> sift_keypoints_scales;
     pcl::PointIndices siftKeypointIndices_;
-    std::vector<Hypothesis<PointT> > hypothesis;
+    std::vector<Hypothesis<PointT> > hypothesis_sv_;
     std::vector<Hypothesis<PointT> > hypothesis_mv_;
     Eigen::Matrix4f absolute_pose;
     Eigen::Matrix4f transform_to_world_co_system_;

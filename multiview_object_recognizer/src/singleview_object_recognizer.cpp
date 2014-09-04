@@ -11,7 +11,7 @@ bool Recognizer::multiplaneSegmentation()
     faat_pcl::MultiPlaneSegmentation<PointT> mps;
     mps.setInputCloud(pInputCloud_);
     mps.setMinPlaneInliers(1000);
-    mps.setResolution(go_resolution_);
+    mps.setResolution(hv_params_.resolution_);
     mps.setNormals(pSceneNormals_);
     mps.setMergePlanes(true);
     mps.segment();
@@ -83,16 +83,24 @@ void Recognizer::constructHypotheses()
         model_ids_.resize (models_->size ());
         for (size_t kk = 0; kk < models_->size (); kk++)
         {
-//            ConstPointInTPtr model_cloud = models_->at (kk)->getAssembled (go_resolution_);
-//            typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
-//            pcl::transformPointCloud (*model_cloud, *model_aligned, transforms_->at (kk));
-//            aligned_models_[kk] = model_aligned;
             model_ids_[kk] = models_->at (kk)->id_;
         }
 }
 
 bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
 {
+    std::cout << "=================================================================" << std::endl <<
+                 "Verifying hypotheses on CPU with following parameters: " << std::endl <<
+                 "*** Resolution: " << hv_params_.resolution_ << std::endl <<
+                 "*** Inlier Threshold: " << hv_params_.inlier_threshold_ << std::endl <<
+                 "*** Radius clutter: " << hv_params_.radius_clutter_ << std::endl <<
+                 "*** Regularizer: " << hv_params_.regularizer_ << std::endl <<
+                 "*** Clutter regularizer: " << hv_params_.clutter_regularizer_ << std::endl <<
+                 "*** Occlusion threshold: " << hv_params_.occlusion_threshold_ << std::endl <<
+                 "*** Optimizer type: " << hv_params_.optimizer_type_ << std::endl <<
+                 "*** Color sigma L / AB: " << hv_params_.color_sigma_l_ << " / " << hv_params_.color_sigma_ab_ << std::endl <<
+                 "=================================================================" << std::endl << std::endl;
+
     typename pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT>(*pInputCloud_));
 
     mask_hv.resize(aligned_models_.size());
@@ -104,20 +112,20 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     assert(pSceneNormals_->points.size() == pInputCloud_->points.size());
     go->setSmoothSegParameters(0.1, 0.035, 0.005);
     //go->setRadiusNormals(0.03f);
-    go->setResolution (go_resolution_);
-    go->setInlierThreshold (0.015);
-    go->setRadiusClutter (0.03f);
-    go->setRegularizer (3);
-    go->setClutterRegularizer (5);
+    go->setResolution (hv_params_.resolution_);
+    go->setInlierThreshold (hv_params_.inlier_threshold_);
+    go->setRadiusClutter (hv_params_.radius_clutter_);
+    go->setRegularizer (hv_params_.regularizer_ );
+    go->setClutterRegularizer (hv_params_.clutter_regularizer_);
     go->setDetectClutter (true);
-    go->setOcclusionThreshold (0.01f);
-    go->setOptimizerType(0);
+    go->setOcclusionThreshold (hv_params_.occlusion_threshold_);
+    go->setOptimizerType (hv_params_.optimizer_type_);
     go->setUseReplaceMoves(true);
-    go->setRadiusNormals(0.02);
+    go->setRadiusNormals (0.02);
     go->setRequiresNormals(false);
     go->setInitialStatus(false);
     go->setIgnoreColor(true);
-    go->setColorSigma(0.5f, 0.5f);
+    go->setColorSigma (hv_params_.color_sigma_l_, hv_params_.color_sigma_ab_);
     go->setHistogramSpecification(true);
     go->setVisualizeGoCues(0);
     go->setUseSuperVoxels(false);
@@ -131,7 +139,7 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     aligned_normals.resize(aligned_models_.size());
     for(size_t i=0; i<aligned_models_.size(); i++)
     {
-        pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud_const = models_->at(i)->getNormalsAssembled (go_resolution_);
+        pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud_const = models_->at(i)->getNormalsAssembled (hv_params_.resolution_);
         pcl::PointCloud<pcl::Normal>::Ptr normal_cloud(new pcl::PointCloud<pcl::Normal>(*normal_cloud_const) );
 
         const Eigen::Matrix3f rot   = transforms_->at(i).block<3, 3> (0, 0);
@@ -144,23 +152,6 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
         aligned_normals[i] = normal_cloud;
     }
     go->addNormalsClouds(aligned_normals);
-
-//    pcl::visualization::PCLVisualizer::Ptr vis_temp (new pcl::visualization::PCLVisualizer);
-//    int v1,v2;
-//    vis_temp->createViewPort(0,0,0.5,1,v1);
-//    vis_temp->createViewPort(0.5,0,1,1,v2);
-//    for(size_t i=0; i<aligned_models_.size(); i++)
-//    {
-//        std::stringstream cloud_name;
-//        cloud_name << i;
-//        assert(aligned_models_[i]->points.size()>0);
-//        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified (aligned_models_[i]);
-//        vis_temp->addPointCloud<pcl::PointXYZRGB> (aligned_models_[i], handler_rgb_verified, cloud_name.str(), v1);
-//    }
-//    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb (pInputCloud_);
-//    vis_temp->addPointCloud<pcl::PointXYZRGB>(pInputCloud_, handler_rgb, "scene", v2);
-//    vis_temp->addPointCloudNormals<pcl::PointXYZRGB,pcl::Normal>(pInputCloud_, pSceneNormals_, 30, 0.03, "scene_with_normals", v2);
-//    vis_temp->spin();
 
     //append planar models
     if(add_planes_)
@@ -223,6 +214,18 @@ void Recognizer::constructHypothesesFromFeatureMatches(std::map < std::string,fa
                                                            std::vector<Hypothesis<PointT> > &hypothesesOutput,
                                                            std::vector <pcl::Correspondences>  &corresp_clusters_hyp)
 {
+    std::cout << "=================================================================" << std::endl <<
+                 "Start correspondence grouping with following parameters: " << std::endl <<
+                 "Threshold: " << cg_params_.cg_size_threshold_ << std::endl <<
+                 "cg_size_: " << cg_params_.cg_size_ << std::endl <<
+                 "ransac_threshold_: " << cg_params_.ransac_threshold_ << std::endl <<
+                 "dist_for_clutter_factor_: " << cg_params_.dist_for_clutter_factor_ << std::endl <<
+                 "max_taken_: " << cg_params_.max_taken_ << std::endl <<
+                 "max_taken_: " << cg_params_.max_taken_ << std::endl <<
+                 "dot_distance_: " << cg_params_.dot_distance_ << std::endl <<
+                 "=================================================================" << std::endl << std::endl;
+
+
     boost::shared_ptr < pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
     boost::shared_ptr < faat_pcl::GraphGeometricConsistencyGrouping<PointT, PointT> > gcg_alg (
                 new faat_pcl::GraphGeometricConsistencyGrouping<
@@ -233,15 +236,14 @@ void Recognizer::constructHypothesesFromFeatureMatches(std::map < std::string,fa
     transforms_->clear();
     models_->clear();
 
-    int cg_size = 7;
-    gcg_alg->setGCThreshold (cg_size);
-    gcg_alg->setGCSize (0.015);
-    gcg_alg->setRansacThreshold (0.015);
+    gcg_alg->setGCThreshold (cg_params_.cg_size_threshold_);
+    gcg_alg->setGCSize (cg_params_.cg_size_);
+    gcg_alg->setRansacThreshold (cg_params_.ransac_threshold_);
     gcg_alg->setUseGraph (true);
-    gcg_alg->setDistForClusterFactor (0);
-    gcg_alg->setMaxTaken(2);
-    gcg_alg->setMaxTimeForCliquesComputation(100);
-    gcg_alg->setDotDistance (0.2);
+    gcg_alg->setDistForClusterFactor (cg_params_.dist_for_clutter_factor_);
+    gcg_alg->setMaxTaken(cg_params_.max_taken_);
+    gcg_alg->setMaxTimeForCliquesComputation(cg_params_.max_time_for_cliques_computation_);
+    gcg_alg->setDotDistance (cg_params_.dot_distance_);
 
     cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
 
@@ -287,7 +289,7 @@ void Recognizer::constructHypothesesFromFeatureMatches(std::map < std::string,fa
             model_ids_.push_back((*it_map).second.model_->id_);
             transforms_->push_back(best_trans);
 
-            ConstPointInTPtr model_cloud = (*it_map).second.model_->getAssembled (go_resolution_);
+            ConstPointInTPtr model_cloud = (*it_map).second.model_->getAssembled (hv_params_.resolution_);
             typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
             pcl::transformPointCloud (*model_cloud, *model_aligned, best_trans);
             aligned_models_.push_back(model_aligned);
@@ -308,7 +310,7 @@ void Recognizer::preFilterWithFSV(const pcl::PointCloud<PointT>::ConstPtr scene_
 
         for(size_t i=0; i < models_->size(); i++)
         {
-            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = models_->at(i)->getNormalsAssembled (go_resolution_);
+            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = models_->at(i)->getNormalsAssembled (hv_params_.resolution_);
             typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>);
             faat_pcl::utils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms_->at(i));
 
@@ -340,13 +342,21 @@ void Recognizer::preFilterWithFSV(const pcl::PointCloud<PointT>::ConstPtr scene_
 
 bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
 {
+    std::cout << "=================================================================" << std::endl <<
+                 "Verifying hypotheses on GPU with following parameters: " << std::endl <<
+                 "*** Resolution: " << hv_params_.resolution_ << std::endl <<
+                 "*** Inlier Threshold: " << hv_params_.inlier_threshold_ << std::endl <<
+                 "*** Radius clutter: " << hv_params_.radius_clutter_ << std::endl <<
+                 "*** Regularizer: " << hv_params_.regularizer_ << std::endl <<
+                 "*** Clutter regularizer: " << hv_params_.clutter_regularizer_ << std::endl <<
+                 "*** Color sigma L / AB: " << hv_params_.color_sigma_l_ << " / " << hv_params_.color_sigma_ab_ << std::endl <<
+                 "=================================================================" << std::endl << std::endl;
+
     typename pcl::PointCloud<PointT>::Ptr pOcclusionCloud (new pcl::PointCloud<PointT>(*pInputCloud_));
     typename pcl::PointCloud<PointT>::Ptr pInputCloud_ds (new pcl::PointCloud<PointT>);
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pInputCloudWithNormals (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr pInputCloudWithNormals_ds (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
     pcl::PointCloud<pcl::Normal>::Ptr pInputNormals_ds (new pcl::PointCloud<pcl::Normal>);
-
-    float res = 0.005f;
 
     assert(pInputCloud_->points.size() == pSceneNormals_->points.size());
     pInputCloudWithNormals->points.resize(pInputCloud_->points.size());
@@ -363,11 +373,10 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
     }
     pInputCloudWithNormals->points.resize(kept);
 
-    float VOXEL_SIZE_ICP_ = res;
     pcl::VoxelGrid<pcl::PointXYZRGBNormal> voxel_grid_icp;
     voxel_grid_icp.setInputCloud (pInputCloudWithNormals);
     voxel_grid_icp.setDownsampleAllData(true);
-    voxel_grid_icp.setLeafSize (VOXEL_SIZE_ICP_, VOXEL_SIZE_ICP_, VOXEL_SIZE_ICP_);
+    voxel_grid_icp.setLeafSize (hv_params_.resolution_ , hv_params_.resolution_ , hv_params_.resolution_ );
     voxel_grid_icp.filter (*pInputCloudWithNormals_ds);
 
     pInputCloud_ds->points.resize(pInputCloudWithNormals_ds->points.size());
@@ -390,7 +399,7 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
         faat_pcl::MultiPlaneSegmentation<PointT> mps;
         mps.setInputCloud(pInputCloud_);
         mps.setMinPlaneInliers(1000);
-        mps.setResolution(res);
+        mps.setResolution(hv_params_.resolution_);
         mps.setMergePlanes(true);
         mps.segment(false);
         planes_found_ = mps.getModels();
@@ -403,11 +412,11 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
 //    ne.compute (*pInputNormals_ds);
 
     typename faat_pcl::recognition::GHVCudaWrapper<PointT> ghv;
-    ghv.setInlierThreshold(0.01f);
-    ghv.setOutlierWewight(3.f);
-    ghv.setClutterWeight(5.f);
-    ghv.setclutterRadius(0.03f);
-    ghv.setColorSigmas(0.5f, 0.5f);
+    ghv.setInlierThreshold(hv_params_.inlier_threshold_);
+    ghv.setOutlierWewight(hv_params_.regularizer_);
+    ghv.setClutterWeight(hv_params_.clutter_regularizer_);
+    ghv.setclutterRadius(hv_params_.radius_clutter_);
+    ghv.setColorSigmas(hv_params_.color_sigma_l_, hv_params_.color_sigma_ab_);
 
     std::vector<typename pcl::PointCloud<PointT>::ConstPtr> aligned_models;
     std::vector<pcl::PointCloud<pcl::Normal>::ConstPtr> aligned_normals;
@@ -434,8 +443,8 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
         if(it == id_to_model_clouds.end())
         {
             //not included yet
-            ConstPointInTPtr model_cloud = models_->at (kk)->getAssembled (res);
-            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = models_->at (kk)->getNormalsAssembled (res);
+            ConstPointInTPtr model_cloud = models_->at (kk)->getAssembled (hv_params_.resolution_);
+            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = models_->at (kk)->getNormalsAssembled (hv_params_.resolution_);
             aligned_models[individual_models] = model_cloud;
             aligned_normals[individual_models] = normal_cloud;
             pos = individual_models;
@@ -474,95 +483,35 @@ bool Recognizer::hypothesesVerificationGpu(std::vector<bool> &mask_hv)
     std::vector<bool> mask_hv_with_planes = ghv.getSolution();
 
 
-//    std::vector<int> coming_from;
-//    coming_from.resize(transforms_.size() + planes_found_.size());
-//    for(size_t j=0; j < transforms_.size(); j++)
-//        coming_from[j] = 0;
-
-//    for(size_t j=0; j < planes_found_.size(); j++)
-//        coming_from[transforms_.size() + j] = 1;
-
     mask_hv.resize(transforms_->size ());
     for (size_t j = 0; j < transforms_->size (); j++)
     {
-//        if(coming_from[j] == 1) // it is a plane - therefore discard
-//        {
-//////            mask_hv[j]=0;
-////            if(j < aligned_models_.size())
-////            {
-////                std::cerr << "Model plane not at the end of hypotheses vector!! Check this part of code again!" << std::endl;
-////            }
-//            continue;
-//        }
         mask_hv[j] = mask_hv_with_planes[j];
     }
     return true;
 }
 
 
-
-
-bool Recognizer::do_shot() const
-{
-    return do_shot_;
-}
-
-void Recognizer::setDo_shot(bool do_shot)
-{
-    do_shot_ = do_shot;
-}
 bool Recognizer::recognize ()
 {
-
     std::vector<bool> mask_hv;
 
     constructHypotheses();
-
-    //    std::vector<std::string> full_model_path (model_ids_.size());
-//    for(size_t model_id=0; model_id < model_ids_.size(); model_id++)
-//    {
-//        std::stringstream model_name;
-//        model_name << models_dir_ << model_ids_[model_id];
-//        full_model_path[model_id] = model_name.str();
-//    }
-
     setModelsAndTransforms(*models_, *transforms_);
     hypothesesVerification(mask_hv);
 
-    //boost::shared_ptr<std::vector<ModelTPtr> > verified_models(new std::vector<ModelTPtr>);
-
-  //  if(model_ids_)
+    for (size_t j = 0; j < mask_hv.size (); j++)
     {
-        for (size_t j = 0; j < mask_hv.size (); j++)
+        if(mask_hv[j])
         {
-            if(mask_hv[j])
-            {
-                //verified_models->push_back(models_->at(j));
-                model_ids_verified_.push_back(model_ids_[j]);
-                transforms_verified_.push_back(transforms_->at(j));
-            }
+            //verified_models->push_back(models_->at(j));
+            model_ids_verified_.push_back(model_ids_[j]);
+            transforms_verified_.push_back(transforms_->at(j));
         }
     }
 
     std::cout << "Number of models:" << model_ids_.size() <<
                  "Number of verified models:" << model_ids_verified_.size() << std::endl;
-
-    //parse verified_models and generate response to service call
-      //vector of id + pose
-
-//    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
-
-//    for (size_t j = 0; j < verified_models->size (); j++)
-//    {
-//      ConstPointInTPtr model_cloud = verified_models->at(j)->getAssembled (0.01);
-//      typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
-//      pcl::transformPointCloud (*model_cloud, *model_aligned, transform_verified_[j]);
-//      *pRecognizedModels += *model_aligned;
-//    }
-//    sensor_msgs::PointCloud2 recognizedModelsRos;
-//    pcl::toROSMsg (*pRecognizedModels, recognizedModelsRos);
-//    recognizedModelsRos.header.frame_id = "camera_link";
-//    vis_pc_pub_.publish(recognizedModelsRos);
 
     visualizeHypotheses();
   }
@@ -571,24 +520,18 @@ bool Recognizer::recognize ()
 
   void Recognizer::initialize ()
   {
+      std::cout << "=================================================================" << std::endl <<
+                   "Initializing Recognizer with following parameters: " << std::endl <<
+                   "*** do_sift_: " << do_sift_ << std::endl <<
+                   "*** do_shot_: " << do_shot_ << std::endl <<
+                   "*** do_ourcvfh_: " << do_ourcvfh_ << std::endl <<
+                   "*** icp_iterations_: " << icp_iterations_ << std::endl <<
+                   "*** icp_type_: " << icp_type_ << std::endl <<
+                   "*** icp_voxel_size_: " << icp_voxel_size_ << std::endl <<
+                   "=================================================================" << std::endl << std::endl;
+
     boost::function<bool (const Eigen::Vector3f &)> campos_constraints;
     campos_constraints = camPosConstraints ();
-
-    multi_recog_.reset (new faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT>);
-    boost::shared_ptr < pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
-    boost::shared_ptr < faat_pcl::GraphGeometricConsistencyGrouping<PointT, PointT> > gcg_alg (
-                                                                                               new faat_pcl::GraphGeometricConsistencyGrouping<
-                                                                                                   PointT, PointT>);
-
-    gcg_alg->setGCThreshold (cg_size_);
-    gcg_alg->setGCSize (0.015);
-    gcg_alg->setRansacThreshold (0.015);
-    gcg_alg->setUseGraph (true);
-    gcg_alg->setDistForClusterFactor (0);
-    gcg_alg->setMaxTaken(2);
-    gcg_alg->setMaxTimeForCliquesComputation(100);
-    gcg_alg->setDotDistance (0.2);
-    cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
 
     multi_recog_.reset (new faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT>);
 
@@ -645,7 +588,7 @@ bool Recognizer::recognize ()
       new_sift_local_->setICPIterations (0);
       new_sift_local_->setFeatureEstimator (cast_estimator);
       new_sift_local_->setUseCache (true);
-      new_sift_local_->setCGAlgorithm (cast_cg_alg);
+//      new_sift_local_->setCGAlgorithm (cast_cg_alg);
       new_sift_local_->setKnn (5);
       new_sift_local_->setUseCache (true);
       new_sift_local_->initialize (false);
@@ -811,7 +754,7 @@ bool Recognizer::recognize ()
         local->setTrainingDir (training_dir_shot_);
         local->setDescriptorName (desc_name);
         local->setFeatureEstimator (cast_estimator);
-        local->setCGAlgorithm (cast_cg_alg);
+//        local->setCGAlgorithm (cast_cg_alg);
         local->setKnn(knn_shot_);
         local->setUseCache (use_cache);
         local->setThresholdAcceptHyp (1);
@@ -828,15 +771,10 @@ bool Recognizer::recognize ()
     }
 
     multi_recog_->setSaveHypotheses(true);
-    multi_recog_->setVoxelSizeICP(0.005f);
-    multi_recog_->setICPType(1);
+    multi_recog_->setVoxelSizeICP(icp_voxel_size_);
+    multi_recog_->setICPType(icp_type_);
     multi_recog_->setICPIterations(icp_iterations_);
     multi_recog_->initialize();
-
-//    recognize_  = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
-//    vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "sv_recogniced_object_instances_", 1 );
-//    std::cout << "Ready to get service calls..." << std::endl;
-//    ros::spin ();
   }
 
 
