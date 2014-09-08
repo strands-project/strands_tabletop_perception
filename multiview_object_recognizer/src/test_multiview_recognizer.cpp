@@ -14,9 +14,6 @@
 #include "scitos_apps_msgs/action_buttons.h"
 
 
-
-const std::string transform_prefix_ = "transformation_";
-
 void joyCallback ( const scitos_apps_msgs::action_buttons& msg );
 void kinectCallback ( const sensor_msgs::PointCloud2& msg );
 
@@ -39,6 +36,7 @@ void kinectCallback ( const sensor_msgs::PointCloud2& msg )
 int
 main (int argc, char **argv)
 {
+    const std::string transform_prefix_ = "transformation_";
     ros::init(argc, argv, "multiview_object_recognizer_test_node");
     ros::NodeHandle *n;
     n = new ros::NodeHandle("~");

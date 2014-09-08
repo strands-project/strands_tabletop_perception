@@ -206,7 +206,7 @@ int main (int argc, char **argv)
 
     //client_ = n_->serviceClient<recognition_srv_definitions::recognize> ( "/recognition_service/mp_recognition" );
     ros::ServiceServer ros_mv_rec_server;
-    ros_mv_rec_server = n_->advertiseService("multiview_recognotion_servcice", &worldRepresentation::recognize, &myWorld);
+    ros_mv_rec_server = n_->advertiseService("multiview_recognotion_servcice", &worldRepresentation::recognizeROSWrapper, &myWorld);
 
     ros::Publisher vis_pc_pub;
     vis_pc_pub = n_->advertise<sensor_msgs::PointCloud2>( "test", 0 );

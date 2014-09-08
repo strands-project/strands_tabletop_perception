@@ -54,7 +54,6 @@ private:
     boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     Graph grph_, grph_final_;
     std::string most_current_view_id_, scene_name_;
-    boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, PointT> > models_source_;
     boost::shared_ptr< pcl::PointCloud<PointT> > pAccumulatedKeypoints_;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pAccumulatedKeypointNormals_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > accumulatedHypotheses_;
@@ -63,7 +62,6 @@ private:
     float chop_at_z_;
     float distance_keypoints_get_discarded_;
     float icp_resolution_;
-//    bool do_reverse_hyp_extension;
     pcl::visualization::PCLVisualizer::Ptr vis_;
     bool scene_to_scene_;
     bool use_robot_pose_;

@@ -1093,8 +1093,6 @@ bool multiviewGraph::recognize
     if(visualize_output_)
         visualizeGraph(grph_final_, vis_);
 
-    //    grph_[vrtx].cumulative_weight_to_new_vrtx_ = grph_final_[vrtx_final].cumulative_weight_to_new_vrtx_;
-
     std::pair<vertex_iter, vertex_iter> vp;
     for ( vp = vertices ( grph_final_ ); vp.first != vp.second; ++vp.first )
     {   //--reset-hop-status
@@ -1102,44 +1100,6 @@ bool multiviewGraph::recognize
     }
 
     grph_[vrtx] = grph_final_[vrtx_final]; // shallow copy is okay here
-
-    //----respond-service-call-and-publish-all-recognized-models-(after-multiview-extension)-as-ROS-point-cloud-------------------
-    //    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
-    for ( size_t hyp_id = 0; hyp_id < grph_final_[vrtx_final].hypothesis_mv_.size(); hyp_id++ )
-    {
-        if ( grph_final_[vrtx_final].hypothesis_mv_[hyp_id].verified_ )
-        {
-            //            hyp_transforms_local.push_back(grph_final_[vrtx_final].hypothesis_mv_[hyp_id].transform_);
-            //            hyp_model_ids.push_back(grph_final_[vrtx_final].hypothesis_mv_[hyp_id].model_id_);
-
-            //            std_msgs::String model_id;
-            //            model_id.data = grph_final_[vrtx_final].hypothesis_mv_[hyp_id].model_id_;
-            //            response.ids.push_back(model_id);
-
-            //            Eigen::Matrix4f trans = grph_final_[vrtx_final].hypothesis_mv_[hyp_id].transform_;
-            //            geometry_msgs::Transform tt;
-            //            tt.translation.x = trans(0,3);
-            //            tt.translation.y = trans(1,3);
-            //            tt.translation.z = trans(2,3);
-
-            //            Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
-            //            Eigen::Quaternionf q(rotation);
-            //            tt.rotation.x = q.x();
-            //            tt.rotation.y = q.y();
-            //            tt.rotation.z = q.z();
-            //            tt.rotation.w = q.w();
-            //            response.transforms.push_back(tt);
-
-            //            Eigen::Matrix4f trans_2_world = grph_final_[vrtx_final].transform_to_world_co_system_ * trans;
-
-
-            //            typename pcl::PointCloud<PointT>::Ptr pModelPCl ( new pcl::PointCloud<PointT> );
-            //            typename pcl::PointCloud<PointT>::Ptr model_aligned ( new pcl::PointCloud<PointT> );
-            //            pcl::io::loadPCDFile ( grph_final_[vrtx_final].hypothesis_sv_[hyp_id].model_id_, *pModelPCl );
-            //            pcl::transformPointCloud ( *pModelPCl, *model_aligned, trans_2_world );
-            //            *pRecognizedModels += *model_aligned;
-        }
-    }
 
     //-------Clean-up-graph-------------------
     outputgraph ( grph_, "complete_graph.dot" );

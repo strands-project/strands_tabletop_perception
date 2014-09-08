@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(multiview_object_recognizer)
-SET (CMAKE_BUILD_TYPE RelWithDebInfo)
+SET (CMAKE_BUILD_TYPE Release)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -128,6 +128,16 @@ add_executable(multiview_object_recognizer_node
                 ${incs}
 )
 
+add_executable(multiview_object_recognizer_eval_node
+                src/multiview_object_recognizer_service.cpp
+                src/world_representation.cpp
+                src/boost_graph_extension.cpp
+                src/singleview_object_recognizer.cpp
+                src/eval_main.cpp
+                ${incs}
+)
+
+
 ## Declare a cpp executable
 add_executable(multiview_object_recognizer_test_node
                 src/test_multiview_recognizer.cpp
@@ -138,6 +148,7 @@ add_executable(multiview_object_recognizer_test_node
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(multiview_object_recognizer_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 add_dependencies(multiview_object_recognizer_test_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(multiview_object_recognizer_eval_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(multiview_object_recognizer_node
@@ -145,6 +156,13 @@ target_link_libraries(multiview_object_recognizer_node
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
 )
+
+target_link_libraries(multiview_object_recognizer_eval_node
+   ${catkin_LIBRARIES}
+   ${PCL_LIBRARIES}
+   ${OpenCV_LIBS}
+)
+
 
 target_link_libraries(multiview_object_recognizer_test_node
    ${catkin_LIBRARIES}

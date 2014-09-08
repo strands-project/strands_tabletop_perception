@@ -31,7 +31,19 @@ public:
         vis.reset ( new pcl::visualization::PCLVisualizer ( "vis" ) );
     }
 
-    bool recognize (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
+    bool recognizeROSWrapper (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
+
+    bool recognize (const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr pInput,
+                                         const std::string &scene_name,
+                                         const std::string &view_name,
+                                         const size_t &timestamp,
+                                         const std::vector<double> global_trans_v,
+                                         std::vector<ModelTPtr> &models_mv,
+                                         std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &transforms_mv,
+                                         const std::string filepath_or_results_mv = std::string(""),
+                                         const std::string filepath_or_results_sv = std::string("")
+                                         );
+
     multiviewGraph& get_current_graph(const std::string scene_name);
 
     // getter and setter functions
