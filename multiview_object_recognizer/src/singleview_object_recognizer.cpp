@@ -124,7 +124,7 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     go->setRadiusNormals (0.02);
     go->setRequiresNormals(false);
     go->setInitialStatus(false);
-    go->setIgnoreColor(true);
+    go->setIgnoreColor(false);
     go->setColorSigma (hv_params_.color_sigma_l_, hv_params_.color_sigma_ab_);
     go->setHistogramSpecification(true);
     go->setVisualizeGoCues(0);
@@ -580,22 +580,23 @@ bool Recognizer::recognize ()
       cast_estimator = boost::dynamic_pointer_cast<faat_pcl::rec_3d_framework::OpenCVSIFTLocalEstimation<PointT, pcl::Histogram<128> > > (estimator);
 #endif
 
-      boost::shared_ptr<faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > > new_sift_local_;
-      new_sift_local_.reset (new faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > (idx_flann_fn));
-      new_sift_local_->setDataSource (cast_source);
-      new_sift_local_->setTrainingDir (training_dir_sift_);
-      new_sift_local_->setDescriptorName (desc_name);
-      new_sift_local_->setICPIterations (0);
-      new_sift_local_->setFeatureEstimator (cast_estimator);
-      new_sift_local_->setUseCache (true);
+      boost::shared_ptr<faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > > new_sift_local;
+      new_sift_local.reset (new faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > (idx_flann_fn));
+      new_sift_local->setDataSource (cast_source);
+      new_sift_local->setTrainingDir (training_dir_sift_);
+      new_sift_local->setDescriptorName (desc_name);
+      new_sift_local->setICPIterations (0);
+      new_sift_local->setFeatureEstimator (cast_estimator);
+      new_sift_local->setUseCache (true);
 //      new_sift_local_->setCGAlgorithm (cast_cg_alg);
-      new_sift_local_->setKnn (5);
-      new_sift_local_->setUseCache (true);
-      new_sift_local_->initialize (false);
+      new_sift_local->setKnn (5);
+      new_sift_local->setUseCache (true);
+      new_sift_local->setSaveHypotheses(true);
+      new_sift_local->initialize (false);
 
       boost::shared_ptr < faat_pcl::rec_3d_framework::Recognizer<PointT> > cast_recog;
       cast_recog = boost::static_pointer_cast<faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > > (
-                                                                                                                                        new_sift_local_);
+                                                                                                                                        new_sift_local);
       std::cout << "Feature Type: " << cast_recog->getFeatureType() << std::endl;
       multi_recog_->addRecognizer (cast_recog);
     }
@@ -761,6 +762,7 @@ bool Recognizer::recognize ()
         uniform_keypoint_extractor->setSamplingDensity (test_sampling_density);
         local->setICPIterations (0);
         local->setKdtreeSplits (128);
+        local->setSaveHypotheses(true);
         local->initialize (false);
         local->setMaxDescriptorDistance(std::numeric_limits<float>::infinity());
         uniform_keypoint_extractor->setMaxDistance(1.5f);
