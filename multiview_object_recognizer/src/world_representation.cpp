@@ -78,9 +78,11 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
 
     std::vector<ModelTPtr> models_sv;
     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > transforms_sv;
+    std::vector<double> execution_times;
     currentGraph.getVerifiedHypothesesSingleView(models_sv, transforms_sv);
 
     currentGraph.getVerifiedHypotheses(models_mv, transforms_mv);
+    currentGraph.get_times(execution_times);
 
     std::cout << "In the most current vertex I detected " << models_mv.size() << " verified models. " << std::endl;
 
@@ -123,6 +125,18 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
             }
             or_file.close();
         }
+
+        // save measured execution times
+        std::stringstream or_filepath_times;
+        or_filepath_times << filepath_or_results_mv << "/" << view_name << "_times.txt";
+
+        ofstream time_file;
+        time_file.open (or_filepath_times.str());
+        for (size_t time_id=0; time_id < execution_times.size(); time_id++)
+        {
+            time_file << execution_times[time_id] << std::endl;
+        }
+        time_file.close();
     }
 
 
@@ -183,6 +197,10 @@ bool worldRepresentation::recognizeROSWrapper (recognition_srv_definitions::mult
     std::string view_name = req.view_name.data;
     size_t timestamp = req.timestamp.data.toNSec();
 
+//    std::stringstream save_filepath;
+//    save_filepath << "/media/Data/datasets/TUW/test_set/set_00017/" << view_name << ".pcd";
+//    pcl::io::savePCDFileBinary(save_filepath.str(), *pInputCloud);
+
     std::vector<double> global_trans_v;
 
     for(size_t i=0; i < req.transform.size(); i++)
@@ -191,7 +209,6 @@ bool worldRepresentation::recognizeROSWrapper (recognition_srv_definitions::mult
     std::vector<ModelTPtr> models_mv;
     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > transforms_mv;
     bool rec_error = recognize(pInputCloud, scene_name, view_name, timestamp, global_trans_v, models_mv, transforms_mv);
-
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
     for(size_t i = 0; i < models_mv.size(); i++)

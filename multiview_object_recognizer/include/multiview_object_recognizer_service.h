@@ -67,6 +67,7 @@ private:
     bool use_robot_pose_;
     bool use_gc_s2s_;
     size_t max_vertices_in_graph_;
+    std::vector<double> times_;
 
     Eigen::Matrix4f current_global_transform_;
 
@@ -133,6 +134,11 @@ public:
     std::string get_scene_name() const
     {
         return scene_name_;
+    }
+
+    void get_times(std::vector<double> &times) const
+    {
+        times = times_;
     }
 
     void visualizeEdge (const Edge &edge, const Graph &grph);

@@ -425,11 +425,11 @@ extendFeatureMatchesRecursive ( Graph &grph,
                                     (new_kp_normal.getNormalVector3fMap().dot(existing_kp_normal.getNormalVector3fMap()) > 0.8) &&
                                     (squaredDistModelKeypoints < distance_keypoints_get_discarded_))
                             {
-//                                std::cout << "Found a very close point (keypoint distance: " << squaredDistSceneKeypoints
-//                                          << "; model distance: " << squaredDistModelKeypoints
-//                                          << ") with the same model id and similar normal (Normal dot product: "
-//                                          << new_kp_normal.getNormalVector3fMap().dot(existing_kp_normal.getNormalVector3fMap()) << "> 0.8). Ignoring it."
-//                                                                      << std::endl;
+                                //                                std::cout << "Found a very close point (keypoint distance: " << squaredDistSceneKeypoints
+                                //                                          << "; model distance: " << squaredDistModelKeypoints
+                                //                                          << ") with the same model id and similar normal (Normal dot product: "
+                                //                                          << new_kp_normal.getNormalVector3fMap().dot(existing_kp_normal.getNormalVector3fMap()) << "> 0.8). Ignoring it."
+                                //                                                                      << std::endl;
                                 drop_new_correspondence = true;
                                 break;
                             }
@@ -445,8 +445,8 @@ extendFeatureMatchesRecursive ( Graph &grph,
                             it_existing_hyp->second.normals_pointcloud->points.push_back(new_model_normal);
                         }
                     }
-//                    std::cout << "INFO: Size for " << id <<
-//                                 " of correspondes_pointcloud after merge: " << it_existing_hyp->second.correspondences_pointcloud->points.size() << std::endl;
+                    //                    std::cout << "INFO: Size for " << id <<
+                    //                                 " of correspondes_pointcloud after merge: " << it_existing_hyp->second.correspondences_pointcloud->points.size() << std::endl;
                 }
             }
             *pKeypoints += *pNewKeypoints;
@@ -824,6 +824,20 @@ bool multiviewGraph::recognize
                  "***robot pose for transform calculation: " << use_robot_pose_ << std::endl <<
                  "=========================================================" << std::endl << std::endl;
 
+    double  total_time,
+            robot_pose_est_time,
+            sift_feate_est_time,
+            sv_hyp_construction_time,
+            sv_overhead_time,
+            mv_hyp_construct_time,
+            mv_hyp_ver_time,
+            mv_feat_ext_time,
+            mv_icp_time,
+            sv_total_time;
+
+    times_.clear();
+
+    pcl::ScopeTime total_pcl_time ("Multiview Recognition");
 
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals_f (new pcl::PointCloud<pcl::Normal> );
 
@@ -932,34 +946,44 @@ bool multiviewGraph::recognize
     assert(grph_[vrtx].pKeypointNormalsMultipipe_->points.size()
            == grph_[vrtx].pKeypointsMultipipe_->points.size());
 
+    size_t sv_num_correspondences=0;
+    std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::const_iterator it_hyp;
+    for(it_hyp = grph_[vrtx].hypotheses_.begin(); it_hyp !=grph_[vrtx].hypotheses_.end(); ++it_hyp)
+    {
+        sv_num_correspondences += it_hyp->second.correspondences_to_inputcloud->size();
+    }
+
+    pcl::StopWatch sv_overhead_pcl_time;
+
     std::vector < pcl::Correspondences > corresp_clusters_sv;
 
     {
-        pcl::ScopeTime ticp ("Constructing hypotheses from feature matches...");
+        pcl::ScopeTime sv_hyp_construction ("Constructing hypotheses from feature matches...");
         pSingleview_recognizer_->constructHypothesesFromFeatureMatches(grph_[vrtx].hypotheses_,
-                                                                   grph_[vrtx].pKeypointsMultipipe_,
-                                                                   grph_[vrtx].pKeypointNormalsMultipipe_,
-                                                                   grph_[vrtx].hypothesis_sv_,
-                                                                   corresp_clusters_sv);
+                                                                       grph_[vrtx].pKeypointsMultipipe_,
+                                                                       grph_[vrtx].pKeypointNormalsMultipipe_,
+                                                                       grph_[vrtx].hypothesis_sv_,
+                                                                       corresp_clusters_sv);
+        sv_hyp_construction_time = sv_hyp_construction.getTime();
     }
-//    std::vector<float> fsv_mask_sv;
-//    pSingleview_recognizer_->preFilterWithFSV(grph_[vrtx].pScenePCl, fsv_mask_sv);
-//        pcl::visualization::PCLVisualizer::Ptr vis_fsv (new pcl::visualization::PCLVisualizer);
-//        for(size_t i=0; i<fsv_mask_sv.size(); i++)
-//        {
-//            vis_fsv->removeAllPointClouds();
-//            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified (grph_[vrtx].pScenePCl);
-//            vis_fsv->addPointCloud<pcl::PointXYZRGB> (grph_[vrtx].pScenePCl, handler_rgb_verified, "scene_cloud");
-//            std::cout << "fsv " << i << ": " << fsv_mask_sv[i] << std::endl;
-//            std::stringstream model_id;
-//            model_id << "cloud " << i;
-//            ConstPointInTPtr model_cloud = grph_[vrtx].hypothesis_sv_[i].model_->getAssembled (0.005f);
-//            typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
-//            pcl::transformPointCloud (*model_cloud, *model_aligned, grph_[vrtx].hypothesis_sv_[i].transform_);
-//            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified2 (model_aligned);
-//            vis_fsv->addPointCloud<pcl::PointXYZRGB> (model_aligned, handler_rgb_verified2, model_id.str());
-//            vis_fsv->spin();
-//        }
+    //    std::vector<float> fsv_mask_sv;
+    //    pSingleview_recognizer_->preFilterWithFSV(grph_[vrtx].pScenePCl, fsv_mask_sv);
+    //        pcl::visualization::PCLVisualizer::Ptr vis_fsv (new pcl::visualization::PCLVisualizer);
+    //        for(size_t i=0; i<fsv_mask_sv.size(); i++)
+    //        {
+    //            vis_fsv->removeAllPointClouds();
+    //            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified (grph_[vrtx].pScenePCl);
+    //            vis_fsv->addPointCloud<pcl::PointXYZRGB> (grph_[vrtx].pScenePCl, handler_rgb_verified, "scene_cloud");
+    //            std::cout << "fsv " << i << ": " << fsv_mask_sv[i] << std::endl;
+    //            std::stringstream model_id;
+    //            model_id << "cloud " << i;
+    //            ConstPointInTPtr model_cloud = grph_[vrtx].hypothesis_sv_[i].model_->getAssembled (0.005f);
+    //            typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
+    //            pcl::transformPointCloud (*model_cloud, *model_aligned, grph_[vrtx].hypothesis_sv_[i].transform_);
+    //            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified2 (model_aligned);
+    //            vis_fsv->addPointCloud<pcl::PointXYZRGB> (model_aligned, handler_rgb_verified2, model_id.str());
+    //            vis_fsv->spin();
+    //        }
 
     pSingleview_recognizer_->poseRefinement();
     std::vector<bool> mask_hv_sv;
@@ -972,6 +996,9 @@ bool multiviewGraph::recognize
     {
         grph_[vrtx].hypothesis_sv_[j].verified_ = mask_hv_sv[j];
     }
+
+    sv_overhead_time = sv_overhead_pcl_time.getTime();
+    sv_total_time = total_pcl_time.getTime();
     //----------END-call-single-view-recognizer------------------------------------------
 
     //---copy-vertices-to-graph_final----------------------------
@@ -992,7 +1019,7 @@ bool multiviewGraph::recognize
 
             for ( size_t i = 1; i < new_edges.size(); i++ )
             {
-//                visualizeEdge(new_edges[i], grph_);
+                //                visualizeEdge(new_edges[i], grph_);
 
                 if ( grph_[new_edges[i]].edge_weight < grph_[best_edge].edge_weight )
                 {
@@ -1000,7 +1027,7 @@ bool multiviewGraph::recognize
                 }
             }
         }
-//        visualizeEdge(new_edges[0], grph_);
+        //        visualizeEdge(new_edges[0], grph_);
         Vertex vrtx_src, vrtx_trgt;
         vrtx_src = source ( best_edge, grph_ );
         vrtx_trgt = target ( best_edge, grph_ );
@@ -1016,26 +1043,39 @@ bool multiviewGraph::recognize
 
     //---------Extend-hypotheses-from-other-view(s)------------------------------------------
     accumulatedHypotheses_.clear();
-    {
-        pcl::ScopeTime ticp ("Extending Feature Matches ");
-        extendFeatureMatchesRecursive(grph_final_, vrtx_final, accumulatedHypotheses_, pAccumulatedKeypoints_, pAccumulatedKeypointNormals_);
 
+    pcl::StopWatch mv_feat_ext_pcl_time;
+    extendFeatureMatchesRecursive(grph_final_, vrtx_final, accumulatedHypotheses_, pAccumulatedKeypoints_, pAccumulatedKeypointNormals_);
+
+    size_t total_num_correspondences=0;
+    for(it_hyp = accumulatedHypotheses_.begin(); it_hyp != accumulatedHypotheses_.end(); ++it_hyp)
+    {
+        total_num_correspondences += it_hyp->second.correspondences_to_inputcloud->size();
     }
+
+    mv_feat_ext_time = mv_feat_ext_pcl_time.getTime();
+
     std::vector < pcl::Correspondences > corresp_clusters_mv;
+
+    pcl::StopWatch mv_hyp_construct;
+    pSingleview_recognizer_->constructHypothesesFromFeatureMatches(accumulatedHypotheses_,
+                                                                   pAccumulatedKeypoints_,
+                                                                   pAccumulatedKeypointNormals_,
+                                                                   grph_final_[vrtx_final].hypothesis_mv_,
+                                                                   corresp_clusters_mv);
+    mv_hyp_construct_time = mv_hyp_construct.getTime();
+
     {
-        pcl::ScopeTime ticp ("Constructing hypotheses from feature matches...");
-        pSingleview_recognizer_->constructHypothesesFromFeatureMatches(accumulatedHypotheses_,
-                                                                       pAccumulatedKeypoints_,
-                                                                       pAccumulatedKeypointNormals_,
-                                                                       grph_final_[vrtx_final].hypothesis_mv_,
-                                                                       corresp_clusters_mv);
+        pcl::ScopeTime ticp("Multi-view ICP...");
+        pSingleview_recognizer_->poseRefinement();
+        mv_icp_time = ticp.getTime();
     }
-    pSingleview_recognizer_->poseRefinement();
     std::vector<bool> mask_hv_mv;
-    {
-        pcl::ScopeTime ticp ("Hypotheses verification...");
-        pSingleview_recognizer_->hypothesesVerification(mask_hv_mv);
-    }
+
+    pcl::StopWatch mv_hyp_ver_pcl_time;
+    pSingleview_recognizer_->hypothesesVerification(mask_hv_mv);
+    mv_hyp_ver_time = mv_hyp_ver_pcl_time.getTime();
+
 
     for(size_t i=0; i<mask_hv_mv.size(); i++)
     {
@@ -1102,6 +1142,8 @@ bool multiviewGraph::recognize
     grph_[vrtx] = grph_final_[vrtx_final]; // shallow copy is okay here
 
     //-------Clean-up-graph-------------------
+    total_time = total_pcl_time.getTime();
+
     outputgraph ( grph_, "complete_graph.dot" );
     outputgraph ( grph_final_, "Final_with_Hypothesis_extension.dot" );
     pruneGraph(grph_, max_vertices_in_graph_);
@@ -1110,5 +1152,14 @@ bool multiviewGraph::recognize
     outputgraph ( grph_final_, "final_after_deleting_old_vertex.dot" );
     outputgraph ( grph_, "grph_after_deleting_old_vertex.dot" );
 
+    times_.push_back(total_time);
+    times_.push_back(sv_hyp_construction_time);
+    times_.push_back(sv_overhead_time);
+    times_.push_back(mv_hyp_construct_time);
+    times_.push_back(mv_hyp_ver_time);
+    times_.push_back(mv_feat_ext_time);
+    times_.push_back(mv_icp_time);
+    times_.push_back(total_num_correspondences);
+    times_.push_back(sv_num_correspondences);
     return true;
 }

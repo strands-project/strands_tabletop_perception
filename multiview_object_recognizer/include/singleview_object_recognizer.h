@@ -15,6 +15,7 @@
 //#include <faat_pcl/3d_rec_framework/feature_wrapper/global/color_ourcvfh_estimator.h>
 #include <faat_pcl/3d_rec_framework/feature_wrapper/global/organized_color_ourcvfh_estimator.h>
 #include <faat_pcl/3d_rec_framework/feature_wrapper/global/ourcvfh_estimator.h>
+//#include <faat_pcl/3d_rec_framework/pc_source/model_only_source.h>
 #include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
 #include <faat_pcl/3d_rec_framework/pc_source/partial_pcd_source.h>
 #include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
@@ -81,9 +82,14 @@ private:
     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > transforms_verified_;
     std::vector<std::string> model_ids_verified_;
     std::vector<pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr> aligned_models_;
+    std::vector<pcl::PointCloud<pcl::Normal>::ConstPtr> aligned_normals_;
+    std::vector<pcl::PointCloud<pcl::PointXYZL>::Ptr> aligned_smooth_faces_;
     std::vector<std::string> model_ids_;
     std::vector<faat_pcl::PlaneModel<PointT> > planes_found_;
     std::vector<pcl::PointCloud<PointT>::Ptr> verified_planes_;
+//    boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, pcl::PointXYZRGB>
+//            > model_only_source_;
+
     bool add_planes_;
     int knn_shot_;
 
@@ -151,6 +157,9 @@ public:
 
         pInputCloud_.reset(new pcl::PointCloud<PointT>);
         pSceneNormals_.reset(new pcl::PointCloud<pcl::Normal>);
+
+//        model_only_source_.reset (new faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, pcl::PointXYZRGB>);
+
 
 #ifdef SOC_VISUALIZE
         vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
@@ -425,17 +434,39 @@ public:
     void setModelsAndTransforms(const std::vector<ModelTPtr> &models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> &transforms)
     {
         aligned_models_.resize(models.size());
+        aligned_normals_.resize(models.size());
         model_ids_.resize(models.size());
         *transforms_ = transforms;
         *models_ = models;
+        aligned_smooth_faces_.resize (models_->size ());
 
         for(size_t i=0; i<models.size(); i++)
         {
-            ConstPointInTPtr model_cloud = models.at (i)->getAssembled (hv_params_.resolution_);
+//            ModelTPtr m_with_faces;
+//            model_only_source_->getModelById(models.at(i)->id_, m_with_faces);
+
+            ConstPointInTPtr model_cloud = models.at(i)->getAssembled (hv_params_.resolution_);
             typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
             pcl::transformPointCloud (*model_cloud, *model_aligned, transforms[i]);
             aligned_models_[i] = model_aligned;
             model_ids_[i] = models.at(i)->id_;
+
+//            pcl::PointCloud<pcl::PointXYZL>::Ptr faces = models.at(i)->getAssembledSmoothFaces(hv_params_.resolution_);
+//            pcl::PointCloud<pcl::PointXYZL>::Ptr faces_aligned(new pcl::PointCloud<pcl::PointXYZL>);
+//            pcl::transformPointCloud (*faces, *faces_aligned, transforms[i]);
+//            aligned_smooth_faces_ [i] = faces_aligned;
+
+            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud_const = models.at(i)->getNormalsAssembled (hv_params_.resolution_);
+            pcl::PointCloud<pcl::Normal>::Ptr normal_cloud(new pcl::PointCloud<pcl::Normal>(*normal_cloud_const) );
+
+            const Eigen::Matrix3f rot   = transforms_->at(i).block<3, 3> (0, 0);
+//            const Eigen::Vector3f trans = transforms_->at(i).block<3, 1> (0, 3);
+            for(size_t jj=0; jj < normal_cloud->points.size(); jj++)
+            {
+                const pcl::Normal norm_pt = normal_cloud->points[jj];
+                normal_cloud->points[jj].getNormalVector3fMap() = rot * norm_pt.getNormalVector3fMap();
+            }
+            aligned_normals_[i] = normal_cloud;
         }
     }
 

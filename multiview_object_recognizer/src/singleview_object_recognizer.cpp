@@ -101,6 +101,8 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
                  "*** Color sigma L / AB: " << hv_params_.color_sigma_l_ << " / " << hv_params_.color_sigma_ab_ << std::endl <<
                  "=================================================================" << std::endl << std::endl;
 
+    for (size_t run=0; run < 2; run++)
+    {
     typename pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT>(*pInputCloud_));
 
     mask_hv.resize(aligned_models_.size());
@@ -132,26 +134,14 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     go->setSceneCloud (pInputCloud_);
     go->setNormalsForClutterTerm(pSceneNormals_);
     go->setOcclusionCloud (occlusion_cloud);
+
     //addModels
     go->addModels (aligned_models_, true);
 
-    std::vector<pcl::PointCloud<pcl::Normal>::ConstPtr> aligned_normals;
-    aligned_normals.resize(aligned_models_.size());
-    for(size_t i=0; i<aligned_models_.size(); i++)
-    {
-        pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud_const = models_->at(i)->getNormalsAssembled (hv_params_.resolution_);
-        pcl::PointCloud<pcl::Normal>::Ptr normal_cloud(new pcl::PointCloud<pcl::Normal>(*normal_cloud_const) );
+//    if(aligned_models_.size() == aligned_smooth_faces_.size())
+//        go->setSmoothFaces(aligned_smooth_faces_);
 
-        const Eigen::Matrix3f rot   = transforms_->at(i).block<3, 3> (0, 0);
-        const Eigen::Vector3f trans = transforms_->at(i).block<3, 1> (0, 3);
-        for(size_t jj=0; jj < normal_cloud->points.size(); jj++)
-        {
-            const pcl::Normal norm_pt = normal_cloud->points[jj];
-            normal_cloud->points[jj].getNormalVector3fMap() = rot * norm_pt.getNormalVector3fMap();
-        }
-        aligned_normals[i] = normal_cloud;
-    }
-    go->addNormalsClouds(aligned_normals);
+    go->addNormalsClouds(aligned_normals_);
 
     //append planar models
     if(add_planes_)
@@ -191,9 +181,13 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     for(size_t j=0; j < planes_found_.size(); j++)
         coming_from[aligned_models_.size() + j] = 1;
 
+    bool have_verified_models = false;
+
     for (size_t j = 0; j < aligned_models_.size (); j++)
     {
         mask_hv[j]=mask_hv_with_planes[j];
+        if(mask_hv_with_planes[j])
+            have_verified_models = true;
     }
     for (size_t j = 0; j < planes_found_.size(); j++)
     {
@@ -201,6 +195,54 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
             verified_planes_.push_back(planes_found_[j].plane_cloud_);
     }
 
+    // bug in HV??
+    if(!have_verified_models)
+    {
+        std::cout << "I didn't verify any model." << std::endl;
+        size_t sub_id_sv = 0;
+        std::stringstream folderpath_error_hv_ss;
+        std::stringstream folderpath_error_hv_normals_ss;
+        boost::filesystem::path folderpath_error_hv;
+        do
+        {
+            folderpath_error_hv_ss.str(std::string());
+            folderpath_error_hv_normals_ss.str(std::string());
+            folderpath_error_hv_ss << "/media/Data/datasets/TUW/hv_errors/" << sub_id_sv << ".pcd";
+            folderpath_error_hv_normals_ss << "/media/Data/datasets/TUW/hv_errors/" << sub_id_sv << "_normals.pcd";
+            folderpath_error_hv = folderpath_error_hv_ss.str();
+            sub_id_sv++;
+        }while(boost::filesystem::exists(folderpath_error_hv) );
+
+        std::cout << "Writing input for buggy hv into filename " << folderpath_error_hv_ss.str() << "and normals into " <<
+                     folderpath_error_hv_normals_ss.str() << std::endl;
+        pcl::io::savePCDFileBinary(folderpath_error_hv_ss.str(), *pInputCloud_);
+        pcl::io::savePCDFileBinary(folderpath_error_hv_normals_ss.str(), *pSceneNormals_);
+
+        std::stringstream param_file_text;
+        for (size_t j = 0; j < aligned_models_.size (); j++)
+        {
+            param_file_text << models_->at(j)->id_ << std::endl;
+            for (size_t row=0; row <4; row++)
+            {
+                for(size_t col=0; col<4; col++)
+                {
+                    param_file_text << transforms_->at(j)(row, col) << " ";
+                }
+            }
+            param_file_text << std::endl;
+        }
+
+        std::stringstream folderpath_error_hv_models_and_transforms_ss;
+        folderpath_error_hv_models_and_transforms_ss << "/media/Data/datasets/TUW/hv_errors/" << sub_id_sv << "_models_and_transforms.txt";
+        ofstream hv_error_file;
+        hv_error_file.open (folderpath_error_hv_models_and_transforms_ss.str());
+        hv_error_file << param_file_text.str();
+        hv_error_file.close();
+
+    }
+        if(have_verified_models)
+            break;
+    }
     return true;
 }
 
@@ -232,9 +274,11 @@ void Recognizer::constructHypothesesFromFeatureMatches(std::map < std::string,fa
                 PointT, PointT>);
 
     aligned_models_.clear();
+    aligned_normals_.clear();
     model_ids_.clear();
     transforms_->clear();
     models_->clear();
+    aligned_smooth_faces_.clear();
 
     gcg_alg->setGCThreshold (cg_params_.cg_size_threshold_);
     gcg_alg->setGCSize (cg_params_.cg_size_);
@@ -282,17 +326,36 @@ void Recognizer::constructHypothesesFromFeatureMatches(std::map < std::string,fa
             typename pcl::registration::TransformationEstimationSVD < PointT, PointT > t_est;
             t_est.estimateRigidTransformation (*(*it_map).second.correspondences_pointcloud, *pKeypoints, corresp_clusters[i], best_trans);
 
-            Hypothesis<PointT> ht_temp ( (*it_map).second.model_, best_trans);
+            Hypothesis<PointT> ht_temp ( (*it_map).second.model_, best_trans );
             hypothesesOutput.push_back(ht_temp);
-            corresp_clusters_hyp.push_back(corresp_clusters[i]);
-            models_->push_back((*it_map).second.model_);
-            model_ids_.push_back((*it_map).second.model_->id_);
-            transforms_->push_back(best_trans);
+            corresp_clusters_hyp.push_back( corresp_clusters[i] );
+            models_->push_back( it_map->second.model_ );
+            model_ids_.push_back( it_map->second.model_->id_ );
+            transforms_->push_back( best_trans );
 
+//            ModelTPtr m_with_faces;
+//            model_only_source_->getModelById((*it_map).second.model_->id_, m_with_faces);
             ConstPointInTPtr model_cloud = (*it_map).second.model_->getAssembled (hv_params_.resolution_);
             typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
             pcl::transformPointCloud (*model_cloud, *model_aligned, best_trans);
             aligned_models_.push_back(model_aligned);
+
+//            pcl::PointCloud<pcl::PointXYZL>::Ptr faces = (*it_map).second.model_->getAssembledSmoothFaces(hv_params_.resolution_);
+//            pcl::PointCloud<pcl::PointXYZL>::Ptr faces_aligned(new pcl::PointCloud<pcl::PointXYZL>);
+//            pcl::transformPointCloud (*faces, *faces_aligned, best_trans);
+//            aligned_smooth_faces_.push_back(faces_aligned);
+
+            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud_const = (*it_map).second.model_->getNormalsAssembled (hv_params_.resolution_);
+            pcl::PointCloud<pcl::Normal>::Ptr normal_cloud(new pcl::PointCloud<pcl::Normal>(*normal_cloud_const) );
+
+            const Eigen::Matrix3f rot   = transforms_->at(i).block<3, 3> (0, 0);
+//            const Eigen::Vector3f trans = transforms_->at(i).block<3, 1> (0, 3);
+            for(size_t jj=0; jj < normal_cloud->points.size(); jj++)
+            {
+                const pcl::Normal norm_pt = normal_cloud->points[jj];
+                normal_cloud->points[jj].getNormalVector3fMap() = rot * norm_pt.getNormalVector3fMap();
+            }
+            aligned_normals_.push_back(normal_cloud);
         }
     }
 }
@@ -534,6 +597,15 @@ bool Recognizer::recognize ()
     campos_constraints = camPosConstraints ();
 
     multi_recog_.reset (new faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT>);
+
+//    model_only_source_->setPath (models_dir_);
+//    model_only_source_->setLoadViews (false);
+//    model_only_source_->setModelScale(1);
+//    model_only_source_->setLoadIntoMemory(false);
+//    std::string test = "irrelevant";
+//    std::cout << "calling generate" << std::endl;
+//    model_only_source_->setExtension("pcd");
+//    model_only_source_->generate (test);
 
     if (do_sift_)
     {

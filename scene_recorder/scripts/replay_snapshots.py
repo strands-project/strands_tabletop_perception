@@ -61,14 +61,14 @@ if __name__ == '__main__':
                                         for col in range(0,4):
                                                 transf_1d[4*row + col] = trans_homo[row][col]
 
-				rospy.wait_for_service("/segment_table")
-                                try:
-                                        table_segment_client = rospy.ServiceProxy("/segment_table", SegmentTable)
-                                        resp = table_segment_client(pointcloud, scene_name, transf_1d)
-                                	pointcloud = resp.cloud
-				except rospy.ServiceException, e:
-        #                               print "Service call failed: %s"%e
-                                        print "Table segmentation service call failed"
+				#rospy.wait_for_service("/segment_table")
+                                #try:
+                                #        table_segment_client = rospy.ServiceProxy("/segment_table", SegmentTable)
+                                #        resp = table_segment_client(pointcloud, scene_name, transf_1d)
+                               # 	pointcloud = resp.cloud
+			#	except rospy.ServiceException, e:
+        #                #               print "Service call failed: %s"%e
+                          #              print "Table segmentation service call failed"
 
 
                                 rospy.wait_for_service("/multiview_object_recognizer_node/multiview_recognotion_servcice");
@@ -76,11 +76,13 @@ if __name__ == '__main__':
                                         mv_client = rospy.ServiceProxy("/multiview_object_recognizer_node/multiview_recognotion_servcice", multiview_recognize)
                                         msg_to_send = multiview_recognize()
                                         msg_to_send.cloud = pointcloud
+					view_id_string = "%05d" % view_id
+					print view_id_string
                                         msg_to_send.scene_name = String(scene_name)
-                                        msg_to_send.view_name = String(`view_id`)
+                                        msg_to_send.view_name = String(view_id_string)
                                         msg_to_send.transform = transf_1d
                                         #msg_to_send.timestamp = Int32(timestampe)
-                                        resp1 = mv_client(pointcloud, String(scene_name), String(`view_id`), transf_1d, Time(timestamp))
+                                        resp1 = mv_client(pointcloud, String(scene_name), String(view_id_string), transf_1d, Time(timestamp))
                                 	
 					print "Using multi-view recognition, following objects were detected: "
 
