@@ -32,6 +32,7 @@
 #include <std_msgs/String.h>
 #include <pcl_conversions.h>
 #include "boost_graph_extension.h"
+#include "boost_graph_visualization_extension.h"
 #include "recognition_srv_definitions/multiview_recognize.h"
 #include "segmenter.h"
 #include "singleview_object_recognizer.h"
@@ -40,7 +41,6 @@ typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointInT;
 typedef PointInT::ConstPtr ConstPointInTPtr;
 typedef boost::shared_ptr< PointInT > PointInTPtr;
-typedef pcl::PointXYZRGB PointT;
 typedef pcl::Histogram<128> FeatureT;
 typedef flann::L1<float> DistT;
 
@@ -57,7 +57,6 @@ private:
     boost::shared_ptr< pcl::PointCloud<PointT> > pAccumulatedKeypoints_;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pAccumulatedKeypointNormals_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > accumulatedHypotheses_;
-    pcl::visualization::PCLVisualizer::Ptr edge_vis_;
     bool visualize_output_;
     float chop_at_z_;
     float distance_keypoints_get_discarded_;
@@ -72,6 +71,8 @@ private:
     Eigen::Matrix4f current_global_transform_;
 
     cv::Ptr<SiftGPU> sift_;
+
+    BoostGraphVisualizer bgvis_;
     
 public:
     multiviewGraph(){
@@ -104,7 +105,6 @@ public:
     //    void selectLowestWeightEdgesFromParallelEdges ( const std::vector<Edge> &parallel_edges, const Graph &grph, std::vector<Edge> &single_edges );
     void createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges );
     void calcEdgeWeight (Graph &grph, std::vector<Edge> &edges);
-    void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr &vis);
 
     void set_max_vertices_in_graph(const size_t num)
     {
@@ -140,8 +140,6 @@ public:
     {
         times = times_;
     }
-
-    void visualizeEdge (const Edge &edge, const Graph &grph);
 
     bool recognize ( const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud,
                      const std::string view_name,

@@ -103,7 +103,6 @@ int main (int argc, char **argv)
     if(n->getParam ( "do_sift", do_sift))
         pSingleview_recognizer->set_do_sift(do_sift);
 
-
     if(n->getParam ( "do_shot", do_shot))
         pSingleview_recognizer->set_do_shot(do_shot);
 

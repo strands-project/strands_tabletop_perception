@@ -137,8 +137,8 @@ void BoostGraphVisualizer::visualizeWorkflow ( const Vertex &vrtx, const Graph &
         keypoints_vis_.reset (new pcl::visualization::PCLVisualizer());
         keypoints_vis_->createViewPort(0,0,0.5,1,v1);
         keypoints_vis_->createViewPort(0.5,0,1,1,v2);
-        keypoints_vis_->addText ("Single-view keypoints", 10, 10, 20, 255, 255, 255, "sv", v1);
-        keypoints_vis_->addText ("Single-view keypoints (red) + extended keypoints (green)", 10, 10, 20, 255, 255, 255, "mv", v2);
+        keypoints_vis_->addText ("Single-view keypoints", 10, 10, "sv", v1);
+        keypoints_vis_->addText ("Single-view keypoints (red) + extended keypoints (green)", 10, 10, "mv", v2);
     }
     else
     {
@@ -146,8 +146,8 @@ void BoostGraphVisualizer::visualizeWorkflow ( const Vertex &vrtx, const Graph &
         keypoints_vis_->removeAllPointClouds(v2);
         keypoints_vis_->removeAllShapes(v1);
         keypoints_vis_->removeAllShapes(v2);
-        keypoints_vis_->updateText("Single-view keypoints", 10, 10, 20, 255, 255, 255, "sv");
-        keypoints_vis_->updateText("Single-view keypoints (red) + extended keypoints (green)", 10, 10, 20, 255, 255, 255, "mv");
+        keypoints_vis_->updateText("Single-view keypoints", 10, 10, "sv");
+        keypoints_vis_->updateText("Single-view keypoints (red) + extended keypoints (green)", 10, 10, "mv");
     }
 
 
@@ -198,8 +198,8 @@ void BoostGraphVisualizer::visualizeWorkflow ( const Vertex &vrtx, const Graph &
 
      keypoints_vis_->removeAllPointClouds(v1);
      keypoints_vis_->removeAllPointClouds(v2);
-     keypoints_vis_->updateText("Single-view: Correspondence Grouping and Hypotheses Generation", 10, 10, 20, 255, 255, 255, "sv");
-     keypoints_vis_->updateText("Multi-view: Correspondence Grouping and Hypotheses Generation", 10, 10, 20, 255, 255, 255, "mv");
+     keypoints_vis_->updateText("Single-view: Correspondence Grouping and Hypotheses Generation", 10, 10, "sv");
+     keypoints_vis_->updateText("Multi-view: Correspondence Grouping and Hypotheses Generation", 10, 10, "mv");
 
      for ( size_t hyp_id = 0; hyp_id < grph[vrtx].hypothesis_sv_.size(); hyp_id++ )
      {
@@ -240,8 +240,8 @@ void BoostGraphVisualizer::visualizeWorkflow ( const Vertex &vrtx, const Graph &
     keypoints_vis_->spin();
     keypoints_vis_->removeAllPointClouds(v1);
     keypoints_vis_->removeAllPointClouds(v2);
-    keypoints_vis_->updateText("Single-view: Verified Hypotheses", 10, 10, 20, 255, 255, 255, "sv");
-    keypoints_vis_->updateText("Multi-view: Verified Hypotheses", 10, 10, 20, 255, 255, 255, "mv");
+    keypoints_vis_->updateText("Single-view: Verified Hypotheses", 10, 10, "sv");
+    keypoints_vis_->updateText("Multi-view: Verified Hypotheses", 10, 10, "mv");
 
     for ( size_t hyp_id = 0; hyp_id < grph[vrtx].hypothesis_sv_.size(); hyp_id++ )
     {

@@ -99,7 +99,6 @@ int main (int argc, char **argv)
     if(n_->getParam ( "do_sift", do_sift))
         pSingleview_recognizer->set_do_sift(do_sift);
 
-
     if(n_->getParam ( "do_shot", do_shot))
         pSingleview_recognizer->set_do_shot(do_shot);
 
@@ -204,15 +203,47 @@ int main (int argc, char **argv)
     if(n_->getParam ( "distance_keypoints_get_discarded", distance_keypoints_get_discarded))
         myWorld.set_distance_keypoints_get_discarded(distance_keypoints_get_discarded);
 
+    std::cout << "=====Started recognizer with following parameters:====="
+                    << "cg_size_thresh: " << cg_size_threshold << std::endl
+                    << "cg_size: " << cg_size << std::endl
+                    << "cg_ransac_threshold: " << ransac_threshold << std::endl
+                    << "cg_dist_for_clutter_factor: " << dist_for_clutter_factor << std::endl
+                    << "cg_max_taken: " << max_taken << std::endl
+                    << "cg_max_time_for_cliques_computation: " << max_time_for_cliques_computation << std::endl
+                    << "cg_dot_distance: " << dot_distance << std::endl
+                    << "hv_resolution: " << resolution << std::endl
+                    << "hv_inlier_threshold: " << inlier_threshold << std::endl
+                    << "hv_radius_clutter: " << radius_clutter << std::endl
+                    << "hv_regularizer: " << regularizer << std::endl
+                    << "hv_clutter_regularizer: " << clutter_regularizer << std::endl
+                    << "hv_occlusion_threshold: " << occlusion_threshold << std::endl
+                    << "hv_optimizer_type: " << optimizer_type << std::endl
+                    << "hv_color_sigma_l: " << color_sigma_l << std::endl
+                    << "hv_color_sigma_ab: " << color_sigma_ab << std::endl
+                    << "opt_type: " << opt_type << std::endl
+                    << "chop_z: " << chop_at_z << std::endl
+                    << "scene_to_scene: " << scene_to_scene << std::endl
+                    << "visualize_output: " << visualize_output << std::endl
+                    << "max_vertices_in_graph: " << max_vertices_in_graph << std::endl
+                    << "distance_keypoints_get_discarded: " << distance_keypoints_get_discarded << std::endl
+                    << "icp_iterations: " << icp_iter << std::endl
+                    << "icp_type: " << icp_type << std::endl
+                    << "icp_voxel_size: " << icp_voxel_size << std::endl
+                    << "do_sift: " << do_sift << std::endl
+                    << "do_shot: " << do_shot << std::endl
+                    << "do_ourcvfh: " << do_ourcvfh << std::endl
+                    << "====================" << std::endl << std::endl;
+
+
     //client_ = n_->serviceClient<recognition_srv_definitions::recognize> ( "/recognition_service/mp_recognition" );
     ros::ServiceServer ros_mv_rec_server;
-    ros_mv_rec_server = n_->advertiseService("multiview_recognotion_servcice", &worldRepresentation::recognizeROSWrapper, &myWorld);
+    ros_mv_rec_server = n_->advertiseService("multiview_recognotion_service", &worldRepresentation::recognizeROSWrapper, &myWorld);
 
     ros::Publisher vis_pc_pub;
     vis_pc_pub = n_->advertise<sensor_msgs::PointCloud2>( "test", 0 );
     myWorld.set_vis_pc_pub(vis_pc_pub);
 
-    ROS_INFO("Multiview object recognizer is ready to get service calls.");
+    ROS_INFO("Multiview object recognizer is ready to get service callsssss.");
     ros::spin();
 
     return 0;

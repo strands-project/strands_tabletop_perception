@@ -71,12 +71,12 @@ if __name__ == '__main__':
                           #              print "Table segmentation service call failed"
 
 
-                                rospy.wait_for_service("/multiview_object_recognizer_node/multiview_recognotion_servcice");
+                                rospy.wait_for_service("/multiview_object_recognizer_node/multiview_recognotion_service");
                                 try:
-                                        mv_client = rospy.ServiceProxy("/multiview_object_recognizer_node/multiview_recognotion_servcice", multiview_recognize)
+                                        mv_client = rospy.ServiceProxy("/multiview_object_recognizer_node/multiview_recognotion_service", multiview_recognize)
                                         msg_to_send = multiview_recognize()
                                         msg_to_send.cloud = pointcloud
-					view_id_string = "%05d" % view_id
+					view_id_string = "%05d" % view_id	
 					print view_id_string
                                         msg_to_send.scene_name = String(scene_name)
                                         msg_to_send.view_name = String(view_id_string)
