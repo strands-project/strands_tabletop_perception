@@ -4,9 +4,7 @@ project(generic_3d_object_classifier)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED roscpp rospy strandsv4r)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
+find_package(catkin REQUIRED roscpp rospy strands_v4r)
 find_package(PCL 1.7 REQUIRED)
 find_package(OpenCV 2.4 REQUIRED)
 ## System dependencies are found with CMake's conventions
@@ -81,7 +79,7 @@ find_package(OpenCV 2.4 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES generic_3d_object_classifier
-  CATKIN_DEPENDS strandsv4r roscpp rospy
+  CATKIN_DEPENDS strands_v4r roscpp rospy
 #  DEPENDS system_lib
 )
 
@@ -118,6 +116,7 @@ add_dependencies(generic_3d_object_classifier_node generic_3d_object_classifier_
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
+   ${STRANDSV4R_LIBS}
  )
 
 #############

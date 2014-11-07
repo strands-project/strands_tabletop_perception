@@ -12,8 +12,8 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <faat_pcl/utils/filesystem_utils.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
+#include <v4r/ORUtils/filesystem_utils.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/transformation_estimation_svd.h>
 #include "classifier_srv_definitions/mv_classify.h"

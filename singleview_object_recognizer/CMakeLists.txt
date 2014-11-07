@@ -7,10 +7,8 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## is used, also find other catkin packages
 
 find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
-                                        strandsv4r genmsg actionlib_msgs actionlib
-                                        scitos_ptu mongodb_store_msgs mongodb_store_cpp_client)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
+                                        strands_v4r genmsg actionlib_msgs actionlib
+                                        scitos_ptu mongodb_store_msgs mongodb_store)
 
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
@@ -57,7 +55,7 @@ generate_messages(DEPENDENCIES actionlib_msgs)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-   CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strandsv4r scitos_ptu mongodb_store_msgs mongodb_store_cpp_client
+   CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strands_v4r scitos_ptu mongodb_store_msgs mongodb_store
 )
 
 ###########
@@ -83,16 +81,21 @@ add_executable(ply_to_pcl src/ply_to_pcl.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
-add_dependencies(checkObjectPresence ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
-add_dependencies(checkObjectPresence_client ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
-add_dependencies(ply_to_pcl ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+#add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS} ${V4R_LIBRARIES})
+#add_dependencies(checkObjectPresence ${catkin_EXPORTED_TARGETS})
+#add_dependencies(checkObjectPresence_client ${catkin_EXPORTED_TARGETS})
+#add_dependencies(ply_to_pcl ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
+message(STATUS "STRANDSV4RLIBS " ${STRANDSV4R_LIBS})
+message(STATUS "STRANDSV4RLIBS2 " ${V4R_LIBRARIES})
+
 target_link_libraries(recognition_service
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
+   ${STRANDSV4R_LIBS}
+   #${V4R_LIBRARIES}
 )
 
 target_link_libraries(checkObjectPresence

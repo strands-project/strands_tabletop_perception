@@ -18,12 +18,12 @@
 #include <pcl/registration/icp.h>
 #include <pcl/search/impl/flann_search.hpp>
 
-#include <faat_pcl/3d_rec_framework/defines/faat_3d_rec_framework_defines.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/3d_rec_framework/pc_source/model_only_source.h>
-#include <faat_pcl/registration/fast_icp_with_gc.h>
-#include <faat_pcl/utils/miscellaneous.h>
-#include <faat_pcl/utils/pcl_visualization_utils.h>
+#include <v4r/ORFramework/faat_3d_rec_framework_defines.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
+#include <v4r/ORFramework/model_only_source.h>
+#include <v4r/ORRegistration/fast_icp_with_gc.h>
+#include <v4r/ORUtils/miscellaneous.h>
+#include <v4r/ORUtils/pcl_visualization_utils.h>
 
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>

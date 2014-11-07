@@ -5,26 +5,26 @@
 #include <vector>
 #include <sstream>
 #include <string>
-#include <faat_pcl/utils/filesystem_utils.h>
+#include <v4r/ORUtils/filesystem_utils.h>
 #include <pcl_conversions.h>
 #include <pcl/common/transforms.h>
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/io/pcd_io.h>
 #include <recognition_srv_definitions/multiview_recognize.h>
-#include "scitos_apps_msgs/action_buttons.h"
+//#include "scitos_apps_msgs/action_buttons.h"
 
 
-void joyCallback ( const scitos_apps_msgs::action_buttons& msg );
+//void joyCallback ( const scitos_apps_msgs::action_buttons& msg );
 void kinectCallback ( const sensor_msgs::PointCloud2& msg );
 
 ros::Subscriber sub_joy_, sub_pc_;
 //namespace bf = boost::filesystem;
 
-void joyCallback ( const scitos_apps_msgs::action_buttons& msg )
-{
-    ROS_INFO ( "Button pressed." );
-    //recognize ( *current_cloud_ );
-}
+//void joyCallback ( const scitos_apps_msgs::action_buttons& msg )
+//{
+//    ROS_INFO ( "Button pressed." );
+//    //recognize ( *current_cloud_ );
+//}
 
 void kinectCallback ( const sensor_msgs::PointCloud2& msg )
 {

@@ -16,9 +16,9 @@
 #include <pcl/point_types.h>
 #include <pcl/search/kdtree.h>
 
-#include <faat_pcl/3d_rec_framework/pc_source/model_only_source.h>
-#include <faat_pcl/utils/pcl_visualization_utils.h>
-#include <faat_pcl/utils/pcl_opencv.h>
+#include <v4r/ORFramework/model_only_source.h>
+#include <v4r/ORUtils/pcl_visualization_utils.h>
+#include <v4r/ORUtils/pcl_opencv.h>
 
 #include <pcl_conversions.h>
 #include "boost_graph_extension.h"

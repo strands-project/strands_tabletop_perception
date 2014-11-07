@@ -14,15 +14,15 @@ find_package(catkin REQUIRED COMPONENTS
   strands_perception_msgs
   segmentation_srv_definitions
   visualization_msgs
-  mongodb_store_cpp_client
+  mongodb_store
   sensor_msgs
   tf
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(Eigen REQUIRED)
-include_directories(${Eigen_INCLUDE_DIRS})
+#find_package(Eigen REQUIRED)
+#include_directories(${Eigen_INCLUDE_DIRS})
 
 find_package(Boost REQUIRED COMPONENTS system thread program_options filesystem)
 

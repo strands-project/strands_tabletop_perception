@@ -5,10 +5,8 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
-                                        strandsv4r genmsg actionlib_msgs actionlib
-                                        scitos_ptu mongodb_store_msgs mongodb_store_cpp_client)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
+                                        strands_v4r genmsg actionlib_msgs actionlib
+                                        mongodb_store_msgs mongodb_store)
 
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
@@ -83,7 +81,7 @@ find_package( OpenCV 2.4 REQUIRED )
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-   CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strandsv4r scitos_ptu mongodb_store_msgs mongodb_store_cpp_client
+   CATKIN_DEPENDS roscpp rospy recognition_srv_definitions strands_v4r mongodb_store_msgs mongodb_store
 )
 
 ###########
@@ -158,12 +156,14 @@ target_link_libraries(multiview_object_recognizer_node
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
+   ${STRANDSV4R_LIBS}
 )
 
 target_link_libraries(multiview_object_recognizer_eval_node
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
+   ${STRANDSV4R_LIBS}
 )
 
 
@@ -171,6 +171,7 @@ target_link_libraries(multiview_object_recognizer_test_node
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
+   ${STRANDSV4R_LIBS}
 )
 
 #############

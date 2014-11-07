@@ -42,10 +42,10 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
-  <build_depend>strandsv4r</build_depend>
+  <build_depend>strands_v4r</build_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
-  <run_depend>strandsv4r</run_depend>
+  <run_depend>strands_v4r</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

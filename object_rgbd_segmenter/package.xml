@@ -48,7 +48,7 @@
   <build_depend>object_perception_msgs</build_depend>
   <build_depend>tf</build_depend>
   <build_depend>segmentation_srv_definitions</build_depend>
-  <build_depend>strandsv4r</build_depend>
+  <build_depend>strands_v4r</build_depend>
   <!--build_depend>pcl_conversions</build_depend-->
   <!--build_depend>pcl_msgs</build_depend-->
   <!-- <build_depend>segmentation_msgs_and_service</build_depend> -->
@@ -59,7 +59,7 @@
   <run_depend>object_perception_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>segmentation_srv_definitions</run_depend>
-  <run_depend>strandsv4r</run_depend>
+  <run_depend>strands_v4r</run_depend>
   <!-- <run_depend>segmentation_msgs_and_service</run_depend> -->
   <!--run_depend>pcl_conversions</run_depend-->
   <!--run_depend>pcl_msgs</run_depend-->

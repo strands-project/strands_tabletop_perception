@@ -7,16 +7,16 @@
 #include <cv.h>
 #include <pcl/common/common.h>
 #include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/ml/kmeans.h>
+#include <v4r/ORRecognition/kmeans.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/io.h>
 #include "feature_extractor.h"
 
-#include <faat_pcl/3d_rec_framework/pc_source/unregistered_views_source.h>
-#include <faat_pcl/3d_rec_framework/img_source/source2d.h>
+#include <v4r/ORFramework/unregistered_views_source.h>
+#include <v4r/ORFramework/source2d.h>
 
-#include <v4r/svm/svmWrapper.h>
+#include <v4r/SVM/svmWrapper.h>
 
 #include "visual_codebook.h"
 //#include <v4r/svm/SVMTrainModel.h>

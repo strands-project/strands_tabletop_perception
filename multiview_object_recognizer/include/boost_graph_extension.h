@@ -12,8 +12,8 @@
 #include <opencv2/nonfree/features2d.hpp>
 #include <pcl/visualization/pcl_visualizer.h>
 
-#include <faat_pcl/3d_rec_framework/pc_source/source.h>
-#include <faat_pcl/3d_rec_framework/pipeline/recognizer.h>
+#include <v4r/ORFramework/source.h>
+#include <v4r/ORFramework/recognizer.h>
 
 typedef pcl::Histogram<128> FeatureT;
 

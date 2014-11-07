@@ -9,32 +9,30 @@
 
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+#include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
-#include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
-#include <faat_pcl/3d_rec_framework/pc_source/partial_pcd_source.h>
 #include "segmenter.h"
-#include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
-#include <faat_pcl/3d_rec_framework/pipeline/local_recognizer.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/ourcvfh_estimator.h>
-#include "faat_pcl/3d_rec_framework/utils/metrics.h"
-#include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/recognition/cg/graph_geometric_consistency.h>
-#include <faat_pcl/3d_rec_framework/pipeline/multi_pipeline_recognizer.h>
-#include <faat_pcl/recognition/hv/hv_go_1.h>
-#include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/organized_color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
-#include <faat_pcl/3d_rec_framework/utils/metrics.h>
+#include <v4r/ORFramework/color_ourcvfh_estimator.h>
+#include <v4r/ORFramework/global_nn_recognizer_cvfh.h>
+#include <v4r/ORFramework/local_recognizer.h>
+#include <v4r/ORFramework/metrics.h>
+#include <v4r/ORFramework/multi_pipeline_recognizer.h>
+#include <v4r/ORFramework/multiplane_segmentation.h>
+#include <v4r/ORFramework/opencv_sift_local_estimator.h>
+#include <v4r/ORFramework/organized_color_ourcvfh_estimator.h>
+#include <v4r/ORFramework/ourcvfh_estimator.h>
+#include <v4r/ORFramework/partial_pcd_source.h>
+#include <v4r/ORFramework/registered_views_source.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
+#include <v4r/ORRecognition/correspondence_grouping.h>
+#include <v4r/ORRecognition/graph_geometric_consistency.h>
+#include <v4r/ORRecognition/hv_go_3D.h>
 #include "recognition_srv_definitions/recognize.h"
-#include <pcl/apps/dominant_plane_segmentation.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
 
 #define USE_SIFT_GPU
 //#define SOC_VISUALIZE
@@ -93,8 +91,8 @@ private:
     bool add_planes = true;
 
     //initialize go
-    boost::shared_ptr<faat_pcl::GlobalHypothesesVerification_1<PointT, PointT> > go (
-                    new faat_pcl::GlobalHypothesesVerification_1<PointT,
+    boost::shared_ptr<faat_pcl::GHV<PointT, PointT> > go (
+                    new faat_pcl::GHV<PointT,
                     PointT>);
 
     go->setSmoothSegParameters(0.1, 0.035, 0.005);
@@ -427,7 +425,7 @@ public:
     campos_constraints = camPosConstraints ();
 
     multi_recog_.reset (new faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT>);
-    boost::shared_ptr < pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
+    boost::shared_ptr <faat_pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
     boost::shared_ptr < faat_pcl::GraphGeometricConsistencyGrouping<PointT, PointT> > gcg_alg (
                                                                                                new faat_pcl::GraphGeometricConsistencyGrouping<
                                                                                                    PointT, PointT>);
@@ -440,7 +438,7 @@ public:
     gcg_alg->setMaxTaken(2);
     gcg_alg->setMaxTimeForCliquesComputation(100);
     gcg_alg->setDotDistance (0.2);
-    cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
+    cast_cg_alg = boost::static_pointer_cast<faat_pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
 
     if (do_sift_)
     {

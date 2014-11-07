@@ -29,7 +29,7 @@
 #include <pcl/segmentation/organized_connected_component_segmentation.h>
 #include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/features/normal_3d_omp.h>
-#include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
+#include <v4r/ORFramework/multiplane_segmentation.h>
 
 //#define DEBUG_WITH_VIS 1
 #ifdef DEBUG_WITH_VIS

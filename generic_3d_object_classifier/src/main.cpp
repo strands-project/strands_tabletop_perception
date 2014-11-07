@@ -4,7 +4,7 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include <iostream>
 #include <ros/ros.h>
-#include <v4r/svm/svmWrapper.h>
+#include <v4r/SVM/svmWrapper.h>
 
 int
 main (int argc, char ** argv)

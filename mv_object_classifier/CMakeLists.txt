@@ -4,13 +4,12 @@ project(mv_object_classifier)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp sensor_msgs std_msgs segmentation_srv_definitions classifier_srv_definitions object_perception_msgs strandsv4r)
+find_package(catkin REQUIRED COMPONENTS roscpp sensor_msgs std_msgs segmentation_srv_definitions classifier_srv_definitions object_perception_msgs strands_v4r)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
 find_package( OpenCV 2.4 REQUIRED )
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 find_package(PCL 1.7 REQUIRED)
 
 add_definitions(${PCL_DEFINITIONS})
@@ -39,7 +38,7 @@ include_directories(${PCL_INCLUDE_DIRS})
 catkin_package(
    #INCLUDE_DIRS include
 #  LIBRARIES object_classifier
-   CATKIN_DEPENDS segmentation_srv_definitions classifier_srv_definitions strandsv4r
+   CATKIN_DEPENDS segmentation_srv_definitions classifier_srv_definitions strands_v4r
 #  DEPENDS system_lib
 )
 
@@ -75,12 +74,14 @@ add_dependencies(mv_object_classifier_node ${catkin_EXPORTED_TARGETS} ${STRANDSV
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   ${OpenCV_LIBS}
+ ${STRANDSV4R_LIBS}
 )
 
 target_link_libraries(mv_object_classifier_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   ${OpenCV_LIBS}
+ ${STRANDSV4R_LIBS}
 )
 
 #############

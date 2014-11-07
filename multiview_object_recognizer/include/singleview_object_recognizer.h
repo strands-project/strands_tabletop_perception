@@ -8,26 +8,26 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl_conversions.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/shot_local_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/shot_local_estimator_omp.h>
+#include <v4r/ORFramework/opencv_sift_local_estimator.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
+#include <v4r/ORFramework/shot_local_estimator.h>
+#include <v4r/ORFramework/shot_local_estimator_omp.h>
 //#include <faat_pcl/3d_rec_framework/feature_wrapper/global/color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/organized_color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/ourcvfh_estimator.h>
+#include <v4r/ORFramework/organized_color_ourcvfh_estimator.h>
+#include <v4r/ORFramework/ourcvfh_estimator.h>
 //#include <faat_pcl/3d_rec_framework/pc_source/model_only_source.h>
-#include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
-#include <faat_pcl/3d_rec_framework/pc_source/partial_pcd_source.h>
-#include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
-#include <faat_pcl/3d_rec_framework/pipeline/local_recognizer.h>
-#include <faat_pcl/3d_rec_framework/pipeline/multi_pipeline_recognizer.h>
-#include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
-#include <faat_pcl/3d_rec_framework/utils/metrics.h>
-#include <faat_pcl/recognition/cg/graph_geometric_consistency.h>
-#include <faat_pcl/recognition/hv/ghv_cuda_wrapper.h>
-#include <faat_pcl/recognition/hv/hv_go_1.h>
-#include <faat_pcl/registration/visibility_reasoning.h>
-#include <faat_pcl/utils/miscellaneous.h>
+#include <v4r/ORFramework/registered_views_source.h>
+#include <v4r/ORFramework/partial_pcd_source.h>
+#include <v4r/ORFramework/global_nn_recognizer_cvfh.h>
+#include <v4r/ORFramework/local_recognizer.h>
+#include <v4r/ORFramework/multi_pipeline_recognizer.h>
+#include <v4r/ORFramework/multiplane_segmentation.h>
+#include <v4r/ORFramework/metrics.h>
+#include <v4r/ORRecognition/graph_geometric_consistency.h>
+//#include <faat_pcl/recognition/hv/hv_cuda_wrapper.h>
+#include <v4r/ORRecognition/ghv.h>
+#include <v4r/ORRegistration/visibility_reasoning.h>
+#include <v4r/ORUtils/miscellaneous.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
 #include "segmenter.h"
@@ -470,7 +470,7 @@ public:
         }
     }
 
-    void setInputCloud(const pcl::PointCloud<PointT>::ConstPtr pInputCloud, const pcl::PointCloud<pcl::Normal>::ConstPtr pSceneNormals = new pcl::PointCloud<pcl::Normal>())
+    void setInputCloud(const pcl::PointCloud<PointT>::ConstPtr pInputCloud, const pcl::PointCloud<pcl::Normal>::ConstPtr pSceneNormals)
     {
         pcl::copyPointCloud(*pInputCloud, *pInputCloud_);
         pcl::copyPointCloud(*pSceneNormals, *pSceneNormals_);
@@ -492,7 +492,7 @@ public:
     }
 
     bool hypothesesVerification(std::vector<bool> &mask_hv);
-    bool hypothesesVerificationGpu(std::vector<bool> &mask_hv);
+//    bool hypothesesVerificationGpu(std::vector<bool> &mask_hv);
 
     bool multiplaneSegmentation();
 

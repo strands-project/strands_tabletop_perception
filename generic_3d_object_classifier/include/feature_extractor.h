@@ -15,9 +15,9 @@
 #include <pcl/point_types.h>
 #include <pcl/io/io.h>
 
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/esf_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/shot_local_estimator_omp.h>
+#include <v4r/ORFramework/esf_estimator.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
+#include <v4r/ORFramework/shot_local_estimator_omp.h>
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT>::Ptr PointInTPtr;

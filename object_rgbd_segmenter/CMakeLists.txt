@@ -5,11 +5,9 @@ SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp rospy sensor_msgs std_msgs segmentation_srv_definitions message_generation strandsv4r)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy sensor_msgs std_msgs segmentation_srv_definitions message_generation strands_v4r)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
-
-find_package(PCL 1.7.1 REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
 
 ## System dependencies are found with CMake's conventions
@@ -36,7 +34,7 @@ find_package( OpenCV 2.4 REQUIRED )
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES grasping_recognition_master
-   CATKIN_DEPENDS segmentation_srv_definitions strandsv4r
+   CATKIN_DEPENDS segmentation_srv_definitions strands_v4r
 #  DEPENDS system_lib
 )
 
@@ -79,6 +77,7 @@ target_link_libraries(object_rgbd_segmenter_service
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
+   ${STRANDSV4R_LIBS}
 )
 
 target_link_libraries(object_rgbd_segmenter_demo
