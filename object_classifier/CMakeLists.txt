@@ -9,7 +9,6 @@ find_package(catkin REQUIRED COMPONENTS roscpp sensor_msgs std_msgs segmentation
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 find_package(PCL 1.7 REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})

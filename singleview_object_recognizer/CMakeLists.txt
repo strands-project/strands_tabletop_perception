@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(singleview_object_recognizer)
-SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -81,21 +80,18 @@ add_executable(ply_to_pcl src/ply_to_pcl.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-#add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS} ${V4R_LIBRARIES})
-#add_dependencies(checkObjectPresence ${catkin_EXPORTED_TARGETS})
-#add_dependencies(checkObjectPresence_client ${catkin_EXPORTED_TARGETS})
-#add_dependencies(ply_to_pcl ${catkin_EXPORTED_TARGETS})
+add_dependencies(recognition_service ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(checkObjectPresence ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+add_dependencies(checkObjectPresence_client ${catkin_EXPORTED_TARGETS})
+add_dependencies(ply_to_pcl ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-message(STATUS "STRANDSV4RLIBS " ${STRANDSV4R_LIBS})
-message(STATUS "STRANDSV4RLIBS2 " ${V4R_LIBRARIES})
 
 target_link_libraries(recognition_service
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
    ${STRANDSV4R_LIBS}
-   #${V4R_LIBRARIES}
 )
 
 target_link_libraries(checkObjectPresence
@@ -117,29 +113,27 @@ target_link_libraries(ply_to_pcl
 ## Install ##
 #############
 
-# all install targets should use catkin DESTINATION variables
-# See http://ros.org/doc/groovy/api/catkin/html/adv_user_guide/variables.html
+install(PROGRAMS
+scripts/action_server.py
+DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
-## Mark executable scripts (Python etc.) for installation
-## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(TARGETS recognition_service
+ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
-## Mark executables and/or libraries for installation
-# install(TARGETS grasping_recognition_master grasping_recognition_master_node
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(DIRECTORY include/
+DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+FILES_MATCHING PATTERN "*.h"
+PATTERN ".svn" EXCLUDE
+)
 
-## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY launch/
+DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+FILES_MATCHING PATTERN "*.launch"
+)																																																																																																																
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 # install(FILES

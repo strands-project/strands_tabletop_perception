@@ -167,6 +167,7 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     //verify
     {
         pcl::ScopeTime t("Go verify");
+
         go->verify ();
     }
     std::vector<bool> mask_hv_with_planes;
