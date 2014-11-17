@@ -138,17 +138,9 @@ add_executable(multiview_object_recognizer_eval_node
                 ${incs}
 )
 
-
-## Declare a cpp executable
-add_executable(multiview_object_recognizer_test_node
-                src/test_multiview_recognizer.cpp
-                ${incs}
-)
-
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(multiview_object_recognizer_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
-add_dependencies(multiview_object_recognizer_test_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 add_dependencies(multiview_object_recognizer_eval_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
@@ -167,18 +159,13 @@ target_link_libraries(multiview_object_recognizer_eval_node
 )
 
 
-target_link_libraries(multiview_object_recognizer_test_node
-   ${catkin_LIBRARIES}
-   ${PCL_LIBRARIES}
-   ${OpenCV_LIBS}
-   ${STRANDSV4R_LIBS}
-)
-
 #############
 ## Install ##
 #############
 
-install(TARGETS multiview_object_recognizer_test_node multiview_object_recognizer_eval_node
+install(TARGETS 
+		multiview_object_recognizer_node
+		multiview_object_recognizer_eval_node
 ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

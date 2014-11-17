@@ -11,6 +11,7 @@ private:
     boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     std::vector <multiviewGraph > graph_v;
     bool visualize_output_, scene_to_scene_;
+    int extension_mode_; // defines the method for extending hypotheses (0 = keypoint correspondences; 1 = full hypotheses only)
     int icp_iter_;
     int opt_type_;
     double chop_at_z_;
@@ -28,6 +29,7 @@ public:
         max_vertices_in_graph_ = 4;
         visualize_output_ = false;
         scene_to_scene_ = true;
+        extension_mode_ = 0;
         vis.reset ( new pcl::visualization::PCLVisualizer ( "vis" ) );
     }
 
@@ -82,6 +84,11 @@ public:
     void set_visualize_output(const bool vis_output)
     {
         visualize_output_ = vis_output;
+    }
+
+    void set_extension_mode(const int extension_mode)
+    {
+        extension_mode_ = extension_mode;
     }
 };
 

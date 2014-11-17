@@ -68,6 +68,8 @@ private:
     size_t max_vertices_in_graph_;
     std::vector<double> times_;
 
+    int extension_mode_; // defines method used to extend information from other views (0 = keypoint correspondences; 1 = full hypotheses only)
+
     Eigen::Matrix4f current_global_transform_;
 
     cv::Ptr<SiftGPU> sift_;
@@ -88,6 +90,8 @@ public:
 
         pAccumulatedKeypoints_.reset (new pcl::PointCloud<PointT>);
         pAccumulatedKeypointNormals_.reset (new pcl::PointCloud<pcl::Normal>);
+
+        extension_mode_ = 0;
     }
 
     bool calcSiftFeatures(Vertex &src, Graph &grph);
@@ -95,6 +99,7 @@ public:
     void estimateViewTransformationByRobotPose ( const Vertex &src, const Vertex &trgt, Graph &grph, Edge &edge );
     void extendHypothesis ( Graph &grph );
     void extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypothesis<PointT> > &hyp_vec);
+    void extendHypothesisRecursive ( Graph &grph, Vertex &vrtx_start, std::vector<Hypothesis<PointT> > &hyp_vec);
     void extendFeatureMatchesRecursive ( Graph &grph,
                                          Vertex &vrtx_start,
                                          std::map < std::string,faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > &hypotheses,
@@ -139,6 +144,11 @@ public:
     void get_times(std::vector<double> &times) const
     {
         times = times_;
+    }
+
+    void set_extension_mode(const int extension_mode)
+    {
+        extension_mode_ = extension_mode;
     }
 
     bool recognize ( const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud,

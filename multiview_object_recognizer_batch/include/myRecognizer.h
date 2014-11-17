@@ -11,25 +11,23 @@
 #include <string>
 #include <sstream>
 #include <vector>
-#include <pcl/console/parse.h> 
-#include <faat_pcl/3d_rec_framework/pc_source/partial_pcd_source.h>
-#include <pcl/visualization/pcl_visualizer.h>
+#include <boost/filesystem.hpp>
+
+#include <v4r/ORFramework/color_ourcvfh_estimator.h>
+#include <v4r/ORFramework/global_nn_recognizer_cvfh.h>
+#include <v4r/ORFramework/local_recognizer.h>
+#include <v4r/ORFramework/metrics.h>
+#include <v4r/ORFramework/multi_pipeline_recognizer.h>
+#include <v4r/ORFramework/ourcvfh_estimator.h>
+#include <v4r/ORFramework/partial_pcd_source.h>
+#include <v4r/ORRecognition/ghv.h>
+
+#include <pcl/console/parse.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
-#include <boost/filesystem.hpp>
-#include <faat_pcl/recognition/hv/hv_go.h>
-#include <pcl/visualization/cloud_viewer.h>
-#include <pcl/point_types.h>
-#include <pcl/filters/passthrough.h>
-#include <pcl/filters/voxel_grid.h>
-// #include "hannes_sift.h"
-#include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
-#include <faat_pcl/3d_rec_framework/pipeline/local_recognizer.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/ourcvfh_estimator.h>
-#include "faat_pcl/3d_rec_framework/utils/metrics.h"
-
 #include <pcl/segmentation/organized_multi_plane_segmentation.h>
 #include <pcl/segmentation/planar_polygon_fusion.h>
 #include <pcl/segmentation/plane_coefficient_comparator.h>
@@ -38,7 +36,8 @@
 #include <pcl/segmentation/edge_aware_plane_comparator.h>
 #include <pcl/segmentation/euclidean_cluster_comparator.h>
 #include <pcl/segmentation/organized_connected_component_segmentation.h>
-#include <faat_pcl/3d_rec_framework/pipeline/multi_pipeline_recognizer.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/visualization/pcl_visualizer.h>
 
 // // #include "v4r/SurfaceSegmenter/Segmenter.h"
 

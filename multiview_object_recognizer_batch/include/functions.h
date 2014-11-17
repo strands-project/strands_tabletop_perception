@@ -10,7 +10,7 @@
 #ifndef FUNCTIONS_H_
 #define FUNCTIONS_H_
 
-#include <faat_pcl/3d_rec_framework/pc_source/partial_pcd_source.h>
+#include <v4r/ORFramework/partial_pcd_source.h>
 #include <boost/filesystem.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/core/core.hpp>

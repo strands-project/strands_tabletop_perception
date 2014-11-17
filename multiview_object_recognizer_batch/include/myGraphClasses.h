@@ -10,28 +10,26 @@
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/prim_minimum_spanning_tree.hpp>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/3d_rec_framework/defines/faat_3d_rec_framework_defines.h>
-#include <faat_pcl/recognition/hv/hv_go_3D.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
+#include <v4r/ORFramework/faat_3d_rec_framework_defines.h>
+#include <v4r/ORRecognition/ghv.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/nonfree/features2d.hpp>
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_cloud.h>
 //#include <pcl/visualization/pcl_visualizer.h>
-
-
 
 #include <pcl/features/normal_3d.h>
 #include <pcl/keypoints/sift_keypoint.h>
 #include <pcl/features/fpfh.h>
 #include <pcl/features/pfh.h>
 #include <pcl/features/vfh.h>
-#include <pcl/search/kdtree.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_cloud.h>
 #include <pcl/registration/correspondence_types.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
-#include <pcl/search/impl/flann_search.hpp>
 #include <pcl/registration/correspondence_estimation.h>
 #include <pcl/registration/transformation_estimation_svd.h>
+#include <pcl/search/impl/flann_search.hpp>
+#include <pcl/search/kdtree.h>
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointInT;

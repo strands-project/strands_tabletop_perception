@@ -418,7 +418,9 @@ extendFeatureMatchesRecursive ( Graph &grph,
     }
 }
 
-
+/*
+ * Extends hypotheses construced from other views in graph by following "calling_out_edge" and recursively the other views
+ */
 void multiviewGraph::
 extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypothesis<PointT> > &hyp_vec) //is directed edge (so the source of calling_edge is calling vertex)
 {
@@ -483,6 +485,79 @@ extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypo
     }
 }
 
+/*
+ * Extends hypotheses construced from other views in graph by following "calling_out_edge" and recursively the other views
+ */
+void multiviewGraph::
+extendHypothesisRecursive ( Graph &grph, Vertex &vrtx_start, std::vector<Hypothesis<PointT> > &hyp_vec) //is directed edge (so the source of calling_edge is calling vertex)
+{
+    grph[vrtx_start].has_been_hopped_ = true;
+
+    for ( std::vector<Hypothesis<PointT>>::const_iterator it_hyp = grph[vrtx_start].hypothesis_sv_.begin (); it_hyp != grph[vrtx_start].hypothesis_sv_.end (); ++it_hyp )
+    {
+        if(!it_hyp->verified_)
+            continue;
+
+        Hypothesis<PointT> ht_temp ( it_hyp->model_, it_hyp->transform_, it_hyp->origin_, true );
+        hyp_vec.push_back(ht_temp);
+    }
+
+    typename graph_traits<Graph>::out_edge_iterator out_i, out_end;
+    tie ( out_i, out_end ) = out_edges ( vrtx_start, grph);
+    if(out_i != out_end)  //otherwise there are no edges to hop
+    {   //------get hypotheses from next vertex. Just taking the first one not being hopped.----
+        std::string edge_src, edge_trgt;
+        Vertex remote_vertex;
+        Eigen::Matrix4f edge_transform;
+
+        bool have_found_a_valid_edge = false;
+        for (; out_i != out_end; ++out_i )
+        {
+            remote_vertex  = target ( *out_i, grph );
+            edge_src       = grph[*out_i].source_id;
+            edge_trgt      = grph[*out_i].target_id;
+            edge_transform = grph[*out_i].transformation;
+
+            if (! grph[remote_vertex].has_been_hopped_)
+            {
+                have_found_a_valid_edge = true;
+                grph[remote_vertex].cumulative_weight_to_new_vrtx_ = grph[vrtx_start].cumulative_weight_to_new_vrtx_ + grph[*out_i].edge_weight;
+
+                std::cout << "Edge src: " << edge_src << "; target: " << edge_trgt << "; model_name: " << grph[*out_i].model_name
+                          << "; edge_weight: " << grph[*out_i].edge_weight << std::endl;
+                break;
+            }
+        }
+        if(have_found_a_valid_edge)
+        {
+            ROS_INFO("Hopping to vertex %s which has a cumulative weight of %lf",
+                     grph[remote_vertex].pScenePCl->header.frame_id.c_str(),
+                     grph[remote_vertex].cumulative_weight_to_new_vrtx_);
+
+            std::vector<Hypothesis<PointT> > new_hypotheses;
+            extendHypothesisRecursive ( grph, remote_vertex, new_hypotheses);
+            for(std::vector<Hypothesis<PointT> >::iterator it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
+            {
+                if ( edge_src.compare( grph[vrtx_start].pScenePCl->header.frame_id ) == 0)
+                {
+                    it_new_hyp->transform_ = edge_transform.inverse() * it_new_hyp->transform_;
+                }
+                else if (edge_trgt.compare( grph[vrtx_start].pScenePCl->header.frame_id ) == 0)
+                {
+                    it_new_hyp->transform_ = edge_transform * it_new_hyp->transform_;
+                }
+                else
+                {
+                    PCL_ERROR("Something is messed up with the transformation.");
+                }
+
+                Hypothesis<PointT> ht_temp ( it_new_hyp->model_, it_new_hyp->transform_, it_new_hyp->origin_, true );
+                hyp_vec.push_back(ht_temp);
+            }
+        }
+    }
+}
+
 void multiviewGraph::
 extendHypothesis ( Graph &grph )
 {
@@ -539,6 +614,10 @@ extendHypothesis ( Graph &grph )
     }
 }
 
+
+/*
+ * Connects a new view to the graph by edges sharing a common object hypothesis
+ */
 void multiviewGraph::
 createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges )
 {
@@ -704,6 +783,8 @@ bool multiviewGraph::recognize
             mv_feat_ext_time,
             mv_icp_time,
             sv_total_time;
+
+    size_t total_num_correspondences=0;
 
     times_.clear();
 
@@ -912,91 +993,120 @@ bool multiviewGraph::recognize
     }
 
     //---------Extend-hypotheses-from-other-view(s)------------------------------------------
-    accumulatedHypotheses_.clear();
 
-    pcl::StopWatch mv_feat_ext_pcl_time;
-    extendFeatureMatchesRecursive(grph_final_, vrtx_final, accumulatedHypotheses_, pAccumulatedKeypoints_, pAccumulatedKeypointNormals_);
-
-    size_t total_num_correspondences=0;
-    for(it_hyp = accumulatedHypotheses_.begin(); it_hyp != accumulatedHypotheses_.end(); ++it_hyp)
+    if (extension_mode_ == 0)
     {
-        total_num_correspondences += it_hyp->second.correspondences_to_inputcloud->size();
-    }
+        accumulatedHypotheses_.clear();
 
-    mv_feat_ext_time = mv_feat_ext_pcl_time.getTime();
+        pcl::StopWatch mv_feat_ext_pcl_time;
+        extendFeatureMatchesRecursive(grph_final_, vrtx_final, accumulatedHypotheses_, pAccumulatedKeypoints_, pAccumulatedKeypointNormals_);
 
-    std::vector < pcl::Correspondences > corresp_clusters_mv;
-
-    pcl::StopWatch mv_hyp_construct;
-    pSingleview_recognizer_->constructHypothesesFromFeatureMatches(accumulatedHypotheses_,
-                                                                   pAccumulatedKeypoints_,
-                                                                   pAccumulatedKeypointNormals_,
-                                                                   grph_final_[vrtx_final].hypothesis_mv_,
-                                                                   corresp_clusters_mv);
-    mv_hyp_construct_time = mv_hyp_construct.getTime();
-
-    {
-        pcl::ScopeTime ticp("Multi-view ICP...");
-        pSingleview_recognizer_->poseRefinement();
-        mv_icp_time = ticp.getTime();
-    }
-    std::vector<bool> mask_hv_mv;
-
-    pcl::StopWatch mv_hyp_ver_pcl_time;
-    pSingleview_recognizer_->hypothesesVerification(mask_hv_mv);
-    mv_hyp_ver_time = mv_hyp_ver_pcl_time.getTime();
-
-
-    for(size_t i=0; i<mask_hv_mv.size(); i++)
-    {
-        grph_final_[vrtx_final].hypothesis_mv_[i].verified_ = static_cast<int>(mask_hv_mv[i]);
-
-        if(mask_hv_mv[i])
+        for(it_hyp = accumulatedHypotheses_.begin(); it_hyp != accumulatedHypotheses_.end(); ++it_hyp)
         {
-            const std::string id = grph_final_[vrtx_final].hypothesis_mv_[i].model_->id_;
-            std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_hyp_sv;
-            it_hyp_sv = grph_final_[vrtx_final].hypotheses_.find(id);
-            if (it_hyp_sv == grph_final_[vrtx_final].hypotheses_.end())
+            total_num_correspondences += it_hyp->second.correspondences_to_inputcloud->size();
+        }
+
+        mv_feat_ext_time = mv_feat_ext_pcl_time.getTime();
+
+        std::vector < pcl::Correspondences > corresp_clusters_mv;
+
+        pcl::StopWatch mv_hyp_construct;
+        pSingleview_recognizer_->constructHypothesesFromFeatureMatches(accumulatedHypotheses_,
+                                                                       pAccumulatedKeypoints_,
+                                                                       pAccumulatedKeypointNormals_,
+                                                                       grph_final_[vrtx_final].hypothesis_mv_,
+                                                                       corresp_clusters_mv);
+        mv_hyp_construct_time = mv_hyp_construct.getTime();
+
+        {
+            pcl::ScopeTime ticp("Multi-view ICP...");
+            pSingleview_recognizer_->poseRefinement();
+            mv_icp_time = ticp.getTime();
+        }
+        std::vector<bool> mask_hv_mv;
+
+        pcl::StopWatch mv_hyp_ver_pcl_time;
+        pSingleview_recognizer_->hypothesesVerification(mask_hv_mv);
+        mv_hyp_ver_time = mv_hyp_ver_pcl_time.getTime();
+
+        pcl::StopWatch augment_verified_hyp_pcl_time;
+        for(size_t i=0; i<mask_hv_mv.size(); i++)
+        {
+            grph_final_[vrtx_final].hypothesis_mv_[i].verified_ = static_cast<int>(mask_hv_mv[i]);
+
+            if(mask_hv_mv[i])
             {
-                PCL_ERROR("There has not been a single keypoint detected for model %s", id.c_str());
-            }
-            else
-            {
-                std::cout << "Augmenting hypotheses with verified feature matches." << std::endl;
-                for(size_t jj = 0; jj < corresp_clusters_mv[i].size(); jj++)
+                const std::string id = grph_final_[vrtx_final].hypothesis_mv_[i].model_->id_;
+                std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_hyp_sv;
+                it_hyp_sv = grph_final_[vrtx_final].hypotheses_.find(id);
+                if (it_hyp_sv == grph_final_[vrtx_final].hypotheses_.end())
                 {
-                    const pcl::Correspondence c = corresp_clusters_mv[i][jj];
-                    const int kp_scene_idx = c.index_match;
-                    const int kp_model_idx = c.index_query;
-                    const PointT keypoint_model = accumulatedHypotheses_[id].correspondences_pointcloud->points[kp_model_idx];
-                    const pcl::Normal keypoint_normal_model = accumulatedHypotheses_[id].normals_pointcloud->points[kp_model_idx];
-                    const PointT keypoint_scene = pAccumulatedKeypoints_->points[kp_scene_idx];
-                    const pcl::Normal keypoint_normal_scene = pAccumulatedKeypointNormals_->points[kp_scene_idx];
-                    const int index_to_flann_models = accumulatedHypotheses_[id].indices_to_flann_models_[kp_model_idx];
-
-                    // only add correspondences which correspondences to both, model and scene keypoint,
-                    // are not already saved in the hypotheses coming from single view recognition only.
-                    // As the keypoints from single view rec. are pushed in the front, we only have to check
-                    // if the indices of the new correspondences are outside of these keypoint sizes.
-                    // Also, we don't have to check if these new keypoints are redundant because this
-                    // is already done in the function "extendFeatureMatchesRecursive(..)".
-
-                    if(kp_model_idx >= it_hyp_sv->second.correspondences_pointcloud->points.size()
-                            && kp_scene_idx >= grph_final_[vrtx_final].pKeypointsMultipipe_->points.size())
+                    PCL_ERROR("There has not been a single keypoint detected for model %s", id.c_str());
+                }
+                else
+                {
+                    for(size_t jj = 0; jj < corresp_clusters_mv[i].size(); jj++)
                     {
-                        pcl::Correspondence c_new = c;  // to keep hypothesis' class union member distance
-                        c_new.index_match = grph_final_[vrtx_final].pKeypointsMultipipe_->points.size();
-                        c_new.index_query = it_hyp_sv->second.correspondences_pointcloud->points.size();
-                        it_hyp_sv->second.correspondences_to_inputcloud->push_back(c_new);
+                        const pcl::Correspondence c = corresp_clusters_mv[i][jj];
+                        const int kp_scene_idx = c.index_match;
+                        const int kp_model_idx = c.index_query;
+                        const PointT keypoint_model = accumulatedHypotheses_[id].correspondences_pointcloud->points[kp_model_idx];
+                        const pcl::Normal keypoint_normal_model = accumulatedHypotheses_[id].normals_pointcloud->points[kp_model_idx];
+                        const PointT keypoint_scene = pAccumulatedKeypoints_->points[kp_scene_idx];
+                        const pcl::Normal keypoint_normal_scene = pAccumulatedKeypointNormals_->points[kp_scene_idx];
+                        const int index_to_flann_models = accumulatedHypotheses_[id].indices_to_flann_models_[kp_model_idx];
 
-                        it_hyp_sv->second.correspondences_pointcloud->points.push_back(keypoint_model);
-                        it_hyp_sv->second.normals_pointcloud->points.push_back(keypoint_normal_model);
-                        it_hyp_sv->second.indices_to_flann_models_.push_back(index_to_flann_models);
-                        grph_final_[vrtx_final].pKeypointsMultipipe_->points.push_back(keypoint_scene);
-                        grph_final_[vrtx_final].pKeypointNormalsMultipipe_->points.push_back(keypoint_normal_scene);
+                        // only add correspondences which correspondences to both, model and scene keypoint,
+                        // are not already saved in the hypotheses coming from single view recognition only.
+                        // As the keypoints from single view rec. are pushed in the front, we only have to check
+                        // if the indices of the new correspondences are outside of these keypoint sizes.
+                        // Also, we don't have to check if these new keypoints are redundant because this
+                        // is already done in the function "extendFeatureMatchesRecursive(..)".
+
+                        if(kp_model_idx >= it_hyp_sv->second.correspondences_pointcloud->points.size()
+                                && kp_scene_idx >= grph_final_[vrtx_final].pKeypointsMultipipe_->points.size())
+                        {
+                            pcl::Correspondence c_new = c;  // to keep hypothesis' class union member distance
+                            c_new.index_match = grph_final_[vrtx_final].pKeypointsMultipipe_->points.size();
+                            c_new.index_query = it_hyp_sv->second.correspondences_pointcloud->points.size();
+                            it_hyp_sv->second.correspondences_to_inputcloud->push_back(c_new);
+
+                            it_hyp_sv->second.correspondences_pointcloud->points.push_back(keypoint_model);
+                            it_hyp_sv->second.normals_pointcloud->points.push_back(keypoint_normal_model);
+                            it_hyp_sv->second.indices_to_flann_models_.push_back(index_to_flann_models);
+                            grph_final_[vrtx_final].pKeypointsMultipipe_->points.push_back(keypoint_scene);
+                            grph_final_[vrtx_final].pKeypointNormalsMultipipe_->points.push_back(keypoint_normal_scene);
+                        }
                     }
                 }
             }
+        }
+        std::cout << "Augmentation of verified keypoint correspondences took "
+                  << augment_verified_hyp_pcl_time.getTime() << "ms.";
+    }
+    else if(extension_mode_==1)
+    {
+        extendHypothesisRecursive(grph_final_, vrtx_final, grph_final_[vrtx_final].hypothesis_mv_);
+
+        std::vector<ModelTPtr> mv_models;
+        std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> mv_transforms;
+        for(size_t hyp_mv_id=0; hyp_mv_id<grph_final_[vrtx_final].hypothesis_mv_.size(); hyp_mv_id++)
+        {
+            mv_models.push_back(grph_final_[vrtx_final].hypothesis_mv_[hyp_mv_id].model_);
+            mv_transforms.push_back(grph_final_[vrtx_final].hypothesis_mv_[hyp_mv_id].transform_);
+        }
+        pSingleview_recognizer_->setModelsAndTransforms(mv_models, mv_transforms);
+        pSingleview_recognizer_->poseRefinement();
+
+        std::vector<bool> mask_hv_mv;
+        {
+            pcl::ScopeTime ticp ("Hypotheses verification...");
+            pSingleview_recognizer_->hypothesesVerification(mask_hv_mv);
+            pSingleview_recognizer_->getVerifiedPlanes(grph_final_[vrtx_final].verified_planes_);
+        }
+        for (size_t j = 0; j < grph_final_[vrtx_final].hypothesis_mv_.size(); j++)
+        {
+            grph_final_[vrtx_final].hypothesis_mv_[j].verified_ = mask_hv_mv[j];
         }
     }
 
@@ -1016,11 +1126,6 @@ bool multiviewGraph::recognize
 
     outputgraph ( grph_, "complete_graph.dot" );
     outputgraph ( grph_final_, "Final_with_Hypothesis_extension.dot" );
-    pruneGraph(grph_, max_vertices_in_graph_);
-    pruneGraph(grph_final_, max_vertices_in_graph_);
-
-    outputgraph ( grph_final_, "final_after_deleting_old_vertex.dot" );
-    outputgraph ( grph_, "grph_after_deleting_old_vertex.dot" );
 
     times_.push_back(total_time);
     times_.push_back(sv_hyp_construction_time);
@@ -1032,7 +1137,16 @@ bool multiviewGraph::recognize
     times_.push_back(total_num_correspondences);
     times_.push_back(sv_num_correspondences);
 
-    bgvis_.visualizeWorkflow(vrtx_final, grph_final_, pAccumulatedKeypoints_);
+    if(extension_mode_==0)
+    {
+        bgvis_.visualizeWorkflow(vrtx_final, grph_final_, pAccumulatedKeypoints_);
 //    bgvis_.createImage(vrtx_final, grph_final_, "/home/thomas/Desktop/test.jpg");
+    }
+
+    pruneGraph(grph_, max_vertices_in_graph_);
+    pruneGraph(grph_final_, max_vertices_in_graph_);
+
+    outputgraph ( grph_final_, "final_after_deleting_old_vertex.dot" );
+    outputgraph ( grph_, "grph_after_deleting_old_vertex.dot" );
     return true;
 }

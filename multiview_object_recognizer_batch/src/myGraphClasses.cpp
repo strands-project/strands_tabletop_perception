@@ -1,6 +1,6 @@
 #include "myGraphClasses.h"
 #include <pcl/common/transforms.h>
-#include <faat_pcl/registration/fast_icp_with_gc.h>
+#include <v4r/ORRegistration/fast_icp_with_gc.h>
 #include <pcl/recognition/cg/geometric_consistency.h>
 
 std::vector<Vertex>

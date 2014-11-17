@@ -44,24 +44,23 @@
 #include "myRecognizer.h"
 #include "functions.h"
 
-#include <faat_pcl/3d_rec_framework/defines/faat_3d_rec_framework_defines.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/3d_rec_framework/pc_source/model_only_source.h>
-#include <faat_pcl/recognition/hv/hv_go_1.h>
-#include <faat_pcl/recognition/hv/hv_go_3D.h>
-#include <faat_pcl/registration/fast_icp_with_gc.h>
-#include <faat_pcl/registration/mv_lm_icp.h>
-#include <faat_pcl/utils/filesystem_utils.h>
-#include <faat_pcl/registration/registration_utils.h>
-#include <faat_pcl/utils/registration_utils.h>
-#include <faat_pcl/utils/pcl_opencv.h>
-#include <faat_pcl/utils/noise_models.h>
+#include <v4r/ORFramework/faat_3d_rec_framework_defines.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
+#include <v4r/ORFramework/model_only_source.h>
+#include <v4r/ORRecognition/ghv.h>
+#include <v4r/ORRecognition/hv_go_3D.h>
+#include <v4r/ORRegistration/fast_icp_with_gc.h>
+//#include <faat_pcl/registration/mv_lm_icp.h>
+#include <v4r/ORUtils/filesystem_utils.h>
+#include <v4r/ORUtils/registration_utils.h>
+#include <v4r/ORUtils/pcl_opencv.h>
+#include <v4r/ORUtils/noise_models.h>
 #include <pcl/features/integral_image_normal.h>
 #include <pcl/features/normal_3d_omp.h>
-#include "pcl/filters/crop_box.h"
-#include <faat_pcl/utils/miscellaneous.h>
-#include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
-#include <faat_pcl/utils/noise_model_based_cloud_integration.h>
+#include <pcl/filters/crop_box.h>
+#include <v4r/ORUtils/miscellaneous.h>
+#include <v4r/ORFramework//multiplane_segmentation.h>
+#include <v4r/ORUtils/noise_model_based_cloud_integration.h>
 
 //std::cout << "Debug Message: I am in file " << __FILE__ << " at line " << __LINE__ << std::endl;
 
@@ -336,12 +335,12 @@ main (int argc, char **argv)
                 aligned_normals[j] = normal_aligned;
             }
 
-            pcl::OrganizedEdgeBase<PointT, pcl::Label> oed;
+            faat_pcl::OrganizedEdgeBase<PointT, pcl::Label> oed;
             oed.setDepthDisconThreshold (0.02f); //at 1m, adapted linearly with depth
             oed.setMaxSearchNeighbors(100);
-            oed.setEdgeType (pcl::OrganizedEdgeBase<PointT, pcl::Label>::EDGELABEL_OCCLUDING
-            | pcl::OrganizedEdgeBase<pcl::PointXYZRGB, pcl::Label>::EDGELABEL_OCCLUDED
-            | pcl::OrganizedEdgeBase<pcl::PointXYZRGB, pcl::Label>::EDGELABEL_NAN_BOUNDARY
+            oed.setEdgeType (faat_pcl::OrganizedEdgeBase<PointT, pcl::Label>::EDGELABEL_OCCLUDING
+            | faat_pcl::OrganizedEdgeBase<pcl::PointXYZRGB, pcl::Label>::EDGELABEL_OCCLUDED
+            | faat_pcl::OrganizedEdgeBase<pcl::PointXYZRGB, pcl::Label>::EDGELABEL_NAN_BOUNDARY
             );
             oed.setInputCloud (grph[vrtx].pScenePCl);
 
@@ -371,9 +370,9 @@ main (int argc, char **argv)
             }
 
             //---Verify hypothesis and visualize---------
-            boost::shared_ptr<faat_pcl::GlobalHypothesesVerification_1<PointT, PointT> > go (new faat_pcl::GlobalHypothesesVerification_1<PointT, PointT>);
+            boost::shared_ptr<faat_pcl::GHV<PointT, PointT> > go (new faat_pcl::GHV<PointT, PointT>);
             go->setInitialStatus (false);
-            go->setUseConflictGraph (false);
+//            go->setUseConflictGraph (false);
             go->setIgnoreColor (false);
             go->setUseReplaceMoves (true);
             go->setZBufferSelfOcclusionResolution (250);
@@ -391,7 +390,7 @@ main (int argc, char **argv)
             go->setOcclusionCloud (grph[vrtx].pScenePCl);
             go->setSceneCloud (grph[vrtx].pScenePCl);
             go->setNormalsForClutterTerm(grph[vrtx].normals_);
-            go->setOcclusionEdges(occ_edges_full);
+//            go->setOcclusionEdges(occ_edges_full);
             go->setDuplicityCMWeight(0.f);
             go->setRequiresNormals(true);
             go->addNormalsClouds(aligned_normals);
@@ -879,52 +878,52 @@ main (int argc, char **argv)
         std::vector < Eigen::Matrix4f > transformations;
         transformations.resize(object_clouds.size(), Eigen::Matrix4f::Identity());
 
-        if(mv_icp_)
-        {
-            //refine registered scene clouds simulatenously and adapt transforms
-            std::vector < std::vector<bool> > A;
-            A.resize (object_clouds.size ());
-            for (size_t i = 0; i < object_clouds.size (); i++)
-                A[i].resize (object_clouds.size (), true);
+//        if(mv_icp_)
+//        {
+//            //refine registered scene clouds simulatenously and adapt transforms
+//            std::vector < std::vector<bool> > A;
+//            A.resize (object_clouds.size ());
+//            for (size_t i = 0; i < object_clouds.size (); i++)
+//                A[i].resize (object_clouds.size (), true);
 
-            faat_pcl::registration_utils::computeOverlapMatrix<pcl::PointXYZRGB>(object_clouds, A, 0.02, false, min_overlap_mv);
+//            faat_pcl::registration_utils::computeOverlapMatrix<pcl::PointXYZRGB>(object_clouds, A, 0.02, false, min_overlap_mv);
 
-            for (size_t i = 0; i < object_clouds.size (); i++)
-            {
-                for (size_t j = 0; j < object_clouds.size (); j++)
-                    std::cout << (int)A[i][j] << " ";
-                std::cout << std::endl;
-            }
+//            for (size_t i = 0; i < object_clouds.size (); i++)
+//            {
+//                for (size_t j = 0; j < object_clouds.size (); j++)
+//                    std::cout << (int)A[i][j] << " ";
+//                std::cout << std::endl;
+//            }
 
-            faat_pcl::registration::MVNonLinearICP<PointT> icp_nl (dt_size);
-            icp_nl.setInlierThreshold (inlier_threshold);
-            icp_nl.setMaxCorrespondenceDistance (max_corresp_dist);
-            icp_nl.setClouds (object_clouds);
+//            faat_pcl::registration::MVNonLinearICP<PointT> icp_nl (dt_size);
+//            icp_nl.setInlierThreshold (inlier_threshold);
+//            icp_nl.setMaxCorrespondenceDistance (max_corresp_dist);
+//            icp_nl.setClouds (object_clouds);
 
-            if(use_normals)
-            {
-                icp_nl.setInputNormals(normals_clouds);
-                icp_nl.setMinDot(0.9f);
-            }
+//            if(use_normals)
+//            {
+//                icp_nl.setInputNormals(normals_clouds);
+//                icp_nl.setMinDot(0.9f);
+//            }
 
-            icp_nl.setVisIntermediate (false);
-            icp_nl.setSparseSolver (true);
-            icp_nl.setMaxIterations(mv_iterations);
-            icp_nl.setAdjacencyMatrix (A);
+//            icp_nl.setVisIntermediate (false);
+//            icp_nl.setSparseSolver (true);
+//            icp_nl.setMaxIterations(mv_iterations);
+//            icp_nl.setAdjacencyMatrix (A);
 
-            if(mv_weights.size() == object_clouds.size())
-                icp_nl.setPointsWeight(mv_weights);
+//            if(mv_weights.size() == object_clouds.size())
+//                icp_nl.setPointsWeight(mv_weights);
 
-            icp_nl.compute ();
+//            icp_nl.compute ();
 
-            icp_nl.getTransformation (transformations);
+//            icp_nl.getTransformation (transformations);
 
-            int kk=0;
-            for (vp = vertices (grph_final); vp.first != vp.second; ++vp.first, kk++)
-            {
-                grph_final[*vp.first].absolute_pose = transformations[kk] * grph_final[*vp.first].absolute_pose;
-            }
-        }
+//            int kk=0;
+//            for (vp = vertices (grph_final); vp.first != vp.second; ++vp.first, kk++)
+//            {
+//                grph_final[*vp.first].absolute_pose = transformations[kk] * grph_final[*vp.first].absolute_pose;
+//            }
+//        }
 
         /*if(visualize_output)
         {

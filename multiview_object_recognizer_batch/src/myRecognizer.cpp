@@ -6,11 +6,11 @@
 //------------------------
 
 #include "myRecognizer.h"
-#include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/recognition/cg/graph_geometric_consistency.h>
+#include <v4r/ORFramework/registered_views_source.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
+#include <v4r/ORRecognition/graph_geometric_consistency.h>
 #include <pcl/recognition/cg/geometric_consistency.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/shot_local_estimator_omp.h>
+#include <v4r/ORFramework/shot_local_estimator_omp.h>
 
 template<typename PointInT>
 class FAAT_3D_FRAMEWORK_API UniformSamplingExtractor : public faat_pcl::rec_3d_framework::KeypointExtractor<PointInT>
@@ -677,7 +677,7 @@ void
 myRecognizer::init (std::string models_dir_sift, std::string model_path, std::string training_dir)
 {
     multi_recog_.reset(new faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT>);
-    boost::shared_ptr < pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
+    boost::shared_ptr < faat_pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
     boost::shared_ptr < faat_pcl::GraphGeometricConsistencyGrouping<PointT, PointT> > gcg_alg (
                 new faat_pcl::GraphGeometricConsistencyGrouping<
                 PointT, PointT>);
@@ -696,7 +696,7 @@ myRecognizer::init (std::string models_dir_sift, std::string model_path, std::st
     gcg_alg->setPrune(false);
     gcg_alg->pruneByCC(false);
 
-    cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
+    cast_cg_alg = boost::static_pointer_cast<faat_pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
 
     std::cout << "do sift, do_shot: " << do_new_sift_ << "," << do_shot_ << std::endl;
     if (do_new_sift_)

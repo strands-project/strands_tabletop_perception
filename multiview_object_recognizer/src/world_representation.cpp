@@ -20,6 +20,7 @@ multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_n
     newGraph.setPSingleview_recognizer(pSingleview_recognizer_);
     newGraph.setSift(sift_);
     newGraph.set_scene_to_scene(scene_to_scene_);
+    newGraph.set_extension_mode(extension_mode_);
     newGraph.set_max_vertices_in_graph(max_vertices_in_graph_);
     newGraph.set_distance_keypoints_get_discarded(distance_keypoints_get_discarded_);
     newGraph.set_visualize_output(visualize_output_);

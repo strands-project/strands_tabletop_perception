@@ -49,7 +49,6 @@ int main (int argc, char **argv)
     int max_vertices_in_graph;
 
     ros::init ( argc, argv, "multiview_object_recognizer_eval_node" );
-
     n.reset( new ros::NodeHandle ( "~" ) );
 
     if ( ! n->getParam ( "models_dir", models_dir ))
@@ -151,7 +150,6 @@ int main (int argc, char **argv)
     if(n->getParam ( "cg_dot_distance", dot_distance))
         pSingleview_recognizer->set_cg_dot_distance(dot_distance);
 
-
     if(n->getParam ( "hv_resolution", resolution))
         pSingleview_recognizer->set_hv_resolution(resolution);
 
@@ -206,8 +204,6 @@ int main (int argc, char **argv)
 
     if(n->getParam ( "distance_keypoints_get_discarded", distance_keypoints_get_discarded))
         myWorld.set_distance_keypoints_get_discarded(distance_keypoints_get_discarded);
-
-    ROS_INFO("Multiview object recognizer is ready to get service calls.");
 
 
     std::string dataset_path, sequence_name;
