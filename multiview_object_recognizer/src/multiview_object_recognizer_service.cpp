@@ -1058,7 +1058,6 @@ bool multiviewGraph::recognize
 
         if(go3d_)
         {
-            bool use_table_plane = true;
             double max_keypoint_dist_mv_ = 2.5f;
             int icp_iter = 10;
             bool use_unverified_single_view_hypotheses = false;
@@ -1163,34 +1162,51 @@ bool multiviewGraph::recognize
                 normals_clouds.push_back(normal_cloud_filtered_trans);
                 transforms_to_global.push_back (grph_final_[*vp.first].absolute_pose_);
 
-                for (size_t hyp_id = 0; hyp_id < grph_final_[*vp.first].hypothesis_sv_.size(); hyp_id++)
-                {
-                    if(grph_final_[*vp.first].hypothesis_sv_[hyp_id].extended_)
-                        continue;
+//                for (size_t hyp_id = 0; hyp_id < grph_final_[*vp.first].hypothesis_sv_.size(); hyp_id++)
+//                {
+//                    if(grph_final_[*vp.first].hypothesis_sv_[hyp_id].extended_)
+//                        continue;
 
-                    if( !use_unverified_single_view_hypotheses  && !(grph_final_[*vp.first].hypothesis_sv_[hyp_id].verified_))
-                        continue;
+//                    if( !use_unverified_single_view_hypotheses  && !(grph_final_[*vp.first].hypothesis_sv_[hyp_id].verified_))
+//                        continue;
 
-                    ModelTPtr model = grph_final_[*vp.first].hypothesis_sv_[hyp_id].model_;
+//                    ModelTPtr model = grph_final_[*vp.first].hypothesis_sv_[hyp_id].model_;
 
-                    //Eigen::Matrix4f trans = transformations[kk] * grph_final_[*vp.first].absolute_pose * it_hyp->transform_;
-                    Eigen::Matrix4f trans = grph_final_[*vp.first].absolute_pose_ * grph_final_[*vp.first].hypothesis_sv_[hyp_id].transform_;
-                    ConstPointInTPtr model_cloud = model->getAssembled (go3d_and_icp_resolution_);
-                    pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = model->getNormalsAssembled (go3d_and_icp_resolution_);
+//                    //Eigen::Matrix4f trans = transformations[kk] * grph_final_[*vp.first].absolute_pose * it_hyp->transform_;
+//                    Eigen::Matrix4f trans = grph_final_[*vp.first].absolute_pose_ * grph_final_[*vp.first].hypothesis_sv_[hyp_id].transform_;
+//                    ConstPointInTPtr model_cloud = model->getAssembled (go3d_and_icp_resolution_);
+//                    pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = model->getNormalsAssembled (go3d_and_icp_resolution_);
 
-                    typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>(*normal_cloud));
-                    typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>(*model_cloud));
+//                    typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>(*normal_cloud));
+//                    typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>(*model_cloud));
 
-                    hypotheses_poses_in_global_frame.push_back(trans);
-                    aligned_models.push_back (model_aligned);
-                    aligned_normals.push_back(normal_aligned);
-                    ids.push_back (grph_final_[*vp.first].hypothesis_sv_[hyp_id].model_->id_);
-                    models.push_back(model);
-                }
+//                    hypotheses_poses_in_global_frame.push_back(trans);
+//                    aligned_models.push_back (model_aligned);
+//                    aligned_normals.push_back(normal_aligned);
+//                    ids.push_back (grph_final_[*vp.first].hypothesis_sv_[hyp_id].model_->id_);
+//                    models.push_back(model);
+//                }
             }
 
-            std::cout << "number of hypotheses for GO3D:" << aligned_models.size() << std::endl;
-            if(aligned_models.size() > 0)
+            for(size_t hyp_id=0; hyp_id < grph_final_[vrtx_final].hypothesis_mv_.size(); hyp_id++)
+            {
+                Eigen::Matrix4f trans = grph_final_[vrtx_final].hypothesis_mv_[hyp_id].transform_;
+                ModelTPtr model = grph_final_[vrtx_final].hypothesis_mv_[hyp_id].model_;
+                ConstPointInTPtr model_cloud = model->getAssembled (go3d_and_icp_resolution_);
+                pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = model->getNormalsAssembled (go3d_and_icp_resolution_);
+
+                typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>(*normal_cloud));
+                typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>(*model_cloud));
+
+                hypotheses_poses_in_global_frame.push_back(trans);
+                aligned_models.push_back (model_aligned);
+                aligned_normals.push_back(normal_aligned);
+                ids.push_back (grph_final_[vrtx_final].hypothesis_mv_[hyp_id].model_->id_);
+                models.push_back(model);
+            }
+
+            std::cout << "number of hypotheses for GO3D:" << grph_final_[vrtx_final].hypothesis_mv_.size() << std::endl;
+            if(grph_final_[vrtx_final].hypothesis_mv_.size() > 0)
             {
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr big_cloud_go3D(new pcl::PointCloud<pcl::PointXYZRGB>);
                 pcl::PointCloud<pcl::Normal>::Ptr big_cloud_go3D_normals(new pcl::PointCloud<pcl::Normal>);
@@ -1224,7 +1240,7 @@ bool multiviewGraph::recognize
                 }
 
                 std::cout << "number of hypotheses for GO3D:" << aligned_models.size() << std::endl;
-                if(aligned_models.size() > 0)
+                if(grph_final_[vrtx_final].hypothesis_mv_.size() > 0)
                 {
 
                     //Refine aligned models with ICP
@@ -1234,9 +1250,9 @@ bool multiviewGraph::recognize
                         float icp_max_correspondence_distance_ = 0.01f;
 
 #pragma omp parallel for num_threads(4) schedule(dynamic)
-                        for(size_t kk=0; kk < aligned_models.size(); kk++)
+                        for(size_t kk=0; kk < grph_final_[vrtx_final].hypothesis_mv_.size(); kk++)
                         {
-                            ModelTPtr model = models[kk];
+                            ModelTPtr model = grph_final_[vrtx_final].hypothesis_mv_[kk].model_;
 
                             //cut scene based on model cloud
                             boost::shared_ptr < distance_field::PropagationDistanceField<pcl::PointXYZRGB> > dt;
@@ -1331,6 +1347,7 @@ bool multiviewGraph::recognize
                                 trans = reg.getFinalTransformation () * scene_to_model_trans;
                                 icp_trans = trans.inverse ();
 
+                                grph_final_[vrtx_final].hypothesis_mv_[kk].transform_ = icp_trans;
                                 hypotheses_poses_in_global_frame[kk] = icp_trans;
                             }
                         }
@@ -1338,14 +1355,19 @@ bool multiviewGraph::recognize
 
                     //transform models to be used during GO3D
 #pragma omp parallel for num_threads(4) schedule(dynamic)
-                    for(size_t kk=0; kk < aligned_models.size(); kk++)
+                    for(size_t kk=0; kk < grph_final_[vrtx_final].hypothesis_mv_.size(); kk++)
                     {
-                        pcl::PointCloud < PointT >::Ptr model_aligned( new pcl::PointCloud<PointT> );
-                        pcl::transformPointCloud(*aligned_models[kk], *model_aligned, hypotheses_poses_in_global_frame[kk]);
+                        Eigen::Matrix4f trans = grph_final_[vrtx_final].hypothesis_mv_[kk].transform_;
+                        ModelTPtr model = grph_final_[vrtx_final].hypothesis_mv_[kk].model_;
+
+                        typename pcl::PointCloud<PointT>::Ptr model_aligned ( new pcl::PointCloud<PointT> );
+                        ConstPointInTPtr model_cloud = model->getAssembled (go3d_and_icp_resolution_);
+                        pcl::transformPointCloud (*model_cloud, *model_aligned, hypotheses_poses_in_global_frame[kk]);
                         aligned_models[kk] = model_aligned;
 
+                        pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = model->getNormalsAssembled (go3d_and_icp_resolution_);
                         typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>);
-                        faat_pcl::utils::miscellaneous::transformNormals(aligned_normals[kk], normal_aligned, hypotheses_poses_in_global_frame[kk]);
+                        faat_pcl::utils::miscellaneous::transformNormals(normal_cloud, normal_aligned, hypotheses_poses_in_global_frame[kk]);
                         aligned_normals[kk] = normal_aligned;
                     }
 
@@ -1420,6 +1442,11 @@ bool multiviewGraph::recognize
                     std::vector<bool> mask;
                     go.getMask (mask);
 
+                    for(size_t kk=0; kk < grph_final_[vrtx_final].hypothesis_mv_.size(); kk++)
+                    {
+                        grph_final_[vrtx_final].hypothesis_mv_[kk].verified_ = mask[kk];
+                    }
+
                     if(visualize_output_go_3D)
                     {
                         pcl::visualization::PCLVisualizer vis ("registered cloud");
@@ -1437,7 +1464,7 @@ bool multiviewGraph::recognize
                         /*pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler (big_cloud_vx_after_mv);
             vis.addPointCloud (big_cloud_vx_after_mv, handler, "big", v1);*/
 
-                        for(size_t i=0; i < aligned_models.size(); i++)
+                        for(size_t i=0; i < grph_final_[vrtx_final].hypothesis_mv_.size(); i++)
                         {
                             pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified (aligned_models[i]);
                             std::stringstream name;
@@ -1452,7 +1479,7 @@ bool multiviewGraph::recognize
                             vis.addPointCloud<pcl::PointXYZRGBA> (smooth_cloud_, random_handler, "smooth_cloud", v5);
                         }
 
-                        for (size_t i = 0; i < aligned_models.size (); i++)
+                        for (size_t i = 0; i < grph_final_[vrtx_final].hypothesis_mv_.size (); i++)
                         {
                             if (mask[i])
                             {
@@ -1496,24 +1523,24 @@ bool multiviewGraph::recognize
                         vis.spin ();
                     }
 
-                    for (size_t i = 0; i < aligned_models.size (); i++)
-                    {
-                        if (mask[i])
-                        {
-                            int k=0;
-                            for (vp = vertices (grph_final_); vp.first != vp.second; ++vp.first, k++)
-                            {
-                                //hypotheses_poses_in_global_frame[i] transforms from object coordinates to global coordinate system
-                                //transforms_to_global aligns a single frame to the global coordinate system
-                                //transformation would then be a transformation transforming first the object to global coordinate system
-                                //concatenated with the inverse of transforms_to_global[k]
-                                Eigen::Matrix4f t = transforms_to_global[k].inverse() * hypotheses_poses_in_global_frame[i];
-                                std::string origin = "3d go";
-                                Hypothesis<PointT> mv_hyp(models[i], t, origin, true, true);
-                                grph_final_[*vp.first].hypothesis_mv_.push_back(mv_hyp);
-                            }
-                        }
-                    }
+//                    for (size_t i = 0; i < aligned_models.size (); i++)
+//                    {
+//                        if (mask[i])
+//                        {
+//                            int k=0;
+//                            for (vp = vertices (grph_final_); vp.first != vp.second; ++vp.first, k++)
+//                            {
+//                                //hypotheses_poses_in_global_frame[i] transforms from object coordinates to global coordinate system
+//                                //transforms_to_global aligns a single frame to the global coordinate system
+//                                //transformation would then be a transformation transforming first the object to global coordinate system
+//                                //concatenated with the inverse of transforms_to_global[k]
+//                                Eigen::Matrix4f t = transforms_to_global[k].inverse() * hypotheses_poses_in_global_frame[i];
+//                                std::string origin = "3d go";
+//                                Hypothesis<PointT> mv_hyp(models[i], t, origin, true, true);
+//                                grph_final_[*vp.first].hypothesis_mv_.push_back(mv_hyp);
+//                            }
+//                        }
+//                    }
                 }
 
             }
