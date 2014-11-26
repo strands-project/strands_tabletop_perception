@@ -1,5 +1,14 @@
 #include "boost_graph_visualization_extension.h"
 
+#include <v4r/ORFramework/model_only_source.h>
+#include <v4r/ORUtils/pcl_visualization_utils.h>
+#include <v4r/ORUtils/pcl_opencv.h>
+
+#include <pcl/common/transforms.h>
+
+typedef faat_pcl::rec_3d_framework::Model<PointT> ModelT;
+typedef boost::shared_ptr<ModelT> ModelTPtr;
+
 void BoostGraphVisualizer::visualizeGraph(const Graph &grph, pcl::visualization::PCLVisualizer::Ptr &vis)
 {
     //--(bottom: Scene; 2nd from bottom: Single-view-results; 2nd from top: transformed hypotheses; top: verified hypotheses coming from all views)--

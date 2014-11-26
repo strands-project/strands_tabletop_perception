@@ -5,36 +5,20 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <opencv2/core/core.hpp>
-#include <opencv2/nonfree/features2d.hpp>
 
 #include <pcl/common/transforms.h>
-#include <pcl/keypoints/sift_keypoint.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl/search/kdtree.h>
-#include <pcl/recognition/cg/geometric_consistency.h>
-#include <pcl/registration/icp.h>
 #include <pcl/search/impl/flann_search.hpp>
-
-#include <v4r/ORFramework/faat_3d_rec_framework_defines.h>
-#include <v4r/ORFramework/sift_local_estimator.h>
-#include <v4r/ORFramework/model_only_source.h>
-#include <v4r/ORRegistration/fast_icp_with_gc.h>
-#include <v4r/ORUtils/miscellaneous.h>
-#include <v4r/ORUtils/pcl_visualization_utils.h>
 
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
-#include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/String.h>
-#include <pcl_conversions.h>
 #include "boost_graph_extension.h"
 #include "boost_graph_visualization_extension.h"
 #include "recognition_srv_definitions/multiview_recognize.h"
-#include "segmenter.h"
 #include "singleview_object_recognizer.h"
 
 typedef pcl::PointXYZRGB PointT;
@@ -58,6 +42,7 @@ private:
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pAccumulatedKeypointNormals_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > accumulatedHypotheses_;
     bool visualize_output_;
+    bool go3d_;
     float chop_at_z_;
     float distance_keypoints_get_discarded_;
     float icp_resolution_;
@@ -87,6 +72,7 @@ public:
         distance_keypoints_get_discarded_ = 0.005*0.005;
         max_vertices_in_graph_ = 4;
         visualize_output_ = false;
+        go3d_ = true;
 
         pAccumulatedKeypoints_.reset (new pcl::PointCloud<PointT>);
         pAccumulatedKeypointNormals_.reset (new pcl::PointCloud<pcl::Normal>);
@@ -97,8 +83,6 @@ public:
     bool calcSiftFeatures(Vertex &src, Graph &grph);
     void estimateViewTransformationBySIFT ( const Vertex &src, const Vertex &trgt, Graph &grph, flann::Index<DistT > *flann_index, Eigen::Matrix4f &transformation, std::vector<Edge> & edges, bool use_gc=false );
     void estimateViewTransformationByRobotPose ( const Vertex &src, const Vertex &trgt, Graph &grph, Edge &edge );
-    void extendHypothesis ( Graph &grph );
-    void extendHypothesisRecursive ( Graph &grph, Edge calling_out_edge, std::vector<Hypothesis<PointT> > &hyp_vec);
     void extendHypothesisRecursive ( Graph &grph, Vertex &vrtx_start, std::vector<Hypothesis<PointT> > &hyp_vec);
     void extendFeatureMatchesRecursive ( Graph &grph,
                                          Vertex &vrtx_start,
@@ -231,6 +215,7 @@ public:
         PCL_ERROR("There is no most current vertex in the graph.");
         return false;
     }
+    void createBigPointCloudRecursive (Graph & grph, Vertex &vrtx_start, pcl::PointCloud<pcl::PointXYZRGB>::Ptr & pAccumulatedPCl);
 
 };
 

@@ -8,28 +8,11 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl_conversions.h>
-#include <v4r/ORFramework/opencv_sift_local_estimator.h>
-#include <v4r/ORFramework/sift_local_estimator.h>
-#include <v4r/ORFramework/shot_local_estimator.h>
-#include <v4r/ORFramework/shot_local_estimator_omp.h>
-//#include <faat_pcl/3d_rec_framework/feature_wrapper/global/color_ourcvfh_estimator.h>
-#include <v4r/ORFramework/organized_color_ourcvfh_estimator.h>
-#include <v4r/ORFramework/ourcvfh_estimator.h>
-//#include <faat_pcl/3d_rec_framework/pc_source/model_only_source.h>
-#include <v4r/ORFramework/registered_views_source.h>
-#include <v4r/ORFramework/partial_pcd_source.h>
-#include <v4r/ORFramework/global_nn_recognizer_cvfh.h>
-#include <v4r/ORFramework/local_recognizer.h>
+
 #include <v4r/ORFramework/multi_pipeline_recognizer.h>
 #include <v4r/ORFramework/multiplane_segmentation.h>
-#include <v4r/ORFramework/metrics.h>
-#include <v4r/ORRecognition/graph_geometric_consistency.h>
-//#include <faat_pcl/recognition/hv/hv_cuda_wrapper.h>
-#include <v4r/ORRecognition/ghv.h>
-#include <v4r/ORRegistration/visibility_reasoning.h>
-#include <v4r/ORUtils/miscellaneous.h>
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/lexical_cast.hpp>
+#include <v4r/ORFramework/sift_local_estimator.h>
+
 #include "segmenter.h"
 #include "recognition_srv_definitions/recognize.h"
 #include "boost_graph_extension.h"

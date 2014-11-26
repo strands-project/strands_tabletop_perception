@@ -62,6 +62,8 @@
 #include <v4r/ORFramework//multiplane_segmentation.h>
 #include <v4r/ORUtils/noise_model_based_cloud_integration.h>
 
+#include <ros/ros.h>
+
 //std::cout << "Debug Message: I am in file " << __FILE__ << " at line " << __LINE__ << std::endl;
 
 #define SUBWINDOWS_PER_VIEW 3
@@ -90,6 +92,10 @@ outputgraph (Graph& map, const char* filename);
 int
 main (int argc, char **argv)
 {
+    ros::init ( argc, argv, "multiview_object_recognizer_batch_node" );
+    boost::shared_ptr<ros::NodeHandle> nh;
+    nh.reset( new ros::NodeHandle ( "~" ) );
+
     Graph grph, grph_final;
     std::vector<Vertex> vertices_v;
     std::vector<Edge> edges;
@@ -116,40 +122,40 @@ main (int argc, char **argv)
     bool sort_files = false;
     std::string sift_idx = "sift_flann.idx";
     bool use_table_plane = true;
-    int CG_SIZE = 3;
-    float CG_THRESHOLD = 0.01f;
+    int cg_size_threshold = 3;
+    double cg_size = 0.01f;
     int max_node_distance_ = -1;
     bool scene_to_scene = true;
     bool use_unverified_single_view_hypotheses = false;
     bool only_scene_to_scene = false;
-    float z_dist = 3.f;
+    double z_dist = 3.f;
     bool use_gc_s2s = true;
-    float max_overlap_bf = 0.75f;
+    double max_overlap_bf = 0.75f;
     bool do_sift = true;
 
     //Multiview refinement parameters
     bool mv_icp_ = true;
-    float max_keypoint_dist_mv_ = 2.5f;
+    double max_keypoint_dist_mv_ = 2.5f;
     int mv_iterations = 5;
-    float min_overlap_mv = 0.3f;
+    double min_overlap_mv = 0.3f;
     int mv_keypoints = 0;
-    float inlier_threshold = 0.003f;
-    float max_corresp_dist = 0.01f;
+    double inlier_threshold = 0.003f;
+    double max_corresp_dist = 0.01f;
 
-    pcl::console::parse_argument (argc, argv, "-mv_iterations", mv_iterations);
-    pcl::console::parse_argument (argc, argv, "-max_keypoint_dist_mv", max_keypoint_dist_mv_);
-    pcl::console::parse_argument (argc, argv, "-mv_icp", mv_icp_);
-    pcl::console::parse_argument (argc, argv, "-mv_keypoints", mv_keypoints);
-    pcl::console::parse_argument (argc, argv, "-min_overlap_mv", min_overlap_mv);
-    pcl::console::parse_argument (argc, argv, "-inlier_threshold", inlier_threshold);
-    pcl::console::parse_argument (argc, argv, "-max_corresp_dist", max_corresp_dist);
+    nh->getParam ( "mv_iterations", mv_iterations);
+    nh->getParam ( "max_keypoint_dist_mv", max_keypoint_dist_mv_);
+    nh->getParam ( "mv_icp", mv_icp_);
+    nh->getParam ( "mv_keypoints", mv_keypoints);
+    nh->getParam ( "min_overlap_mv", min_overlap_mv);
+    nh->getParam ( "inlier_threshold", inlier_threshold);
+    nh->getParam ( "max_corresp_dist", max_corresp_dist);
 
     //GO3D parameters
-    float go3d_color_sigma = 0.3f;
-    float go3d_outlier_regularizer = 3.f;
-    float go3d_clutter_regularizer = 3.f;
-    float go3d_clutter_radius_ = 0.04f;
-    float go3d_inlier_threshold_ = 0.01f;
+    double go3d_color_sigma = 0.3f;
+    double go3d_outlier_regularizer = 3.f;
+    double go3d_clutter_regularizer = 3.f;
+    double go3d_clutter_radius_ = 0.04f;
+    double go3d_inlier_threshold_ = 0.01f;
 
     bool go3d_detect_clutter = true;
     bool go3d_add_planes = false;
@@ -157,88 +163,88 @@ main (int argc, char **argv)
     bool go3d_icp_model_to_scene_ = false;
     bool go3d_use_supervoxels = true;
 
-    float go3d_and_icp_resolution_ = 0.005f;
+    double go3d_and_icp_resolution_ = 0.005f;
 
-    pcl::console::parse_argument (argc, argv, "-go3d_use_supervoxels", go3d_use_supervoxels);
-    pcl::console::parse_argument (argc, argv, "-go3d_icp_model_to_scene", go3d_icp_model_to_scene_);
-    pcl::console::parse_argument (argc, argv, "-go3d_icp", go3d_icp_);
-    pcl::console::parse_argument (argc, argv, "-go3d_add_planes", go3d_add_planes);
-    pcl::console::parse_argument (argc, argv, "-go3d_detect_clutter", go3d_detect_clutter);
+    nh->getParam ( "go3d_use_supervoxels", go3d_use_supervoxels);
+    nh->getParam ( "go3d_icp_model_to_scene", go3d_icp_model_to_scene_);
+    nh->getParam ( "go3d_icp", go3d_icp_);
+    nh->getParam ( "go3d_add_planes", go3d_add_planes);
+    nh->getParam ( "go3d_detect_clutter", go3d_detect_clutter);
 
-    pcl::console::parse_argument (argc, argv, "-go3d_and_icp_resolution", go3d_and_icp_resolution_);
-    pcl::console::parse_argument (argc, argv, "-go3d_clutter_radius", go3d_clutter_radius_);
-    pcl::console::parse_argument (argc, argv, "-go3d_color_sigma", go3d_color_sigma);
-    pcl::console::parse_argument (argc, argv, "-go3d_outlier_regularizer", go3d_outlier_regularizer);
-    pcl::console::parse_argument (argc, argv, "-go3d_clutter_regularizer", go3d_clutter_regularizer);
-    pcl::console::parse_argument (argc, argv, "-go3d_inlier_threshold", go3d_inlier_threshold_);
-    pcl::console::parse_argument (argc, argv, "-go_3d", go_3d);
+    nh->getParam ( "go3d_and_icp_resolution", go3d_and_icp_resolution_);
+    nh->getParam ( "go3d_clutter_radius", go3d_clutter_radius_);
+    nh->getParam ( "go3d_color_sigma", go3d_color_sigma);
+    nh->getParam ( "go3d_outlier_regularizer", go3d_outlier_regularizer);
+    nh->getParam ( "go3d_clutter_regularizer", go3d_clutter_regularizer);
+    nh->getParam ( "go3d_inlier_threshold", go3d_inlier_threshold_);
+    nh->getParam ( "go_3d", go_3d);
 
     //SHOT parameters
     std::string shot_idx = "shot_flann.idx";
     bool do_shot = false;
     std::string shot_training_dir = "/media/DATA/shot_iros_trained";
 
-    pcl::console::parse_argument (argc, argv, "-shot_idx", shot_idx);
-    pcl::console::parse_argument (argc, argv, "-do_shot", do_shot);
-    pcl::console::parse_argument (argc, argv, "-shot_training_dir", shot_training_dir);
+    nh->getParam ( "shot_idx", shot_idx);
+    nh->getParam ( "do_shot", do_shot);
+    nh->getParam ( "shot_training_dir", shot_training_dir);
 
     //GO parameters
-    float go_resolution = 0.005f;
-    float go_inlier_threshold = 0.01f;
-    float go_radius_clutter = 0.035f;
-    float go_regularizer = 3.f;
-    float go_clutter_reguralizer = 5.f;
-    float go_color_sigma = 0.3f;
+    double go_resolution = 0.005f;
+    double go_inlier_threshold = 0.01f;
+    double go_radius_clutter = 0.035f;
+    double go_regularizer = 3.f;
+    double go_clutter_reguralizer = 5.f;
+    double go_color_sigma = 0.3f;
 
-    pcl::console::parse_argument (argc, argv, "-go_resolution", go_resolution);
-    pcl::console::parse_argument (argc, argv, "-go_inlier_threshold", go_inlier_threshold);
-    pcl::console::parse_argument (argc, argv, "-go_radius_clutter", go_radius_clutter);
-    pcl::console::parse_argument (argc, argv, "-go_regularizer", go_regularizer);
-    pcl::console::parse_argument (argc, argv, "-go_clutter_reguralizer", go_clutter_reguralizer);
-    pcl::console::parse_argument (argc, argv, "-go_color_sigma", go_color_sigma);
+    nh->getParam ( "go_resolution", go_resolution);
+    nh->getParam ( "go_inlier_threshold", go_inlier_threshold);
+    nh->getParam ( "go_radius_clutter", go_radius_clutter);
+    nh->getParam ( "go_regularizer", go_regularizer);
+    nh->getParam ( "go_clutter_reguralizer", go_clutter_reguralizer);
+    nh->getParam ( "go_color_sigma", go_color_sigma);
 
     //Noise model parameters
-    float max_angle = 70.f;
-    float lateral_sigma = 0.0015f;
-    float nm_integration_min_weight_ = 0.25f;
+    double max_angle = 70.f;
+    double lateral_sigma = 0.0015f;
+    double nm_integration_min_weight_ = 0.25f;
 
-    pcl::console::parse_argument (argc, argv, "-max_angle", max_angle);
-    pcl::console::parse_argument (argc, argv, "-lateral_sigma", lateral_sigma);
-    pcl::console::parse_argument (argc, argv, "-nm_integration_min_weight", nm_integration_min_weight_);
+    nh->getParam ( "max_angle", max_angle);
+    nh->getParam ( "lateral_sigma", lateral_sigma);
+    nh->getParam ( "nm_integration_min_weight", nm_integration_min_weight_);
 
     //Other parameters
     std::string output_dir_3d_results = "";
-    pcl::console::parse_argument (argc, argv, "-output_dir_3d_results", output_dir_3d_results);
+    nh->getParam ( "output_dir_3d_results", output_dir_3d_results);
 
     bool visualize_output_single_view = false;
-    pcl::console::parse_argument (argc, argv, "-visualize_output_single_view", visualize_output_single_view);
-    pcl::console::parse_argument (argc, argv, "-max_overlap_bf", max_overlap_bf);
-    pcl::console::parse_argument (argc, argv, "-use_gc_s2s", use_gc_s2s);
-    pcl::console::parse_argument (argc, argv, "-z_dist", z_dist);
-    pcl::console::parse_argument (argc, argv, "-only_scene_to_scene", only_scene_to_scene);
-    pcl::console::parse_argument (argc, argv, "-sift_knn", sift_knn);
-    pcl::console::parse_argument (argc, argv, "-use_unverified_sv_hyp", use_unverified_single_view_hypotheses);
-    pcl::console::parse_argument (argc, argv, "-scene_to_scene", scene_to_scene);
-    pcl::console::parse_argument (argc, argv, "-max_node_distance", max_node_distance_);
-    pcl::console::parse_argument (argc, argv, "-CG_SIZE", CG_SIZE);
-    pcl::console::parse_argument (argc, argv, "-CG_THRESHOLD", CG_THRESHOLD);
-    pcl::console::parse_argument (argc, argv, "-use_table_plane", use_table_plane);
-    pcl::console::parse_argument (argc, argv, "-sift_idx", sift_idx);
-    pcl::console::parse_argument (argc, argv, "-sort_files", sort_files);
-    pcl::console::parse_argument (argc, argv, "-training_dir_sift", training_dir_new_sift_);
-    pcl::console::parse_argument (argc, argv, "-training_input_structure", training_input_structure_);
-    pcl::console::parse_argument (argc, argv, "-training_dir", training_dir);
-    //pcl::console::parse_argument (argc, argv, "-models_dir_sift", new_sift_models_);
-    pcl::console::parse_argument (argc, argv, "-model_path", model_path);
-    pcl::console::parse_argument (argc, argv, "-input_cloud_dir", input_cloud_dir);
-    pcl::console::parse_argument (argc, argv, "-hypothesis", hypothesis_file);
-    pcl::console::parse_argument (argc, argv, "-do_ourcvfh", do_ourcvfh);
-    pcl::console::parse_argument (argc, argv, "-do_sift", do_sift);
-    pcl::console::parse_argument (argc, argv, "-seg", seg);
-    pcl::console::parse_argument (argc, argv, "-icp_iterations", icp_iter);
-    pcl::console::parse_argument (argc, argv, "-opt_type", opt_type);
-    pcl::console::parse_argument (argc, argv, "-visualize_output", visualize_output);
-    pcl::console::parse_argument (argc, argv, "-gt_or_output_dir", gt_or_ouput_dir);
+    nh->getParam ( "visualize_output_single_view", visualize_output_single_view);
+    nh->getParam ( "max_overlap_bf", max_overlap_bf);
+    nh->getParam ( "use_gc_s2s", use_gc_s2s);
+    nh->getParam ( "z_dist", z_dist);
+    nh->getParam ( "only_scene_to_scene", only_scene_to_scene);
+    nh->getParam ( "sift_knn", sift_knn);
+    nh->getParam ( "use_unverified_sv_hyp", use_unverified_single_view_hypotheses);
+    nh->getParam ( "scene_to_scene", scene_to_scene);
+    nh->getParam ( "max_node_distance", max_node_distance_);
+    nh->getParam ( "CG_SIZE", cg_size_threshold);
+    nh->getParam ( "CG_THRESHOLD", cg_size);
+    nh->getParam ( "use_table_plane", use_table_plane);
+    nh->getParam ( "sift_idx", sift_idx);
+    nh->getParam ( "sort_files", sort_files);
+    nh->getParam ( "training_dir_sift", training_dir_new_sift_);
+    nh->getParam ( "training_input_structure", training_input_structure_);
+    nh->getParam ( "training_dir", training_dir);
+    //nh->getParam ( "models_dir_sift", new_sift_models_);
+    nh->getParam ( "model_path", model_path);
+    nh->getParam ( "input_cloud_dir", input_cloud_dir);
+    nh->getParam ( "hypothesis", hypothesis_file);
+    nh->getParam ( "do_ourcvfh", do_ourcvfh);
+    nh->getParam ( "do_sift", do_sift);
+    nh->getParam ( "seg", seg);
+    nh->getParam ( "icp_iterations", icp_iter);
+    nh->getParam ( "opt_type", opt_type);
+    nh->getParam ( "visualize_output", visualize_output);
+    nh->getParam ( "gt_or_output_dir", gt_or_ouput_dir);
 
     new_sift_models_ = model_path;
 
@@ -275,13 +281,13 @@ main (int argc, char **argv)
         myRec.setSIFTFlannIdx(sift_idx);
         myRec.setUseTablePlane(use_table_plane);
         myRec.setSegmentation (seg);
-        myRec.setCGParams(CG_SIZE, CG_THRESHOLD);
+        myRec.setCGParams(cg_size_threshold, cg_size);
         myRec.setSiftKnn(sift_knn);
         myRec.setDoSift(do_sift);
         myRec.setDoShot(do_shot);
         myRec.setSHOTFlannIdx(shot_idx);
         myRec.setSHOTParameters(shot_training_dir);
-        myRec.init (models_dir_sift, model_path, training_dir);
+        myRec.init (models_dir_sift, model_path, training_dir_new_sift_);
 
         for (size_t filevec_id = 0; filevec_id < nrFiles; filevec_id++)
         {

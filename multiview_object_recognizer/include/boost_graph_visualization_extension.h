@@ -6,21 +6,10 @@
 #include <string>
 #include <sstream>
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/nonfree/features2d.hpp>
-
-#include <pcl/common/transforms.h>
-#include <pcl/keypoints/sift_keypoint.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl/search/kdtree.h>
 
-#include <v4r/ORFramework/model_only_source.h>
-#include <v4r/ORUtils/pcl_visualization_utils.h>
-#include <v4r/ORUtils/pcl_opencv.h>
-
-#include <pcl_conversions.h>
 #include "boost_graph_extension.h"
 
 typedef pcl::PointXYZRGB PointT;
@@ -28,8 +17,6 @@ typedef pcl::PointCloud<PointT> PointInT;
 typedef PointInT::ConstPtr ConstPointInTPtr;
 typedef boost::shared_ptr< PointInT > PointInTPtr;
 
-typedef faat_pcl::rec_3d_framework::Model<PointT> ModelT;
-typedef boost::shared_ptr<ModelT> ModelTPtr;
 typedef typename pcl::PointCloud<PointT>::ConstPtr ConstPointInTPtr;
 
 class BoostGraphVisualizer

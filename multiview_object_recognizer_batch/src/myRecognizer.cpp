@@ -188,7 +188,7 @@ public:
     }
 };
 
-void
+int
 myRecognizer::computeTablePlane (const boost::shared_ptr<const pcl::PointCloud<pcl::PointXYZRGB> > & xyz_points, Eigen::Vector4f & table_plane, float z_dist)
 {
     pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
@@ -233,6 +233,9 @@ myRecognizer::computeTablePlane (const boost::shared_ptr<const pcl::PointCloud<p
     mps.segmentAndRefine (regions, model_coefficients, inlier_indices, labels, label_indices, boundary_indices);
 
     std::cout << "Number of planes found:" << model_coefficients.size () << std::endl;
+
+    if(!model_coefficients.size())  // no planes found
+        return 0;
 
     int table_plane_selected = 0;
     int max_inliers_found = -1;
@@ -315,6 +318,8 @@ myRecognizer::computeTablePlane (const boost::shared_ptr<const pcl::PointCloud<p
    model_coefficients[table_plane_selected].values[2], model_coefficients[table_plane_selected].values[3]);*/
 
     std::cout << "Table plane computed... " << std::endl;
+
+    return 1;
 }
 
 void
@@ -861,25 +866,27 @@ myRecognizer::recognize (const boost::shared_ptr<const pcl::PointCloud<pcl::Poin
     if(use_table_plane_)
     {
         pcl::ScopeTime t ("Computing table plane\n");
-        computeTablePlane (xyz_points, table_plane);
-        std::cout << table_plane << std::endl;
-        table_plane_ = table_plane;
-
-        std::vector<int> indices_above_plane;
-        for (int k = 0; k < pXYZ_points__non_const->points.size (); k++)
+        if(computeTablePlane (xyz_points, table_plane))
         {
-            Eigen::Vector3f xyz_p = pXYZ_points__non_const->points[k].getVector3fMap ();
+            std::cout << table_plane << std::endl;
+            table_plane_ = table_plane;
 
-            if (!pcl_isfinite (xyz_p[0]) || !pcl_isfinite (xyz_p[1]) || !pcl_isfinite (xyz_p[2]))
-                continue;
+            std::vector<int> indices_above_plane;
+            for (int k = 0; k < pXYZ_points__non_const->points.size (); k++)
+            {
+                Eigen::Vector3f xyz_p = pXYZ_points__non_const->points[k].getVector3fMap ();
 
-            float val = xyz_p[0] * table_plane_[0] + xyz_p[1] * table_plane_[1] + xyz_p[2] * table_plane_[2] + table_plane_[3];
+                if (!pcl_isfinite (xyz_p[0]) || !pcl_isfinite (xyz_p[1]) || !pcl_isfinite (xyz_p[2]))
+                    continue;
 
-            if (val >= 0.01)
-                indices_above_plane.push_back (static_cast<int> (k));
+                float val = xyz_p[0] * table_plane_[0] + xyz_p[1] * table_plane_[1] + xyz_p[2] * table_plane_[2] + table_plane_[3];
+
+                if (val >= 0.01)
+                    indices_above_plane.push_back (static_cast<int> (k));
+            }
+
+            multi_recog_->setIndices(indices_above_plane);
         }
-
-        multi_recog_->setIndices(indices_above_plane);
     }
 
     if(do_ourcvfh_ && use_table_plane_)

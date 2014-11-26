@@ -1,12 +1,7 @@
 <launch>
-<<<<<<< HEAD
 	<arg name="models_dir" default="/opt/strands/data/object_recognition/models" />
 	<arg name="recognizer_structure_sift" default="/opt/strands/data/object_recognition/recognizer_structure" />
-=======
 	<arg name="topic" default="/camera/depth_registered/points" />
-	<arg name="models_dir" default="/media/Data/datasets/willow_dataset/models_temp/" />
-	<arg name="recognizer_structure_sift" default="/media/Data/datasets/willow_dataset/willow_structure" />
->>>>>>> fbb093d9e95d90340310a533e0ca1f8226d8a019
 	<arg name="training_dir_sift" default="/media/Data/datasets/willow_dataset/sift_trained/" />
 	<arg name="gt_or_output_dir" default="" />
 	<arg name="visualize_output" default="false" />
@@ -25,14 +20,7 @@
   
   <!--  Multiview recognizer -->
   <node pkg="multiview_object_recognizer" type="multiview_object_recognizer_node" name="multiview_object_recognizer_node" output="screen" >
-       <param name="models_dir" value="$(arg models_dir)" type="string"/>
-       <param name="gt_or_output_dir" value="$(arg gt_or_output_dir)" type="string"/>
-       <param name="visualize_output" value="$(arg visualize_output)" type="bool"/>
-       <param name="go_3d" value="$(arg go_3d)" type="bool"/>
-       <param name="icp_iterations" value="$(arg icp_iterations)" type="int"/>
-       <param name="mv_keypoints" value="$(arg mv_keypoints)" type="int"/>
-       <param name="opt_type" value="$(arg opt_type)" type="int"/>
-       <param name="chop_z" value="$(arg chop_z)" type="double"/>
+       <rosparam file="$(find multiview_object_recognizer)/cfg/params_dump.yaml" command="load"/>
   </node>
 
 	

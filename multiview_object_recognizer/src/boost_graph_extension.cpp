@@ -1,4 +1,5 @@
 #include "boost_graph_extension.h"
+#include <boost/graph/graphviz.hpp>
 
 struct my_graph_writer
 {
@@ -157,6 +158,14 @@ void pruneGraph (Graph &grph, size_t num_remaining_vertices)
     }
 }
 
+void resetHopStatus(Graph &grph)
+{
+    for (std::pair<vertex_iter, vertex_iter> vp = vertices ( grph ); vp.first != vp.second; ++vp.first )
+    {
+        grph[*vp.first].has_been_hopped_ = false;
+    }
+
+}
 
 Vertex getFurthestVertex ( Graph &grph)
 {

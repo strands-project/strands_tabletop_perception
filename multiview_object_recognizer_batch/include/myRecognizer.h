@@ -194,7 +194,7 @@ public:
         scene_normals_ = normals;
     }
 
-    static void computeTablePlane (const boost::shared_ptr<const pcl::PointCloud<pcl::PointXYZRGB> > & xyz_points, Eigen::Vector4f & table_plane, float z_dist=1.2f);
+    static int computeTablePlane (const boost::shared_ptr<const pcl::PointCloud<pcl::PointXYZRGB> > & xyz_points, Eigen::Vector4f & table_plane, float z_dist=1.2f);
     void init(std::string models_dir_sift, std::string model_path, std::string training_dir);
     void recognize(const boost::shared_ptr<const pcl::PointCloud<pcl::PointXYZRGB> > & xyz_points);
     boost::shared_ptr < std::vector<ModelTPtr> > getModels();

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(multiview_object_recognizer_batch)
+SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -7,8 +8,7 @@ project(multiview_object_recognizer_batch)
 find_package(catkin REQUIRED COMPONENTS roscpp rospy strands_v4r)
 
 find_package(PCL 1.7 REQUIRED)
-find_package(OpenCV 2.4 REQUIRED )
-find_package(Boost REQUIRED)
+find_package(OpenCV 2.4 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -82,7 +82,7 @@ find_package(Boost REQUIRED)
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES multiview_object_recognizer_batch
-#  CATKIN_DEPENDS other_catkin_pkg
+  CATKIN_DEPENDS roscpp rospy strands_v4r
 #  DEPENDS system_lib
 )
 

@@ -756,6 +756,8 @@ calcEdgeWeight (std::vector<Edge> &edges, Graph &grph, int max_distance, float z
 
     edge_weight = w_after_icp_;
 
+    assert(edge_weight>0 && edge_weight<1);
+
     std::cout << "WEIGHT IS: " << edge_weight << " coming from edge with object_id: " << grph[edges[edge_id]].model_name << std::endl;
     grph[edges[edge_id]].edge_weight = edge_weight;
 

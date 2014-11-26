@@ -1,5 +1,23 @@
 #include "singleview_object_recognizer.h"
 
+#include <v4r/ORFramework/local_recognizer.h>
+#include <v4r/ORFramework/metrics.h>
+#include <v4r/ORFramework/organized_color_ourcvfh_estimator.h>
+#include <v4r/ORFramework/ourcvfh_estimator.h>
+#include <v4r/ORFramework/opencv_sift_local_estimator.h>
+#include <v4r/ORFramework/shot_local_estimator.h>
+#include <v4r/ORFramework/shot_local_estimator_omp.h>
+#include <v4r/ORFramework/registered_views_source.h>
+#include <v4r/ORFramework/partial_pcd_source.h>
+#include <v4r/ORFramework/global_nn_recognizer_cvfh.h>
+#include <v4r/ORRecognition/graph_geometric_consistency.h>
+#include <v4r/ORRecognition/ghv.h>
+//#include <faat_pcl/recognition/hv/hv_cuda_wrapper.h>
+#include <v4r/ORRegistration/visibility_reasoning.h>
+#include <v4r/ORUtils/miscellaneous.h>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/lexical_cast.hpp>
+
 #define USE_SIFT_GPU
 //#define SOC_VISUALIZE
 
@@ -620,6 +638,7 @@ bool Recognizer::recognize ()
       mesh_source->setModelStructureDir (sift_structure_);
       mesh_source->setLoadViews (false);
       mesh_source->generate (training_dir_sift_);
+      mesh_source->createVoxelGridAndDistanceTransform(icp_voxel_size_);
 
       boost::shared_ptr < faat_pcl::rec_3d_framework::Source<PointT> > cast_source;
       cast_source = boost::static_pointer_cast<faat_pcl::rec_3d_framework::RegisteredViewsSource<pcl::PointXYZRGBNormal, PointT, PointT> > (mesh_source);
@@ -693,6 +712,7 @@ bool Recognizer::recognize ()
       source->setGenOrganized(true);
       source->setWindowSizeAndFocalLength(640, 480, 575.f);
       source->generate (training_dir_ourcvfh_);
+      source->createVoxelGridAndDistanceTransform(icp_voxel_size_);
 
       boost::shared_ptr<faat_pcl::rec_3d_framework::Source<pcl::PointXYZRGB> > cast_source;
       cast_source = boost::static_pointer_cast<faat_pcl::rec_3d_framework::PartialPCDSource<pcl::PointXYZRGBNormal, pcl::PointXYZRGB> > (source);
@@ -792,6 +812,7 @@ bool Recognizer::recognize ()
         mesh_source->setModelStructureDir (sift_structure_);
         mesh_source->setLoadViews(false);
         mesh_source->generate (training_dir_shot_);
+        mesh_source->createVoxelGridAndDistanceTransform(icp_voxel_size_);
 
         boost::shared_ptr < faat_pcl::rec_3d_framework::Source<PointT> > cast_source;
         cast_source = boost::static_pointer_cast<faat_pcl::rec_3d_framework::RegisteredViewsSource<pcl::PointXYZRGBNormal, PointT, PointT> > (mesh_source);

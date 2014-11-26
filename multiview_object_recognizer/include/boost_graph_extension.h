@@ -3,13 +3,10 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/graph/graph_traits.hpp>
-#include <boost/graph/graphviz.hpp>
 //#include <boost/graph/prim_minimum_spanning_tree.hpp>
 #include <pcl/PointIndices.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <opencv2/core/core.hpp>
-#include <opencv2/nonfree/features2d.hpp>
 #include <pcl/visualization/pcl_visualizer.h>
 
 #include <v4r/ORFramework/source.h>
@@ -62,24 +59,24 @@ public:
     boost::shared_ptr< pcl::PointCloud<PointT> > pScenePCl_f;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals;
     pcl::PointIndices filteredSceneIndices_;
-//    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals_f_;
-//    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormals_;
-//    boost::shared_ptr< pcl::PointIndices > pIndices_above_plane;
-//    boost::shared_ptr< pcl::PointCloud<PointT> > pSiftKeypoints;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormalsMultipipe_;
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypotheses_;
     boost::shared_ptr< pcl::PointCloud<FeatureT > > pSiftSignatures_;
-    std::vector<float> sift_keypoints_scales;
+    std::vector<float> sift_keypoints_scales_;
     pcl::PointIndices siftKeypointIndices_;
     std::vector<Hypothesis<PointT> > hypothesis_sv_;
     std::vector<Hypothesis<PointT> > hypothesis_mv_;
-    Eigen::Matrix4f absolute_pose;
     Eigen::Matrix4f transform_to_world_co_system_;
     bool has_been_hopped_;
     double cumulative_weight_to_new_vrtx_;
     pcl::PointIndices keypointIndices_;
     std::vector<pcl::PointCloud<PointT>::Ptr> verified_planes_;
+
+    //GO3D
+    Eigen::Matrix4f absolute_pose_;
+    std::vector<float> nguyens_noise_model_weights_;
+    std::vector<int> nguyens_kept_indices_;
 };
 
 class myEdge
@@ -90,8 +87,6 @@ public:
     double edge_weight;
     std::string model_name;
     std::string source_id, target_id;
-//    std::vector <cv::DMatch> matches;
-//    bool edge_weight_has_been_calculated_;
 };
 
 
@@ -108,6 +103,7 @@ typedef property_map<Graph, vertex_index_t>::type IndexMap;
 void visualizeGraph ( const Graph & grph, pcl::visualization::PCLVisualizer::Ptr vis);
 void pruneGraph (Graph &grph, size_t num_remaining_vertices=2);
 void outputgraph ( Graph &map, const char* filename );
+void resetHopStatus(Graph &grph);
 Vertex getFurthestVertex ( Graph &grph);
 //void shallowCopyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target);
 //void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target);

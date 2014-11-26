@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(multiview_object_recognizer)
-SET (CMAKE_BUILD_TYPE RelWithDebInfo)
+
+SET(CMAKE_BUILD_TYPE RelWithDebInfo)
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -9,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
                                         mongodb_store_msgs mongodb_store)
 
 find_package(PCL 1.7 REQUIRED)
-find_package( OpenCV 2.4 REQUIRED )
+find_package(OpenCV 2.4 REQUIRED )
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -128,20 +130,20 @@ add_executable(multiview_object_recognizer_node
                 ${incs}
 )
 
-add_executable(multiview_object_recognizer_eval_node
-                src/multiview_object_recognizer_service.cpp
-                src/world_representation.cpp
-                src/boost_graph_extension.cpp
-                src/boost_graph_visualization_extension.cpp
-                src/singleview_object_recognizer.cpp
-                src/eval_main.cpp
-                ${incs}
-)
+#add_executable(multiview_object_recognizer_eval_node
+#                src/multiview_object_recognizer_service.cpp
+#                src/world_representation.cpp
+#                src/boost_graph_extension.cpp
+#               src/boost_graph_visualization_extension.cpp
+#                src/singleview_object_recognizer.cpp
+#                src/eval_main.cpp
+#                ${incs}
+#)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 add_dependencies(multiview_object_recognizer_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
-add_dependencies(multiview_object_recognizer_eval_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
+#add_dependencies(multiview_object_recognizer_eval_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(multiview_object_recognizer_node
@@ -151,12 +153,12 @@ target_link_libraries(multiview_object_recognizer_node
    ${STRANDSV4R_LIBS}
 )
 
-target_link_libraries(multiview_object_recognizer_eval_node
-   ${catkin_LIBRARIES}
-   ${PCL_LIBRARIES}
-   ${OpenCV_LIBS}
-   ${STRANDSV4R_LIBS}
-)
+#target_link_libraries(multiview_object_recognizer_eval_node
+#   ${catkin_LIBRARIES}
+#   ${PCL_LIBRARIES}
+#   ${OpenCV_LIBS}
+#   ${STRANDSV4R_LIBS}
+#)
 
 
 #############
@@ -165,7 +167,7 @@ target_link_libraries(multiview_object_recognizer_eval_node
 
 install(TARGETS 
 		multiview_object_recognizer_node
-		multiview_object_recognizer_eval_node
+#		multiview_object_recognizer_eval_node
 ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
