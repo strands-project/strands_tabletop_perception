@@ -157,9 +157,19 @@ public:
         hv_params_.resolution_ = res;
     }
 
+    float get_hv_resolution() const
+    {
+        return hv_params_.resolution_;
+    }
+
     void set_hv_inlier_threshold(const float thres)
     {
         hv_params_.inlier_threshold_ = thres;
+    }
+
+    float get_hv_inlier_threshold() const
+    {
+        return hv_params_.inlier_threshold_;
     }
 
     void set_hv_radius_clutter(const float radius_clutter)
@@ -167,9 +177,19 @@ public:
         hv_params_.radius_clutter_ = radius_clutter;
     }
 
+    float get_hv_radius_clutter() const
+    {
+        return hv_params_.radius_clutter_;
+    }
+
     void set_hv_regularizer(const float regularizer)
     {
         hv_params_.regularizer_ = regularizer;
+    }
+
+    float get_hv_regularizer() const
+    {
+        return hv_params_.regularizer_;
     }
 
     void set_hv_clutter_regularizer (const float clutter_reg)
@@ -177,9 +197,19 @@ public:
         hv_params_.clutter_regularizer_ = clutter_reg;
     }
 
+    float get_hv_clutter_regularizer () const
+    {
+        return hv_params_.clutter_regularizer_;
+    }
+
     void set_hv_occlusion_threshold ( const float occ_thresh)
     {
         hv_params_.occlusion_threshold_ = occ_thresh;
+    }
+
+    float get_hv_occlusion_threshold () const
+    {
+        return hv_params_.occlusion_threshold_;
     }
 
     void set_hv_optimizer_type (const int opt_type)
@@ -187,9 +217,19 @@ public:
         hv_params_.optimizer_type_ = opt_type;
     }
 
+    int get_hv_optimizer_type () const
+    {
+        return hv_params_.optimizer_type_;
+    }
+
     void set_hv_color_sigma_L ( const float sigma_l)
     {
         hv_params_.color_sigma_l_ = sigma_l;
+    }
+
+    float get_hv_color_sigma_L () const
+    {
+        return hv_params_.color_sigma_l_;
     }
 
     void set_hv_color_sigma_AB ( const float sigma_ab)
@@ -197,6 +237,10 @@ public:
         hv_params_.color_sigma_ab_ = sigma_ab;
     }
 
+    float get_hv_color_sigma_AB () const
+    {
+        return hv_params_.color_sigma_ab_;
+    }
 
     void set_cg_size_threshold ( const int cg_size)
     {
@@ -308,6 +352,10 @@ public:
         icp_iterations_ = icp_iterations;
     }
 
+    int get_icp_iterations() const
+    {
+        return icp_iterations_;
+    }
 
     void set_icp_type (const int type)
     {

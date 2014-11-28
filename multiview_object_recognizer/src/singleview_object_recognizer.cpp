@@ -119,8 +119,6 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
                  "*** Color sigma L / AB: " << hv_params_.color_sigma_l_ << " / " << hv_params_.color_sigma_ab_ << std::endl <<
                  "=================================================================" << std::endl << std::endl;
 
-    for (size_t run=0; run < 2; run++)
-    {
     typename pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT>(*pInputCloud_));
 
     mask_hv.resize(aligned_models_.size());
@@ -259,9 +257,7 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
         hv_error_file.close();
 
     }
-        if(have_verified_models)
-            break;
-    }
+
     return true;
 }
 
