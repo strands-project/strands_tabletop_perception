@@ -117,6 +117,9 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
                  "*** Occlusion threshold: " << hv_params_.occlusion_threshold_ << std::endl <<
                  "*** Optimizer type: " << hv_params_.optimizer_type_ << std::endl <<
                  "*** Color sigma L / AB: " << hv_params_.color_sigma_l_ << " / " << hv_params_.color_sigma_ab_ << std::endl <<
+                 "*** Use supervoxels: " << hv_params_.use_supervoxels_ << std::endl <<
+                 "*** Use detect clutter: " << hv_params_.detect_clutter_ << std::endl <<
+                 "*** Use ignore colors: " << hv_params_.ignore_color_ << std::endl <<
                  "=================================================================" << std::endl << std::endl;
 
     typename pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT>(*pInputCloud_));
@@ -128,28 +131,34 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
                     PointT>);
 
     assert(pSceneNormals_->points.size() == pInputCloud_->points.size());
-    go->setSmoothSegParameters(0.1, 0.035, 0.005);
     //go->setRadiusNormals(0.03f);
     go->setResolution (hv_params_.resolution_);
     go->setInlierThreshold (hv_params_.inlier_threshold_);
     go->setRadiusClutter (hv_params_.radius_clutter_);
     go->setRegularizer (hv_params_.regularizer_ );
     go->setClutterRegularizer (hv_params_.clutter_regularizer_);
-    go->setDetectClutter (true);
+    go->setDetectClutter (hv_params_.detect_clutter_);
     go->setOcclusionThreshold (hv_params_.occlusion_threshold_);
     go->setOptimizerType (hv_params_.optimizer_type_);
-    go->setUseReplaceMoves(true);
-    go->setRadiusNormals (0.02);
-    go->setRequiresNormals(false);
-    go->setInitialStatus(false);
-    go->setIgnoreColor(false);
+    go->setUseReplaceMoves(hv_params_.use_replace_moves_);
+    go->setRadiusNormals (hv_params_.radius_normals_);
+    go->setRequiresNormals(hv_params_.requires_normals_);
+    go->setInitialStatus(hv_params_.initial_status_);
+    go->setIgnoreColor(hv_params_.ignore_color_);
     go->setColorSigma (hv_params_.color_sigma_l_, hv_params_.color_sigma_ab_);
-    go->setHistogramSpecification(true);
+    go->setHistogramSpecification(hv_params_.histogram_specification_);
+    go->setSmoothSegParameters(hv_params_.smooth_seg_params_eps_,
+                               hv_params_.smooth_seg_params_curv_t_,
+                               hv_params_.smooth_seg_params_dist_t_,
+                               hv_params_.smooth_seg_params_min_points_);//0.1, 0.035, 0.005);
     go->setVisualizeGoCues(0);
-    go->setUseSuperVoxels(false);
+    go->setUseSuperVoxels(hv_params_.use_supervoxels_);
+    go->setZBufferSelfOcclusionResolution (hv_params_.z_buffer_self_occlusion_resolution_);
+    go->setOcclusionCloud (occlusion_cloud);
+    go->setHypPenalty (hv_params_.hyp_penalty_);
+    go->setDuplicityCMWeight(hv_params_.duplicity_cm_weight_);
     go->setSceneCloud (pInputCloud_);
     go->setNormalsForClutterTerm(pSceneNormals_);
-    go->setOcclusionCloud (occlusion_cloud);
 
     //addModels
     go->addModels (aligned_models_, true);
@@ -230,7 +239,7 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
             sub_id_sv++;
         }while(boost::filesystem::exists(folderpath_error_hv) );
 
-        std::cout << "Writing input for buggy hv into filename " << folderpath_error_hv_ss.str() << "and normals into " <<
+        std::cout << "Writing input for buggy hv into filename " << folderpath_error_hv_ss.str() << " and normals into " <<
                      folderpath_error_hv_normals_ss.str() << std::endl;
         pcl::io::savePCDFileBinary(folderpath_error_hv_ss.str(), *pInputCloud_);
         pcl::io::savePCDFileBinary(folderpath_error_hv_normals_ss.str(), *pSceneNormals_);

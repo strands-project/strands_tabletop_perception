@@ -59,7 +59,7 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
     multiviewGraph &currentGraph = get_current_graph(scene_name);
 
     Eigen::Matrix4f global_trans;
-    if(global_trans_v.size() == 16)
+    if(global_trans_v.size() == 16 && use_robot_pose_)
     {
         for (size_t row=0; row <4; row++)
         {

@@ -60,6 +60,8 @@ private:
     cv::Ptr<SiftGPU> sift_;
 
     BoostGraphVisualizer bgvis_;
+    pcl::visualization::PCLVisualizer::Ptr go3d_vis_;
+    std::vector<int> go_3d_viewports_;
     
 public:
     multiviewGraph(){

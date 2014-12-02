@@ -16,6 +16,7 @@ int main (int argc, char **argv)
     std::string models_dir;
     bool visualize_output;
     bool scene_to_scene;
+    bool use_robot_pose;
     bool do_eval;
     int icp_iter;
     int icp_type;
@@ -33,6 +34,9 @@ int main (int argc, char **argv)
     int optimizer_type;
     double color_sigma_l;
     double color_sigma_ab;
+    bool use_supervoxels;
+    bool detect_clutter;
+    bool ignore_color;
 
 
     // CG PARAMS
@@ -47,7 +51,7 @@ int main (int argc, char **argv)
     double chop_at_z;
     double distance_keypoints_get_discarded;
     std::string training_dir_sift, training_dir_shot, sift_structure, training_dir_ourcvfh;
-    bool do_sift=false, do_ourcvfh=false, do_shot=false, ignore_color;
+    bool do_sift=false, do_ourcvfh=false, do_shot=false;
     int max_vertices_in_graph;
 
     ros::init ( argc, argv, "multiview_object_recognizer_node" );
@@ -177,10 +181,19 @@ int main (int argc, char **argv)
         pSingleview_recognizer->set_hv_optimizer_type(optimizer_type);
 
     if(nh->getParam ( "hv_color_sigma_l", color_sigma_l))
-        pSingleview_recognizer->set_hv_color_sigma_L(color_sigma_l);
+        pSingleview_recognizer->hv_params_.color_sigma_l_ = color_sigma_l;
 
     if(nh->getParam ( "hv_color_sigma_ab", color_sigma_ab))
-        pSingleview_recognizer->set_hv_color_sigma_AB(color_sigma_ab);
+        pSingleview_recognizer->hv_params_.color_sigma_ab_ = color_sigma_ab;
+
+    if(nh->getParam ( "hv_use_supervoxels", use_supervoxels))
+        pSingleview_recognizer->set_hv_use_supervoxels(use_supervoxels);
+
+    if(nh->getParam ( "hv_detect_clutter", detect_clutter))
+        pSingleview_recognizer->set_hv_detect_clutter(detect_clutter);
+
+    if(nh->getParam ( "hv_ignore_color", ignore_color))
+        pSingleview_recognizer->set_hv_ignore_color(ignore_color);
 
 
 
@@ -200,6 +213,9 @@ int main (int argc, char **argv)
 
     if(nh->getParam ( "scene_to_scene", scene_to_scene))
         myWorld.set_scene_to_scene(scene_to_scene);
+
+    if(nh->getParam ( "use_robot_pose", use_robot_pose))
+        myWorld.set_use_robot_pose(use_robot_pose);
 
     if(nh->getParam ( "visualize_output", visualize_output))
         myWorld.set_visualize_output(visualize_output);
@@ -330,6 +346,9 @@ int main (int argc, char **argv)
                                 << "hv_optimizer_type: " << optimizer_type << std::endl
                                 << "hv_color_sigma_l: " << color_sigma_l << std::endl
                                 << "hv_color_sigma_ab: " << color_sigma_ab << std::endl
+                                << "hv_use_supervoxels: " << use_supervoxels << std::endl
+                                << "hv_detect_clutter: " << detect_clutter << std::endl
+                                << "hv_ignore_color: " << ignore_color << std::endl
                                 << "opt_type: " << opt_type << std::endl
                                 << "chop_z: " << chop_at_z << std::endl
                                 << "scene_to_scene: " << scene_to_scene << std::endl

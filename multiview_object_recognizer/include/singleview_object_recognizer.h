@@ -76,6 +76,13 @@ private:
     bool add_planes_;
     int knn_shot_;
 
+#ifdef SOC_VISUALIZE
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
+    int v1_,v2_, v3_;
+#endif
+
+
+public:
     struct hv_params{
             float resolution_;
             float inlier_threshold_;
@@ -86,6 +93,21 @@ private:
             int optimizer_type_;
             float color_sigma_l_;
             float color_sigma_ab_;
+            bool use_supervoxels_;
+            bool detect_clutter_;
+            bool ignore_color_;
+            float smooth_seg_params_eps_;
+            float smooth_seg_params_curv_t_;
+            float smooth_seg_params_dist_t_;
+            int smooth_seg_params_min_points_;
+            int z_buffer_self_occlusion_resolution_;
+            bool use_replace_moves_;
+            bool requires_normals_;
+            float radius_normals_;
+            bool initial_status_;
+            float hyp_penalty_;
+            float duplicity_cm_weight_;
+            bool histogram_specification_;
     }hv_params_;
 
     struct cg_params{
@@ -97,14 +119,6 @@ private:
         float max_time_for_cliques_computation_;
         float dot_distance_;
     }cg_params_;
-
-#ifdef SOC_VISUALIZE
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
-    int v1_,v2_, v3_;
-#endif
-
-
-public:
 
     Recognizer ()
     {
@@ -126,6 +140,22 @@ public:
         hv_params_.optimizer_type_ = 0;
         hv_params_.color_sigma_l_ = 0.5;
         hv_params_.color_sigma_ab_ = 0.5;
+        hv_params_.use_supervoxels_ = true;
+        hv_params_.detect_clutter_ = true;
+        hv_params_.ignore_color_ = false;
+        hv_params_.smooth_seg_params_eps_ = 0.1f;
+        hv_params_.smooth_seg_params_curv_t_ = 0.04f;
+        hv_params_.smooth_seg_params_dist_t_ = 0.01f;
+        hv_params_.smooth_seg_params_min_points_ = 100;
+        hv_params_.z_buffer_self_occlusion_resolution_ = 250;
+        hv_params_.use_replace_moves_ = true;
+        hv_params_.requires_normals_ = true;
+        hv_params_.radius_normals_ = 0.02f;
+        hv_params_.initial_status_ = false;
+        hv_params_.hyp_penalty_ = 0.05f;
+        hv_params_.duplicity_cm_weight_ = 0.f;
+        hv_params_.histogram_specification_ = true;
+
 
         cg_params_.cg_size_threshold_ = 3;
         cg_params_.cg_size_ = 0.015;
@@ -157,19 +187,9 @@ public:
         hv_params_.resolution_ = res;
     }
 
-    float get_hv_resolution() const
-    {
-        return hv_params_.resolution_;
-    }
-
     void set_hv_inlier_threshold(const float thres)
     {
         hv_params_.inlier_threshold_ = thres;
-    }
-
-    float get_hv_inlier_threshold() const
-    {
-        return hv_params_.inlier_threshold_;
     }
 
     void set_hv_radius_clutter(const float radius_clutter)
@@ -177,19 +197,9 @@ public:
         hv_params_.radius_clutter_ = radius_clutter;
     }
 
-    float get_hv_radius_clutter() const
-    {
-        return hv_params_.radius_clutter_;
-    }
-
     void set_hv_regularizer(const float regularizer)
     {
         hv_params_.regularizer_ = regularizer;
-    }
-
-    float get_hv_regularizer() const
-    {
-        return hv_params_.regularizer_;
     }
 
     void set_hv_clutter_regularizer (const float clutter_reg)
@@ -197,19 +207,9 @@ public:
         hv_params_.clutter_regularizer_ = clutter_reg;
     }
 
-    float get_hv_clutter_regularizer () const
-    {
-        return hv_params_.clutter_regularizer_;
-    }
-
     void set_hv_occlusion_threshold ( const float occ_thresh)
     {
         hv_params_.occlusion_threshold_ = occ_thresh;
-    }
-
-    float get_hv_occlusion_threshold () const
-    {
-        return hv_params_.occlusion_threshold_;
     }
 
     void set_hv_optimizer_type (const int opt_type)
@@ -217,29 +217,29 @@ public:
         hv_params_.optimizer_type_ = opt_type;
     }
 
-    int get_hv_optimizer_type () const
-    {
-        return hv_params_.optimizer_type_;
-    }
-
-    void set_hv_color_sigma_L ( const float sigma_l)
-    {
-        hv_params_.color_sigma_l_ = sigma_l;
-    }
-
     float get_hv_color_sigma_L () const
     {
         return hv_params_.color_sigma_l_;
     }
 
-    void set_hv_color_sigma_AB ( const float sigma_ab)
-    {
-        hv_params_.color_sigma_ab_ = sigma_ab;
-    }
-
     float get_hv_color_sigma_AB () const
     {
         return hv_params_.color_sigma_ab_;
+    }
+
+    void set_hv_use_supervoxels ( const bool use_supervoxels)
+    {
+        hv_params_.use_supervoxels_ = use_supervoxels;
+    }
+
+    void set_hv_detect_clutter ( const bool detect_clutter)
+    {
+        hv_params_.detect_clutter_ = detect_clutter;
+    }
+
+    void set_hv_ignore_color ( const bool ignore_color)
+    {
+        hv_params_.ignore_color_ = ignore_color;
     }
 
     void set_cg_size_threshold ( const int cg_size)

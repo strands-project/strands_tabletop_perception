@@ -20,23 +20,42 @@ class Hypothesis
 {
     typedef faat_pcl::rec_3d_framework::Model<PointInT> ModelT;
     typedef boost::shared_ptr<ModelT> ModelTPtr;
+
+    static size_t sNum_hypotheses_;
+
 public:
     ModelTPtr model_;
     std::string model_id_, origin_;
     Eigen::Matrix4f transform_;
     bool extended_;
     bool verified_;
+    size_t id_;
 
-    Hypothesis ( const std::string model_id, const Eigen::Matrix4f transform, const std::string origin = "", const bool extended = false, const bool verified = false )
+    // deprecated interface------
+    Hypothesis ( const std::string model_id, const Eigen::Matrix4f transform, const std::string origin = "", const bool extended = false, const bool verified = false, const size_t origin_id = 0)
     {
         model_id_ = model_id;
         transform_ = transform;
         origin_ = origin;
         extended_ = extended;
         verified_ = verified;
+
+        if(extended && (origin_id < 0 || origin_id > sNum_hypotheses_))
+        {
+            std::cerr << "Hypothesis got extended but does not have a valid origin id." << std::endl;
+        }
+
+        if(origin_id)
+        {
+            id_ = origin_id;
+        }
+        else
+        {
+            id_ = ++sNum_hypotheses_;
+        }
     }
 
-    Hypothesis ( const ModelTPtr model, const Eigen::Matrix4f transform, const std::string origin = "", const bool extended = false, const bool verified = false )
+    Hypothesis ( const ModelTPtr model, const Eigen::Matrix4f transform, const std::string origin = "", const bool extended = false, const bool verified = false, const size_t origin_id = 0)
     {
         model_ = model;
         model_id_ = model->id_;
@@ -44,6 +63,20 @@ public:
         origin_ = origin;
         extended_ = extended;
         verified_ = verified;
+
+        if(extended && (origin_id < 0 || origin_id > sNum_hypotheses_))
+        {
+            std::cerr << "Hypothesis got extended but does not have a valid origin id." << std::endl;
+        }
+
+        if(origin_id)
+        {
+            id_ = origin_id;
+        }
+        else
+        {
+            id_ = ++sNum_hypotheses_;
+        }
     }
 };
 
@@ -108,4 +141,7 @@ Vertex getFurthestVertex ( Graph &grph);
 //void shallowCopyVertexIntoOtherGraph(const Vertex vrtx_src, const Graph grph_src, Vertex &vrtx_target, Graph &grph_target);
 //void copyEdgeIntoOtherGraph(const Edge edge_src, const Graph grph_src, Edge &edge_target, Graph &grph_target);
 //std::vector<Vertex> my_node_reader ( std::string filename, Graph &g )
+
+template<typename PointInT> size_t Hypothesis<PointInT>::sNum_hypotheses_ = 0;
+
 #endif

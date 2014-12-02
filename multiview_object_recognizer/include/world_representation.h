@@ -10,7 +10,7 @@ class worldRepresentation
 private:
     boost::shared_ptr<Recognizer> pSingleview_recognizer_;
     std::vector <multiviewGraph > graph_v;
-    bool visualize_output_, scene_to_scene_;
+    bool visualize_output_, scene_to_scene_, use_robot_pose_;
     int extension_mode_; // defines the method for extending hypotheses (0 = keypoint correspondences; 1 = full hypotheses only)
     int icp_iter_;
     int opt_type_;
@@ -20,7 +20,6 @@ private:
     ros::Publisher vis_pc_pub_;
     size_t max_vertices_in_graph_;
     double distance_keypoints_get_discarded_;
-    pcl::visualization::PCLVisualizer::Ptr vis;
 
 public:
     worldRepresentation()
@@ -29,8 +28,8 @@ public:
         max_vertices_in_graph_ = 4;
         visualize_output_ = false;
         scene_to_scene_ = true;
+        use_robot_pose_ = false;
         extension_mode_ = 0;
-        vis.reset ( new pcl::visualization::PCLVisualizer ( "vis" ) );
     }
 
     bool recognizeROSWrapper (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);
@@ -84,6 +83,11 @@ public:
     void set_visualize_output(const bool vis_output)
     {
         visualize_output_ = vis_output;
+    }
+
+    void set_use_robot_pose(const bool use_robot_pose)
+    {
+        use_robot_pose_ = use_robot_pose;
     }
 
     void set_extension_mode(const int extension_mode)
