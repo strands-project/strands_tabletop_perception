@@ -614,7 +614,7 @@ bool Recognizer::recognize ()
                    "*** do_ourcvfh_: " << do_ourcvfh_ << std::endl <<
                    "*** icp_iterations_: " << icp_iterations_ << std::endl <<
                    "*** icp_type_: " << icp_type_ << std::endl <<
-                   "*** icp_voxel_size_: " << icp_voxel_size_ << std::endl <<
+                   "*** icp_voxel_size_: " << hv_params_.resolution_ << std::endl <<
                    "=================================================================" << std::endl << std::endl;
 
     boost::function<bool (const Eigen::Vector3f &)> campos_constraints;
@@ -643,7 +643,7 @@ bool Recognizer::recognize ()
       mesh_source->setModelStructureDir (sift_structure_);
       mesh_source->setLoadViews (false);
       mesh_source->generate (training_dir_sift_);
-      mesh_source->createVoxelGridAndDistanceTransform(icp_voxel_size_);
+      mesh_source->createVoxelGridAndDistanceTransform(hv_params_.resolution_);
 
       boost::shared_ptr < faat_pcl::rec_3d_framework::Source<PointT> > cast_source;
       cast_source = boost::static_pointer_cast<faat_pcl::rec_3d_framework::RegisteredViewsSource<pcl::PointXYZRGBNormal, PointT, PointT> > (mesh_source);
@@ -717,7 +717,7 @@ bool Recognizer::recognize ()
       source->setGenOrganized(true);
       source->setWindowSizeAndFocalLength(640, 480, 575.f);
       source->generate (training_dir_ourcvfh_);
-      source->createVoxelGridAndDistanceTransform(icp_voxel_size_);
+      source->createVoxelGridAndDistanceTransform(hv_params_.resolution_);
 
       boost::shared_ptr<faat_pcl::rec_3d_framework::Source<pcl::PointXYZRGB> > cast_source;
       cast_source = boost::static_pointer_cast<faat_pcl::rec_3d_framework::PartialPCDSource<pcl::PointXYZRGBNormal, pcl::PointXYZRGB> > (source);
@@ -817,7 +817,7 @@ bool Recognizer::recognize ()
         mesh_source->setModelStructureDir (sift_structure_);
         mesh_source->setLoadViews(false);
         mesh_source->generate (training_dir_shot_);
-        mesh_source->createVoxelGridAndDistanceTransform(icp_voxel_size_);
+        mesh_source->createVoxelGridAndDistanceTransform(hv_params_.resolution_);
 
         boost::shared_ptr < faat_pcl::rec_3d_framework::Source<PointT> > cast_source;
         cast_source = boost::static_pointer_cast<faat_pcl::rec_3d_framework::RegisteredViewsSource<pcl::PointXYZRGBNormal, PointT, PointT> > (mesh_source);
@@ -872,12 +872,11 @@ bool Recognizer::recognize ()
     }
 
     multi_recog_->setSaveHypotheses(true);
-    multi_recog_->setVoxelSizeICP(icp_voxel_size_);
+    multi_recog_->setVoxelSizeICP(hv_params_.resolution_);
     multi_recog_->setICPType(icp_type_);
     multi_recog_->setICPIterations(icp_iterations_);
     multi_recog_->initialize();
   }
-
 
   void Recognizer::visualizeHypotheses()
   {

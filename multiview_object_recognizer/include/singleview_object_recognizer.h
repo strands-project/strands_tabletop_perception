@@ -52,7 +52,6 @@ private:
 
     int icp_iterations_;
     int icp_type_;
-    float icp_voxel_size_;
 
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypotheses_;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
@@ -84,40 +83,40 @@ private:
 
 public:
     struct hv_params{
-            float resolution_;
-            float inlier_threshold_;
-            float radius_clutter_;
-            float regularizer_;
-            float clutter_regularizer_;
-            float occlusion_threshold_;
+            double resolution_;
+            double inlier_threshold_;
+            double radius_clutter_;
+            double regularizer_;
+            double clutter_regularizer_;
+            double occlusion_threshold_;
             int optimizer_type_;
-            float color_sigma_l_;
-            float color_sigma_ab_;
+            double color_sigma_l_;
+            double color_sigma_ab_;
             bool use_supervoxels_;
             bool detect_clutter_;
             bool ignore_color_;
-            float smooth_seg_params_eps_;
-            float smooth_seg_params_curv_t_;
-            float smooth_seg_params_dist_t_;
+            double smooth_seg_params_eps_;
+            double smooth_seg_params_curv_t_;
+            double smooth_seg_params_dist_t_;
             int smooth_seg_params_min_points_;
             int z_buffer_self_occlusion_resolution_;
             bool use_replace_moves_;
             bool requires_normals_;
-            float radius_normals_;
+            double radius_normals_;
             bool initial_status_;
-            float hyp_penalty_;
-            float duplicity_cm_weight_;
+            double hyp_penalty_;
+            double duplicity_cm_weight_;
             bool histogram_specification_;
     }hv_params_;
 
     struct cg_params{
         int cg_size_threshold_;
-        float cg_size_;
-        float ransac_threshold_;
-        float dist_for_clutter_factor_;
+        double cg_size_;
+        double ransac_threshold_;
+        double dist_for_clutter_factor_;
         int max_taken_;
-        float max_time_for_cliques_computation_;
-        float dot_distance_;
+        double max_time_for_cliques_computation_;
+        double dot_distance_;
     }cg_params_;
 
     Recognizer ()
@@ -129,7 +128,6 @@ public:
 
         icp_iterations_ = 0;
         icp_type_ = 1;
-        icp_voxel_size_ = 0.005;
 
         hv_params_.resolution_ = 0.005f;
         hv_params_.inlier_threshold_ = 0.015;
@@ -181,102 +179,6 @@ public:
         vis_->createViewPort(0.66,0,1,1.f, v3_);
 #endif
     }
-
-    void set_hv_resolution(const float res)
-    {
-        hv_params_.resolution_ = res;
-    }
-
-    void set_hv_inlier_threshold(const float thres)
-    {
-        hv_params_.inlier_threshold_ = thres;
-    }
-
-    void set_hv_radius_clutter(const float radius_clutter)
-    {
-        hv_params_.radius_clutter_ = radius_clutter;
-    }
-
-    void set_hv_regularizer(const float regularizer)
-    {
-        hv_params_.regularizer_ = regularizer;
-    }
-
-    void set_hv_clutter_regularizer (const float clutter_reg)
-    {
-        hv_params_.clutter_regularizer_ = clutter_reg;
-    }
-
-    void set_hv_occlusion_threshold ( const float occ_thresh)
-    {
-        hv_params_.occlusion_threshold_ = occ_thresh;
-    }
-
-    void set_hv_optimizer_type (const int opt_type)
-    {
-        hv_params_.optimizer_type_ = opt_type;
-    }
-
-    float get_hv_color_sigma_L () const
-    {
-        return hv_params_.color_sigma_l_;
-    }
-
-    float get_hv_color_sigma_AB () const
-    {
-        return hv_params_.color_sigma_ab_;
-    }
-
-    void set_hv_use_supervoxels ( const bool use_supervoxels)
-    {
-        hv_params_.use_supervoxels_ = use_supervoxels;
-    }
-
-    void set_hv_detect_clutter ( const bool detect_clutter)
-    {
-        hv_params_.detect_clutter_ = detect_clutter;
-    }
-
-    void set_hv_ignore_color ( const bool ignore_color)
-    {
-        hv_params_.ignore_color_ = ignore_color;
-    }
-
-    void set_cg_size_threshold ( const int cg_size)
-    {
-        cg_params_.cg_size_threshold_ = cg_size;
-    }
-
-    void set_cg_size (const float cg_size)
-    {
-        cg_params_.cg_size_ = cg_size;
-    }
-
-    void set_cg_ransac_threshold ( const float ransac_thresh)
-    {
-        cg_params_.ransac_threshold_ = ransac_thresh;
-    }
-
-    void set_cg_dist_for_clutter_factor ( const float dist_for_clutter_factor )
-    {
-        cg_params_.dist_for_clutter_factor_ = dist_for_clutter_factor;
-    }
-
-    void set_cg_max_taken (const int max_taken)
-    {
-        cg_params_.max_taken_ = max_taken;
-    }
-
-    void set_cg_max_time_for_cliques_computation (const float max_time)
-    {
-        cg_params_.max_time_for_cliques_computation_ = max_time;
-    }
-
-    void set_cg_dot_distance (const float dist)
-    {
-        cg_params_.dot_distance_ = dist;
-    }
-
 
     bool recognize ();
 
@@ -360,11 +262,6 @@ public:
     void set_icp_type (const int type)
     {
         icp_type_ = type;
-    }
-
-    void set_icp_voxel_size (const float size)
-    {
-        icp_voxel_size_ = size;
     }
 
     bool do_ourcvfh() const

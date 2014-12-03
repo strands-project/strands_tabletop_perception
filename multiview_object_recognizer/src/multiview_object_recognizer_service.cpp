@@ -337,7 +337,6 @@ extendFeatureMatchesRecursive ( Graph &grph,
         Vertex remote_vertex;
         Eigen::Matrix4f edge_transform;
 
-        bool have_found_a_valid_edge = false;
         for (; out_i != out_end; ++out_i )
         {
             remote_vertex  = target ( *out_i, grph );
@@ -347,146 +346,132 @@ extendFeatureMatchesRecursive ( Graph &grph,
 
             if (! grph[remote_vertex].has_been_hopped_)
             {
-                have_found_a_valid_edge = true;
                 std::cout << "Edge src: " << edge_src << "; target: " << edge_trgt << "; model_name: " << grph[*out_i].model_name
                           << "; edge_weight: " << grph[*out_i].edge_weight << std::endl;
-                break;
-            }
-        }
-        if(have_found_a_valid_edge)
-        {
-            PCL_INFO("Hopping to vertex %s...", grph[remote_vertex].pScenePCl->header.frame_id.c_str());
 
-            std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > new_hypotheses;
-            pcl::PointCloud<PointT>::Ptr pNewKeypoints (new pcl::PointCloud<PointT>);
-            pcl::PointCloud<pcl::Normal>::Ptr pNewKeypointNormals (new pcl::PointCloud<pcl::Normal>);
-            extendFeatureMatchesRecursive ( grph, remote_vertex, new_hypotheses, pNewKeypoints, pNewKeypointNormals);
-            assert( pNewKeypoints->size() == pNewKeypointNormals->size() );
-
-            //------check for right transformation between the two vertices (edges are undirected, so we have to check the source/target attribute of the edge)------
-            //------then transform new keypoints and keypoint normals to current vertex (vrtx_start)-----------
-            Eigen::Matrix4f transform;
-            if ( edge_src.compare( grph[vrtx_start].pScenePCl->header.frame_id ) == 0)
-            {
-                transform = edge_transform.inverse();
-            }
-            else if (edge_trgt.compare( grph[vrtx_start].pScenePCl->header.frame_id ) == 0)
-            {
-                transform = edge_transform;
-            }
-            else
-            {
-                PCL_ERROR("Something is messed up with the transformation.");
-            }
-
-            //------ Transform keypoints and rotate normals----------
-            const Eigen::Matrix3f rot   = transform.block<3, 3> (0, 0);
-            const Eigen::Vector3f trans = transform.block<3, 1> (0, 3);
-            for (size_t i=0; i<pNewKeypoints->size(); i++)
-            {
-                pNewKeypoints->points[i].getVector3fMap() = rot * pNewKeypoints->points[i].getVector3fMap () + trans;
-                pNewKeypointNormals->points[i].getNormalVector3fMap() = rot * pNewKeypointNormals->points[i].getNormalVector3fMap ();
-            }
-
-            // add/merge hypotheses
-            pcl::PointCloud<pcl::PointXYZ>::Ptr pKeypointsXYZ (new pcl::PointCloud<pcl::PointXYZ>);
-            pKeypointsXYZ->points.resize(pKeypoints->size());
-            for(size_t i=0; i < pKeypoints->size(); i++)
-            {
-                pKeypointsXYZ->points[i].getVector3fMap() = pKeypoints->points[i].getVector3fMap();
-            }
-
-            std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::const_iterator it_new_hyp;
-            for(it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
-            {
-                const std::string id = it_new_hyp->second.model_->id_;
-
-                std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_existing_hyp;
-                it_existing_hyp = hypotheses.find(id);
-                if (it_existing_hyp == hypotheses.end())
+                if ( edge_src.compare( grph[vrtx_start].pScenePCl->header.frame_id ) == 0)
                 {
-                    PCL_ERROR("There are no hypotheses (feature matches) for this model yet.");
-                    faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> oh;
-                    oh.correspondences_pointcloud.reset(new pcl::PointCloud<PointT>
-                                                        (*(it_new_hyp->second.correspondences_pointcloud)));
-                    oh.normals_pointcloud.reset(new pcl::PointCloud<pcl::Normal>
-                                                (*(it_new_hyp->second.normals_pointcloud)));
-                    oh.indices_to_flann_models_ = it_new_hyp->second.indices_to_flann_models_;
-                    oh.correspondences_to_inputcloud.reset (new pcl::Correspondences);
-                    *(oh.correspondences_to_inputcloud) = *(it_new_hyp->second.correspondences_to_inputcloud);
-                    for(size_t i=0; i < oh.correspondences_to_inputcloud->size(); i++)
-                    {
-                        oh.correspondences_to_inputcloud->at(i).index_match += pKeypoints->points.size();
-                    }
-                    hypotheses.insert(std::pair<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >(id, oh));
+                    edge_transform = grph[*out_i].transformation.inverse();
                 }
-                else
-                { //merge hypotheses
-                    for(size_t j=0; j < it_new_hyp->second.correspondences_to_inputcloud->size(); j++)
+
+                PCL_INFO("Hopping to vertex %s...", grph[remote_vertex].pScenePCl->header.frame_id.c_str());
+
+                std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > new_hypotheses;
+                pcl::PointCloud<PointT>::Ptr pNewKeypoints (new pcl::PointCloud<PointT>);
+                pcl::PointCloud<pcl::Normal>::Ptr pNewKeypointNormals (new pcl::PointCloud<pcl::Normal>);
+                grph[remote_vertex].absolute_pose_ = grph[vrtx_start].absolute_pose_ * edge_transform;
+                extendFeatureMatchesRecursive ( grph, remote_vertex, new_hypotheses, pNewKeypoints, pNewKeypointNormals);
+                assert( pNewKeypoints->size() == pNewKeypointNormals->size() );
+
+                //------ Transform keypoints and rotate normals----------
+                const Eigen::Matrix3f rot   = edge_transform.block<3, 3> (0, 0);
+                const Eigen::Vector3f trans = edge_transform.block<3, 1> (0, 3);
+                for (size_t i=0; i<pNewKeypoints->size(); i++)
+                {
+                    pNewKeypoints->points[i].getVector3fMap() = rot * pNewKeypoints->points[i].getVector3fMap () + trans;
+                    pNewKeypointNormals->points[i].getNormalVector3fMap() = rot * pNewKeypointNormals->points[i].getNormalVector3fMap ();
+                }
+
+                // add/merge hypotheses
+                pcl::PointCloud<pcl::PointXYZ>::Ptr pKeypointsXYZ (new pcl::PointCloud<pcl::PointXYZ>);
+                pKeypointsXYZ->points.resize(pKeypoints->size());
+                for(size_t i=0; i < pKeypoints->size(); i++)
+                {
+                    pKeypointsXYZ->points[i].getVector3fMap() = pKeypoints->points[i].getVector3fMap();
+                }
+
+                std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::const_iterator it_new_hyp;
+                for(it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
+                {
+                    const std::string id = it_new_hyp->second.model_->id_;
+
+                    std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::iterator it_existing_hyp;
+                    it_existing_hyp = hypotheses.find(id);
+                    if (it_existing_hyp == hypotheses.end())
                     {
-                        bool drop_new_correspondence = false;
-
-                        pcl::Correspondence c_new = it_new_hyp->second.correspondences_to_inputcloud->at(j);
-                        const PointT new_kp = pNewKeypoints->points[c_new.index_match];
-                        pcl::PointXYZ new_kp_XYZ;
-                        new_kp_XYZ.getVector3fMap() = new_kp.getVector3fMap();
-                        const pcl::Normal new_kp_normal = pNewKeypointNormals->points[c_new.index_match];
-
-                        const PointT new_model_pt = it_new_hyp->second.correspondences_pointcloud->points[ c_new.index_query ];
-                        pcl::PointXYZ new_model_pt_XYZ;
-                        new_model_pt_XYZ.getVector3fMap() = new_model_pt.getVector3fMap();
-                        const pcl::Normal new_model_normal = it_new_hyp->second.normals_pointcloud->points[ c_new.index_query ];
-
-                        if (!pcl::isFinite(new_kp_XYZ) || !pcl::isFinite(new_model_pt_XYZ))
+                        PCL_ERROR("There are no hypotheses (feature matches) for this model yet.");
+                        faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> oh;
+                        oh.correspondences_pointcloud.reset(new pcl::PointCloud<PointT>
+                                                            (*(it_new_hyp->second.correspondences_pointcloud)));
+                        oh.normals_pointcloud.reset(new pcl::PointCloud<pcl::Normal>
+                                                    (*(it_new_hyp->second.normals_pointcloud)));
+                        oh.indices_to_flann_models_ = it_new_hyp->second.indices_to_flann_models_;
+                        oh.correspondences_to_inputcloud.reset (new pcl::Correspondences);
+                        *(oh.correspondences_to_inputcloud) = *(it_new_hyp->second.correspondences_to_inputcloud);
+                        for(size_t i=0; i < oh.correspondences_to_inputcloud->size(); i++)
                         {
-                            PCL_WARN("Keypoint of scene or model is infinity!!");
-                            continue;
+                            oh.correspondences_to_inputcloud->at(i).index_match += pKeypoints->points.size();
                         }
-                        for(size_t j=0; j < it_existing_hyp->second.correspondences_to_inputcloud->size(); j++)
+                        hypotheses.insert(std::pair<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >(id, oh));
+                    }
+                    else
+                    { //merge hypotheses
+                        for(size_t j=0; j < it_new_hyp->second.correspondences_to_inputcloud->size(); j++)
                         {
-                            const pcl::Correspondence c_existing = it_existing_hyp->second.correspondences_to_inputcloud->at(j);
-                            const PointT existing_model_pt = it_existing_hyp->second.correspondences_pointcloud->points[ c_existing.index_query ];
-                            pcl::PointXYZ existing_model_pt_XYZ;
-                            existing_model_pt_XYZ.getVector3fMap() = existing_model_pt.getVector3fMap();
+                            bool drop_new_correspondence = false;
 
-                            const PointT existing_kp = pKeypoints->points[c_existing.index_match];
-                            pcl::PointXYZ existing_kp_XYZ;
-                            existing_kp_XYZ.getVector3fMap() = existing_kp.getVector3fMap();
-                            const pcl::Normal existing_kp_normal = pKeypointNormals->points[c_existing.index_match];
+                            pcl::Correspondence c_new = it_new_hyp->second.correspondences_to_inputcloud->at(j);
+                            const PointT new_kp = pNewKeypoints->points[c_new.index_match];
+                            pcl::PointXYZ new_kp_XYZ;
+                            new_kp_XYZ.getVector3fMap() = new_kp.getVector3fMap();
+                            const pcl::Normal new_kp_normal = pNewKeypointNormals->points[c_new.index_match];
 
-                            float squaredDistModelKeypoints = pcl::squaredEuclideanDistance(new_model_pt_XYZ, existing_model_pt_XYZ);
-                            float squaredDistSceneKeypoints = pcl::squaredEuclideanDistance(new_kp_XYZ, existing_kp_XYZ);
+                            const PointT new_model_pt = it_new_hyp->second.correspondences_pointcloud->points[ c_new.index_query ];
+                            pcl::PointXYZ new_model_pt_XYZ;
+                            new_model_pt_XYZ.getVector3fMap() = new_model_pt.getVector3fMap();
+                            const pcl::Normal new_model_normal = it_new_hyp->second.normals_pointcloud->points[ c_new.index_query ];
 
-                            if((squaredDistSceneKeypoints < distance_keypoints_get_discarded_) &&
-                                    (new_kp_normal.getNormalVector3fMap().dot(existing_kp_normal.getNormalVector3fMap()) > 0.8) &&
-                                    (squaredDistModelKeypoints < distance_keypoints_get_discarded_))
+                            if (!pcl::isFinite(new_kp_XYZ) || !pcl::isFinite(new_model_pt_XYZ))
                             {
-                                //                                std::cout << "Found a very close point (keypoint distance: " << squaredDistSceneKeypoints
-                                //                                          << "; model distance: " << squaredDistModelKeypoints
-                                //                                          << ") with the same model id and similar normal (Normal dot product: "
-                                //                                          << new_kp_normal.getNormalVector3fMap().dot(existing_kp_normal.getNormalVector3fMap()) << "> 0.8). Ignoring it."
-                                //                                                                      << std::endl;
-                                drop_new_correspondence = true;
-                                break;
+                                PCL_WARN("Keypoint of scene or model is infinity!!");
+                                continue;
+                            }
+                            for(size_t j=0; j < it_existing_hyp->second.correspondences_to_inputcloud->size(); j++)
+                            {
+                                const pcl::Correspondence c_existing = it_existing_hyp->second.correspondences_to_inputcloud->at(j);
+                                const PointT existing_model_pt = it_existing_hyp->second.correspondences_pointcloud->points[ c_existing.index_query ];
+                                pcl::PointXYZ existing_model_pt_XYZ;
+                                existing_model_pt_XYZ.getVector3fMap() = existing_model_pt.getVector3fMap();
+
+                                const PointT existing_kp = pKeypoints->points[c_existing.index_match];
+                                pcl::PointXYZ existing_kp_XYZ;
+                                existing_kp_XYZ.getVector3fMap() = existing_kp.getVector3fMap();
+                                const pcl::Normal existing_kp_normal = pKeypointNormals->points[c_existing.index_match];
+
+                                float squaredDistModelKeypoints = pcl::squaredEuclideanDistance(new_model_pt_XYZ, existing_model_pt_XYZ);
+                                float squaredDistSceneKeypoints = pcl::squaredEuclideanDistance(new_kp_XYZ, existing_kp_XYZ);
+
+                                if((squaredDistSceneKeypoints < distance_keypoints_get_discarded_) &&
+                                        (new_kp_normal.getNormalVector3fMap().dot(existing_kp_normal.getNormalVector3fMap()) > 0.8) &&
+                                        (squaredDistModelKeypoints < distance_keypoints_get_discarded_))
+                                {
+                                    //                                std::cout << "Found a very close point (keypoint distance: " << squaredDistSceneKeypoints
+                                    //                                          << "; model distance: " << squaredDistModelKeypoints
+                                    //                                          << ") with the same model id and similar normal (Normal dot product: "
+                                    //                                          << new_kp_normal.getNormalVector3fMap().dot(existing_kp_normal.getNormalVector3fMap()) << "> 0.8). Ignoring it."
+                                    //                                                                      << std::endl;
+                                    drop_new_correspondence = true;
+                                    break;
+                                }
+                            }
+                            if (!drop_new_correspondence)
+                            {
+                                it_existing_hyp->second.indices_to_flann_models_.push_back(
+                                            it_new_hyp->second.indices_to_flann_models_[c_new.index_query]); //check that
+                                c_new.index_query = it_existing_hyp->second.correspondences_pointcloud->points.size();
+                                c_new.index_match += pKeypoints->points.size();
+                                it_existing_hyp->second.correspondences_to_inputcloud->push_back(c_new);
+                                it_existing_hyp->second.correspondences_pointcloud->points.push_back(new_model_pt);
+                                it_existing_hyp->second.normals_pointcloud->points.push_back(new_model_normal);
                             }
                         }
-                        if (!drop_new_correspondence)
-                        {
-                            it_existing_hyp->second.indices_to_flann_models_.push_back(
-                                        it_new_hyp->second.indices_to_flann_models_[c_new.index_query]); //check that
-                            c_new.index_query = it_existing_hyp->second.correspondences_pointcloud->points.size();
-                            c_new.index_match += pKeypoints->points.size();
-                            it_existing_hyp->second.correspondences_to_inputcloud->push_back(c_new);
-                            it_existing_hyp->second.correspondences_pointcloud->points.push_back(new_model_pt);
-                            it_existing_hyp->second.normals_pointcloud->points.push_back(new_model_normal);
-                        }
+                        //                    std::cout << "INFO: Size for " << id <<
+                        //                                 " of correspondes_pointcloud after merge: " << it_existing_hyp->second.correspondences_pointcloud->points.size() << std::endl;
                     }
-                    //                    std::cout << "INFO: Size for " << id <<
-                    //                                 " of correspondes_pointcloud after merge: " << it_existing_hyp->second.correspondences_pointcloud->points.size() << std::endl;
                 }
+                *pKeypoints += *pNewKeypoints;
+                *pKeypointNormals += *pNewKeypointNormals;
             }
-            *pKeypoints += *pNewKeypoints;
-            *pKeypointNormals += *pNewKeypointNormals;
         }
     }
 }
@@ -531,7 +516,6 @@ extendHypothesisRecursive ( Graph &grph, Vertex &vrtx_start, std::vector<Hypothe
         Vertex remote_vertex;
         Eigen::Matrix4f edge_transform;
 
-        bool have_found_a_valid_edge = false;
         for (; out_i != out_end; ++out_i )
         {
             remote_vertex  = target ( *out_i, grph );
@@ -541,7 +525,6 @@ extendHypothesisRecursive ( Graph &grph, Vertex &vrtx_start, std::vector<Hypothe
 
             if (! grph[remote_vertex].has_been_hopped_)
             {
-                have_found_a_valid_edge = true;
                 grph[remote_vertex].cumulative_weight_to_new_vrtx_ = grph[vrtx_start].cumulative_weight_to_new_vrtx_ + grph[*out_i].edge_weight;
 
                 std::cout << "Edge src: " << edge_src << "; target: " << edge_trgt << "; model_name: " << grph[*out_i].model_name
@@ -551,24 +534,21 @@ extendHypothesisRecursive ( Graph &grph, Vertex &vrtx_start, std::vector<Hypothe
                 {
                     edge_transform = grph[*out_i].transformation.inverse();
                 }
-                break;
-            }
-        }
-        if(have_found_a_valid_edge)
-        {
-            PCL_INFO("Hopping to vertex %s which has a cumulative weight of %lf",
-                     grph[remote_vertex].pScenePCl->header.frame_id.c_str(),
-                     grph[remote_vertex].cumulative_weight_to_new_vrtx_);
 
-            std::vector<Hypothesis<PointT> > new_hypotheses;
-            grph[remote_vertex].absolute_pose_ = grph[vrtx_start].absolute_pose_ * edge_transform;
-            extendHypothesisRecursive ( grph, remote_vertex, new_hypotheses);
+                PCL_INFO("Hopping to vertex %s which has a cumulative weight of %lf",
+                         grph[remote_vertex].pScenePCl->header.frame_id.c_str(),
+                         grph[remote_vertex].cumulative_weight_to_new_vrtx_);
 
-            for(std::vector<Hypothesis<PointT> >::iterator it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
-            {
-                it_new_hyp->transform_ = edge_transform * it_new_hyp->transform_;
-                Hypothesis<PointT> ht_temp ( it_new_hyp->model_, it_new_hyp->transform_, it_new_hyp->origin_, true, false, it_new_hyp->id_ );
-                hyp_vec.push_back(ht_temp);
+                std::vector<Hypothesis<PointT> > new_hypotheses;
+                grph[remote_vertex].absolute_pose_ = grph[vrtx_start].absolute_pose_ * edge_transform;
+                extendHypothesisRecursive ( grph, remote_vertex, new_hypotheses);
+
+                for(std::vector<Hypothesis<PointT> >::iterator it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
+                {
+                    it_new_hyp->transform_ = edge_transform * it_new_hyp->transform_;
+                    Hypothesis<PointT> ht_temp ( it_new_hyp->model_, it_new_hyp->transform_, it_new_hyp->origin_, true, false, it_new_hyp->id_ );
+                    hyp_vec.push_back(ht_temp);
+                }
             }
         }
     }
@@ -1429,7 +1409,7 @@ bool multiviewGraph::recognize
                     grph_final_[vrtx_final].hypothesis_mv_[kk].verified_ = mask[kk];
                 }
 
-                if(visualize_output_go_3D)
+                if(visualize_output_go_3D && visualize_output_)
                 {
                     if(!go3d_vis_)
                     {
@@ -1541,9 +1521,9 @@ bool multiviewGraph::recognize
     times_.push_back(total_num_correspondences);
     times_.push_back(sv_num_correspondences);
 
-    if(extension_mode_==0)
+    if(extension_mode_==0 )
     {
-        bgvis_.visualizeWorkflow(vrtx_final, grph_final_, pAccumulatedKeypoints_);
+        // bgvis_.visualizeWorkflow(vrtx_final, grph_final_, pAccumulatedKeypoints_);
         //    bgvis_.createImage(vrtx_final, grph_final_, "/home/thomas/Desktop/test.jpg");
     }
 
