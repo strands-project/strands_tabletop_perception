@@ -182,7 +182,6 @@ int main (int argc, char **argv)
               << "opt_type: " << opt_type << std::endl
               << "chop_z: " << chop_at_z << std::endl
               << "scene_to_scene: " << scene_to_scene << std::endl
-              << "visualize_output: " << visualize_output << std::endl
               << "max_vertices_in_graph: " << max_vertices_in_graph << std::endl
               << "distance_keypoints_get_discarded: " << distance_keypoints_get_discarded << std::endl
               << "icp_iterations: " << icp_iter << std::endl
@@ -229,8 +228,8 @@ int main (int argc, char **argv)
             seq_name_ss << "set_" << setw(5) << setfill('0') << seq_id;
             sequence_name = seq_name_ss.str();
 
-            //if(sequence_name.length() && sequence_name_provided.compare(sequence_name)!=0)
-            //    continue;
+            if(sequence_name_provided.length() && sequence_name_provided.compare(sequence_name)!=0)
+                continue;
 
             std::stringstream scenes_dir_ss;
             scenes_dir_ss << dataset_path << "/" << seq_name_ss.str();
@@ -244,6 +243,7 @@ int main (int argc, char **argv)
                 std::string start = "";
                 std::string ext = std::string ("pcd");
                 faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, start, files_intern, ext);
+                std::sort(files_intern.begin(), files_intern.end());
 
                 if (files_intern.size())
                 {
@@ -297,7 +297,6 @@ int main (int argc, char **argv)
                             << "opt_type: " << opt_type << std::endl
                             << "chop_z: " << chop_at_z << std::endl
                             << "scene_to_scene: " << scene_to_scene << std::endl
-                            << "visualize_output: " << visualize_output << std::endl
                             << "max_vertices_in_graph: " << max_vertices_in_graph << std::endl
                             << "distance_keypoints_get_discarded: " << distance_keypoints_get_discarded << std::endl
                             << "icp_iterations: " << icp_iter << std::endl

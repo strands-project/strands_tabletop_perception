@@ -23,14 +23,13 @@
 
 typedef pcl::PointXYZRGB PointT;
 typedef pcl::PointCloud<PointT> PointInT;
-typedef PointInT::ConstPtr ConstPointInTPtr;
+typedef typename pcl::PointCloud<PointT>::ConstPtr ConstPointInTPtr;
 typedef boost::shared_ptr< PointInT > PointInTPtr;
 typedef pcl::Histogram<128> FeatureT;
 typedef flann::L1<float> DistT;
 
 typedef faat_pcl::rec_3d_framework::Model<PointT> ModelT;
 typedef boost::shared_ptr<ModelT> ModelTPtr;
-typedef typename pcl::PointCloud<PointT>::ConstPtr ConstPointInTPtr;
 
 class multiviewGraph
 {
@@ -135,6 +134,16 @@ public:
     void set_extension_mode(const int extension_mode)
     {
         extension_mode_ = extension_mode;
+    }
+
+    void get_final_graph(Graph &grph) const
+    {
+        grph = grph_final_;
+    }
+
+    void get_full_graph(Graph &grph) const
+    {
+        grph = grph_;
     }
 
     bool recognize ( const pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr inputCloud,

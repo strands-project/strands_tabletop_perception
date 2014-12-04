@@ -1035,28 +1035,28 @@ bool multiviewGraph::recognize
         }
 
         extendHypothesisRecursive(grph_final_, vrtx_final, grph_final_[vrtx_final].hypothesis_mv_, use_unverified_single_view_hypotheses);
-        resetHopStatus(grph_final_);
+        //resetHopStatus(grph_final_);
 
-        std::vector<ModelTPtr> mv_models;
-        std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> mv_transforms;
-        for(size_t hyp_mv_id=0; hyp_mv_id<grph_final_[vrtx_final].hypothesis_mv_.size(); hyp_mv_id++)
-        {
-            mv_models.push_back(grph_final_[vrtx_final].hypothesis_mv_[hyp_mv_id].model_);
-            mv_transforms.push_back(grph_final_[vrtx_final].hypothesis_mv_[hyp_mv_id].transform_);
-        }
-        pSingleview_recognizer_->setModelsAndTransforms(mv_models, mv_transforms);
-        pSingleview_recognizer_->poseRefinement();
+//        std::vector<ModelTPtr> mv_models;
+//        std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> mv_transforms;
+//        for(size_t hyp_mv_id=0; hyp_mv_id<grph_final_[vrtx_final].hypothesis_mv_.size(); hyp_mv_id++)
+//        {
+//            mv_models.push_back(grph_final_[vrtx_final].hypothesis_mv_[hyp_mv_id].model_);
+//            mv_transforms.push_back(grph_final_[vrtx_final].hypothesis_mv_[hyp_mv_id].transform_);
+//        }
+//        pSingleview_recognizer_->setModelsAndTransforms(mv_models, mv_transforms);
+//        pSingleview_recognizer_->poseRefinement();
 
-        std::vector<bool> mask_hv_mv;
-        {
-            pcl::ScopeTime ticp ("Hypotheses verification...");
-            pSingleview_recognizer_->hypothesesVerification(mask_hv_mv);
-            pSingleview_recognizer_->getVerifiedPlanes(grph_final_[vrtx_final].verified_planes_);
-        }
-        for (size_t j = 0; j < grph_final_[vrtx_final].hypothesis_mv_.size(); j++)
-        {
-            grph_final_[vrtx_final].hypothesis_mv_[j].verified_ = mask_hv_mv[j];
-        }
+//        std::vector<bool> mask_hv_mv;
+//        {
+//            pcl::ScopeTime ticp ("Hypotheses verification...");
+//            pSingleview_recognizer_->hypothesesVerification(mask_hv_mv);
+//            pSingleview_recognizer_->getVerifiedPlanes(grph_final_[vrtx_final].verified_planes_);
+//        }
+//        for (size_t j = 0; j < grph_final_[vrtx_final].hypothesis_mv_.size(); j++)
+//        {
+//            grph_final_[vrtx_final].hypothesis_mv_[j].verified_ = mask_hv_mv[j];
+//        }
 
         if(go3d_)
         {
@@ -1123,6 +1123,9 @@ bool multiviewGraph::recognize
 
             for (vp = vertices (grph_final_); vp.first != vp.second; ++vp.first)
             {
+                if(!grph_final_[*vp.first].has_been_hopped_)
+                    continue;
+
                 views_noise_weights.push_back(grph_final_[*vp.first].nguyens_noise_model_weights_); // TODO: Does the vertices order matter?
 
                 pcl::PointCloud<pcl::Normal>::Ptr normal_cloud_filtered (new pcl::PointCloud<pcl::Normal>());
@@ -1426,7 +1429,7 @@ bool multiviewGraph::recognize
                         go3d_vis_->createViewPort (0.5, 0.66, 1, 1, go_3d_viewports_[5]);
                     }
 
-                    for(size_t vp_id=0; vp_id<6; vp_id++)
+                    for(size_t vp_id=0; vp_id<go_3d_viewports_.size(); vp_id++)
                     {
                         go3d_vis_->removeAllPointClouds(go_3d_viewports_[vp_id]);
                     }

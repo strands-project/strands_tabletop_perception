@@ -1,4 +1,5 @@
 #include "world_representation.h"
+#include "boost_graph_extension.h"
 #include <iostream>
 #include <fstream>
 
@@ -56,7 +57,7 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
 {
     bool mv_recognize_error;
 
-    multiviewGraph &currentGraph = get_current_graph(scene_name);
+    multiviewGraph &currentMvGraph = get_current_graph(scene_name);
 
     Eigen::Matrix4f global_trans;
     if(global_trans_v.size() == 16 && use_robot_pose_)
@@ -68,22 +69,22 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
                 global_trans(row, col) = global_trans_v[4*row + col];
             }
         }
-        mv_recognize_error = currentGraph.recognize(pInput, view_name, timestamp, global_trans);//req, response);
+        mv_recognize_error = currentMvGraph.recognize(pInput, view_name, timestamp, global_trans);//req, response);
     }
     else
     {
         std::cout << "No transform (16x1 float vector) provided. " << std::endl;
-        mv_recognize_error = currentGraph.recognize(pInput, view_name, timestamp);
+        mv_recognize_error = currentMvGraph.recognize(pInput, view_name, timestamp);
     }
 
 
     std::vector<ModelTPtr> models_sv;
     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > transforms_sv;
     std::vector<double> execution_times;
-    currentGraph.getVerifiedHypothesesSingleView(models_sv, transforms_sv);
+    currentMvGraph.getVerifiedHypothesesSingleView(models_sv, transforms_sv);
 
-    currentGraph.getVerifiedHypotheses(models_mv, transforms_mv);
-    currentGraph.get_times(execution_times);
+    currentMvGraph.getVerifiedHypotheses(models_mv, transforms_mv);
+    currentMvGraph.get_times(execution_times);
 
     std::cout << "In the most current vertex I detected " << models_mv.size() << " verified models. " << std::endl;
 
@@ -138,6 +139,18 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
             time_file << execution_times[time_id] << std::endl;
         }
         time_file.close();
+
+
+        // save final graph structure
+        std::stringstream or_filepath_final_graph;
+        or_filepath_final_graph << filepath_or_results_mv << "/" << "final_graph.dot";
+        std::stringstream or_filepath_full_graph;
+        or_filepath_full_graph << filepath_or_results_mv << "/" << "full_graph.dot";
+        Graph currentFinalGrph, currentFullGrph;
+        currentMvGraph.get_final_graph(currentFinalGrph);
+        currentMvGraph.get_full_graph(currentFullGrph);
+        outputgraph ( currentFinalGrph, or_filepath_final_graph.str().c_str() );
+        outputgraph ( currentFullGrph, or_filepath_full_graph.str().c_str() );
     }
 
 
