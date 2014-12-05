@@ -555,7 +555,8 @@ extendHypothesisRecursive ( Graph &grph, Vertex &vrtx_start, std::vector<Hypothe
 }
 
 /*
- * Connects a new view to the graph by edges sharing a common object hypothesis
+ * Connects a new view to the graph by edges sharing a common object hypothesis between single-view
+ *  hypotheses in new observation and verified multi-view hypotheses in previous views
  */
 void multiviewGraph::
 createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std::vector<Edge> &edges )
@@ -568,11 +569,17 @@ createEdgesFromHypothesisMatchOnline ( const Vertex new_vertex, Graph &grph, std
             continue;
         }
 
-        PCL_INFO("Checking vertex %s, which has %ld hypotheses.", grph[*vertexItA].pScenePCl->header.frame_id.c_str(), grph[*vertexItA].hypothesis_sv_.size());
-        for ( std::vector<Hypothesis<PointT> >::iterator it_hypA = grph[*vertexItA].hypothesis_sv_.begin (); it_hypA != grph[*vertexItA].hypothesis_sv_.end (); ++it_hypA )
+        PCL_INFO("Checking vertex %s, which has %ld hypotheses.", grph[*vertexItA].pScenePCl->header.frame_id.c_str(), grph[*vertexItA].hypothesis_mv_.size());
+        for ( std::vector<Hypothesis<PointT> >::iterator it_hypA = grph[*vertexItA].hypothesis_mv_.begin (); it_hypA != grph[*vertexItA].hypothesis_mv_.end (); ++it_hypA )
         {
+            if (! it_hypA->verified_)
+                continue;
+
             for ( std::vector<Hypothesis<PointT> >::iterator it_hypB = grph[new_vertex].hypothesis_sv_.begin (); it_hypB != grph[new_vertex].hypothesis_sv_.end (); ++it_hypB )
             {
+                if(!it_hypB->verified_)
+                    continue;
+
                 if ( it_hypB->model_id_.compare (it_hypA->model_id_ ) == 0 ) //model exists in other file (same id) --> create connection
                 {
                     Eigen::Matrix4f tf_temp = it_hypB->transform_ * it_hypA->transform_.inverse (); //might be the other way around
@@ -890,6 +897,8 @@ bool multiviewGraph::recognize
     sv_overhead_time = sv_overhead_pcl_time.getTime();
     sv_total_time = total_pcl_time.getTime();
     //----------END-call-single-view-recognizer------------------------------------------
+
+    createEdgesFromHypothesisMatchOnline(vrtx, grph_, new_edges);
 
     //---copy-vertices-to-graph_final----------------------------
     Vertex vrtx_final = boost::add_vertex ( grph_final_ );

@@ -22,6 +22,7 @@ int main (int argc, char **argv)
     int icp_type;
     int opt_type;
     int extension_mode;
+    bool play_sequence_randomly = true;
 
     double chop_at_z;
     double distance_keypoints_get_discarded;
@@ -243,7 +244,11 @@ int main (int argc, char **argv)
                 std::string start = "";
                 std::string ext = std::string ("pcd");
                 faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, start, files_intern, ext);
-                std::sort(files_intern.begin(), files_intern.end());
+
+                if(play_sequence_randomly)
+                    std::random_shuffle(files_intern.begin(), files_intern.end());
+                else
+                    std::sort(files_intern.begin(), files_intern.end());
 
                 if (files_intern.size())
                 {
@@ -319,6 +324,15 @@ int main (int argc, char **argv)
                     or_filepath_parameter_ss_mv << or_folderpath_mv_ss.str() << "parameter.nfo";
                     or_file.open (or_filepath_parameter_ss_mv.str());
                     or_file << param_file_text.str();
+                    or_file.close();
+
+                    or_filepath_parameter_ss_mv.str(std::string());
+                    or_filepath_parameter_ss_mv << or_folderpath_mv_ss.str() << "view_temporal_order.nfo";
+                    or_file.open (or_filepath_parameter_ss_mv.str());
+                    for (size_t file_id=0; file_id < files_intern.size(); file_id++)
+                    {
+                        or_file << files_intern[file_id] << std::endl;
+                    }
                     or_file.close();
 
                     for (size_t file_id=0; file_id < files_intern.size(); file_id++)
