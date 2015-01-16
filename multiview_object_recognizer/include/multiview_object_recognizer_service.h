@@ -46,6 +46,8 @@ private:
     float distance_keypoints_get_discarded_;
     float icp_resolution_;
     pcl::visualization::PCLVisualizer::Ptr vis_;
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer_;
+    int vp_go3d_1, vp_go3d_2;
     bool scene_to_scene_;
     bool use_robot_pose_;
     bool use_gc_s2s_;

@@ -76,7 +76,7 @@ View::View ()
     pScenePCl.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pScenePCl_f.reset ( new pcl::PointCloud<pcl::PointXYZRGB> );
     pSceneNormals.reset ( new pcl::PointCloud<pcl::Normal> );
-//    pSceneNormals_f_.reset ( new pcl::PointCloud<pcl::Normal> );
+    pSceneNormals_f.reset ( new pcl::PointCloud<pcl::Normal> );
     pKeypointNormalsMultipipe_.reset ( new pcl::PointCloud<pcl::Normal> );
 //    pIndices_above_plane.reset ( new pcl::PointIndices );
     pSiftSignatures_.reset ( new pcl::PointCloud<FeatureT> );

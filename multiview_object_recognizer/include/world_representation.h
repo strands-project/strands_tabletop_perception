@@ -9,7 +9,7 @@ class worldRepresentation
 {
 private:
     boost::shared_ptr<Recognizer> pSingleview_recognizer_;
-    std::vector <multiviewGraph > graph_v;
+    std::vector <multiviewGraph > graph_v_;
     bool visualize_output_, scene_to_scene_, use_robot_pose_;
     int extension_mode_; // defines the method for extending hypotheses (0 = keypoint correspondences; 1 = full hypotheses only)
     int icp_iter_;
@@ -30,6 +30,11 @@ public:
         scene_to_scene_ = true;
         use_robot_pose_ = false;
         extension_mode_ = 0;
+    }
+
+    void clear()
+    {
+        graph_v_.clear();
     }
 
     bool recognizeROSWrapper (recognition_srv_definitions::multiview_recognize::Request & req, recognition_srv_definitions::multiview_recognize::Response & response);

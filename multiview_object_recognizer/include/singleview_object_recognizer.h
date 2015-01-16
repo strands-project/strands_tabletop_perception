@@ -52,6 +52,7 @@ private:
 
     int icp_iterations_;
     int icp_type_;
+    float chop_at_z_;
 
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > hypotheses_;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
@@ -128,6 +129,7 @@ public:
 
         icp_iterations_ = 0;
         icp_type_ = 1;
+        chop_at_z_ = 1.5f;
 
         hv_params_.resolution_ = 0.005f;
         hv_params_.inlier_threshold_ = 0.015;
@@ -435,6 +437,11 @@ public:
                                                pcl::PointCloud<pcl::Normal>::Ptr pKeypointNormals,
                                                std::vector<Hypothesis<PointT> > &hypothesesOutput,
                                                std::vector <pcl::Correspondences> &corresp_clusters);
+
+    void setChop_at_z(double chop_at_z)
+    {
+        chop_at_z_ = chop_at_z;
+    }
 };
 
 #endif //SINGLEVIEW_OBJECT_RECOGNIZER_H

@@ -38,16 +38,6 @@ bool Recognizer::multiplaneSegmentation()
 
 void Recognizer::constructHypotheses()
 {
-    //    if(chop_at_z_ > 0)
-    //    {
-    //        pcl::PassThrough<PointT> pass_;
-    //        pass_.setFilterLimits (0.f, static_cast<float>(chop_at_z_));
-    //        pass_.setFilterFieldName ("z");
-    //        pass_.setInputCloud (pInputCloud);
-    //        pass_.setKeepOrganized (true);
-    //        pass_.filter (*pInputCloud);
-    //    }
-
         if(pSceneNormals_->points.size() == 0)
         {
             std::cout << "No normals point cloud for scene given. Calculate normals of scene..." << std::endl;
@@ -84,7 +74,7 @@ void Recognizer::constructHypotheses()
         multi_recog_->setSceneNormals(pSceneNormals_);
         multi_recog_->setInputCloud (pInputCloud_);
         multi_recog_->setSaveHypotheses(true);
-        std::cout << "Is organized: " << pInputCloud_->isOrganized();
+        std::cout << "Is organized: " << pInputCloud_->isOrganized() << std::endl;
         {
             pcl::ScopeTime ttt ("Recognition");
             multi_recog_->recognize ();
@@ -192,7 +182,6 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     //verify
     {
         pcl::ScopeTime t("Go verify");
-
         go->verify ();
     }
     std::vector<bool> mask_hv_with_planes;
@@ -219,52 +208,6 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     {
         if(mask_hv_with_planes[aligned_models_.size () + j])
             verified_planes_.push_back(planes_found_[j].plane_cloud_);
-    }
-
-    // bug in HV??
-    if(!have_verified_models)
-    {
-        std::cout << "I didn't verify any model." << std::endl;
-        size_t sub_id_sv = 0;
-        std::stringstream folderpath_error_hv_ss;
-        std::stringstream folderpath_error_hv_normals_ss;
-        boost::filesystem::path folderpath_error_hv;
-        do
-        {
-            folderpath_error_hv_ss.str(std::string());
-            folderpath_error_hv_normals_ss.str(std::string());
-            folderpath_error_hv_ss << "/media/Data/datasets/TUW/hv_errors/" << sub_id_sv << ".pcd";
-            folderpath_error_hv_normals_ss << "/media/Data/datasets/TUW/hv_errors/" << sub_id_sv << "_normals.pcd";
-            folderpath_error_hv = folderpath_error_hv_ss.str();
-            sub_id_sv++;
-        }while(boost::filesystem::exists(folderpath_error_hv) );
-
-        std::cout << "Writing input for buggy hv into filename " << folderpath_error_hv_ss.str() << " and normals into " <<
-                     folderpath_error_hv_normals_ss.str() << std::endl;
-        pcl::io::savePCDFileBinary(folderpath_error_hv_ss.str(), *pInputCloud_);
-        pcl::io::savePCDFileBinary(folderpath_error_hv_normals_ss.str(), *pSceneNormals_);
-
-        std::stringstream param_file_text;
-        for (size_t j = 0; j < aligned_models_.size (); j++)
-        {
-            param_file_text << models_->at(j)->id_ << std::endl;
-            for (size_t row=0; row <4; row++)
-            {
-                for(size_t col=0; col<4; col++)
-                {
-                    param_file_text << transforms_->at(j)(row, col) << " ";
-                }
-            }
-            param_file_text << std::endl;
-        }
-
-        std::stringstream folderpath_error_hv_models_and_transforms_ss;
-        folderpath_error_hv_models_and_transforms_ss << "/media/Data/datasets/TUW/hv_errors/" << sub_id_sv << "_models_and_transforms.txt";
-        ofstream hv_error_file;
-        hv_error_file.open (folderpath_error_hv_models_and_transforms_ss.str());
-        hv_error_file << param_file_text.str();
-        hv_error_file.close();
-
     }
 
     return true;
@@ -825,7 +768,7 @@ bool Recognizer::recognize ()
         boost::shared_ptr<faat_pcl::rec_3d_framework::UniformSamplingExtractor<PointT> > uniform_keypoint_extractor ( new faat_pcl::rec_3d_framework::UniformSamplingExtractor<PointT>);
         uniform_keypoint_extractor->setSamplingDensity (0.01f);
         uniform_keypoint_extractor->setFilterPlanar (true);
-        uniform_keypoint_extractor->setMaxDistance(1.5f);
+        uniform_keypoint_extractor->setMaxDistance(chop_at_z_);
         uniform_keypoint_extractor->setThresholdPlanar(0.1);
 
         boost::shared_ptr<faat_pcl::rec_3d_framework::KeypointExtractor<PointT> > keypoint_extractor;
@@ -864,7 +807,6 @@ bool Recognizer::recognize ()
         local->setSaveHypotheses(true);
         local->initialize (false);
         local->setMaxDescriptorDistance(std::numeric_limits<float>::infinity());
-        uniform_keypoint_extractor->setMaxDistance(1.5f);
 
         boost::shared_ptr<faat_pcl::rec_3d_framework::Recognizer<PointT> > cast_recog;
         cast_recog = boost::static_pointer_cast<faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<352> > > (local);

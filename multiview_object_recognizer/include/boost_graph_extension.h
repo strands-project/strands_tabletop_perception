@@ -91,6 +91,7 @@ public:
     boost::shared_ptr< pcl::PointCloud<PointT> > pScenePCl;
     boost::shared_ptr< pcl::PointCloud<PointT> > pScenePCl_f;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals;
+    boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pSceneNormals_f;
     pcl::PointIndices filteredSceneIndices_;
     boost::shared_ptr< pcl::PointCloud<PointT> > pKeypointsMultipipe_;
     boost::shared_ptr< pcl::PointCloud<pcl::Normal> > pKeypointNormalsMultipipe_;

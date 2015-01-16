@@ -1432,7 +1432,7 @@ main (int argc, char **argv)
                 {
                     std::stringstream pose_path;
                     pose_path << output_dir_3d_results << "/transformation_" << setw(5) << setfill('0') << i << ".txt";
-                    faat_pcl::rec_3d_framework::PersistenceUtils::writeMatrixToFile(pose_path.str(), transforms_to_global[i]);
+                    faat_pcl::utils::writeMatrixToFile(pose_path.str(), transforms_to_global[i]);
 
                     std::stringstream cloud_path;
                     cloud_path << output_dir_3d_results << "/cloud_" << setw(5) << setfill('0') << i << ".pcd";

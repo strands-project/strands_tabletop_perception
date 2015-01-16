@@ -5,11 +5,11 @@
 
 multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_name)
 {
-    for (size_t scene_id = 0; scene_id < graph_v.size(); scene_id++)
+    for (size_t scene_id = 0; scene_id < graph_v_.size(); scene_id++)
     {
-        if( graph_v[scene_id].get_scene_name().compare ( scene_name) == 0 )	//--show-hypotheses-from-single-view
+        if( graph_v_[scene_id].get_scene_name().compare ( scene_name) == 0 )	//--show-hypotheses-from-single-view
         {
-            return graph_v[scene_id];
+            return graph_v_[scene_id];
         }
     }
 
@@ -25,8 +25,8 @@ multiviewGraph& worldRepresentation::get_current_graph(const std::string scene_n
     newGraph.set_max_vertices_in_graph(max_vertices_in_graph_);
     newGraph.set_distance_keypoints_get_discarded(distance_keypoints_get_discarded_);
     newGraph.set_visualize_output(visualize_output_);
-    graph_v.push_back(newGraph);
-    return graph_v.back();
+    graph_v_.push_back(newGraph);
+    return graph_v_.back();
 }
 
 void worldRepresentation::setPSingleview_recognizer(const boost::shared_ptr<Recognizer> &value)
@@ -90,7 +90,10 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
 
     if(filepath_or_results_mv.length())
     {
+        ofstream annotation_file;
+        annotation_file.open("results_3d.txt"); // save a file for ground-truth annotation structure
         std::map<std::string, size_t> rec_models_per_id;
+
         for(size_t i = 0; i < models_mv.size(); i++)
         {
             std::string model_id = models_mv.at(i)->id_;
@@ -126,7 +129,19 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
                 }
             }
             or_file.close();
+
+
+            annotation_file << model_id << " ";
+            for (size_t row=0; row <4; row++)
+            {
+                for(size_t col=0; col<4; col++)
+                {
+                    annotation_file << tf(row, col) << " ";
+                }
+            }
+            annotation_file << std::endl;
         }
+        annotation_file.close();
 
         // save measured execution times
         std::stringstream or_filepath_times;
