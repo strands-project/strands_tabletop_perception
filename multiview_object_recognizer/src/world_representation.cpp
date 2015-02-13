@@ -120,7 +120,7 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
             or_filepath_ss_mv << filepath_or_results_mv << "/" << view_name << "_" << model_id.substr(0, model_id.length() - 4) << "_" << num_models_per_model_id <<".txt";
 
             ofstream or_file;
-            or_file.open (or_filepath_ss_mv.str());
+            or_file.open (or_filepath_ss_mv.str().c_str());
             for (size_t row=0; row <4; row++)
             {
                 for(size_t col=0; col<4; col++)
@@ -148,7 +148,7 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
         or_filepath_times << filepath_or_results_mv << "/" << view_name << "_times.txt";
 
         ofstream time_file;
-        time_file.open (or_filepath_times.str());
+        time_file.open (or_filepath_times.str().c_str());
         for (size_t time_id=0; time_id < execution_times.size(); time_id++)
         {
             time_file << execution_times[time_id] << std::endl;
@@ -199,7 +199,7 @@ bool worldRepresentation::recognize (const pcl::PointCloud<pcl::PointXYZRGB>::Co
             or_filepath_ss_sv << filepath_or_results_sv << "/" << view_name << "_" << model_id.substr(0, model_id.length() - 4) << "_" << num_models_per_model_id <<".txt";
 
             ofstream or_file;
-            or_file.open (or_filepath_ss_sv.str());
+            or_file.open (or_filepath_ss_sv.str().c_str());
             for (size_t row=0; row <4; row++)
             {
                 for(size_t col=0; col<4; col++)

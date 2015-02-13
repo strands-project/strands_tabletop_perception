@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(multiview_object_recognizer)
 
-SET(CMAKE_BUILD_TYPE RelWithDebInfo)
-
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -13,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
 find_package(PCL 1.7 REQUIRED)
 find_package(OpenCV 2.4 REQUIRED )
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+#find_package(Boost REQUIRED COMPONENTS system)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -90,17 +88,13 @@ catkin_package(
 ## Build ##
 ###########
 
-add_definitions(-std=c++0x)
+#add_definitions(-std=c++0x)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
+
 include_directories(include
     ${PCL_INCLUDE_DIRS}
     ${catkin_INCLUDE_DIRS}
-    ${CUDA_TOOLKIT_INCLUDE}
-    ${PCL_SRC_DIR}/gpu/octree/include
-    ${PCL_SRC_DIR}/gpu/containers/include
-    ${PCL_SRC_DIR}/gpu/octree/src/
-    ${PCL_SRC_DIR}/gpu/utils/include/
 )
 
 set(incs
@@ -151,6 +145,7 @@ target_link_libraries(multiview_object_recognizer_node
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
    ${STRANDSV4R_LIBS}
+#   ${Boost_LIBRARIES}
 )
 
 #target_link_libraries(multiview_object_recognizer_eval_node

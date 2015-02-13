@@ -75,6 +75,7 @@ private:
 
     bool add_planes_;
     int knn_shot_;
+    int knn_sift_;
 
 #ifdef SOC_VISUALIZE
     boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
@@ -167,6 +168,7 @@ public:
 
         add_planes_ = true;
         knn_shot_ = 1;
+        knn_sift_ = 5;
 
         pInputCloud_.reset(new pcl::PointCloud<PointT>);
         pSceneNormals_.reset(new pcl::PointCloud<pcl::Normal>);
@@ -324,13 +326,13 @@ public:
         transforms_verified = transforms_verified_;
     }
 
-    void getAllHypotheses(std::vector<std::string> &models, std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> &transforms) const
+    void getAllHypotheses(std::vector<std::string> &models, std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &transforms) const
     {
         models = model_ids_;
         transforms = *transforms_;
     }
 
-    void setModelsAndTransforms(const std::vector<std::string> &models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> &transforms)
+    void setModelsAndTransforms(const std::vector<std::string> &models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &transforms)
     {
         aligned_models_.resize(models.size());
         model_ids_.resize(models.size());
@@ -361,7 +363,7 @@ public:
         }
     }
 
-    void setModelsAndTransforms(const std::vector<ModelTPtr> &models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> &transforms)
+    void setModelsAndTransforms(const std::vector<ModelTPtr> &models, const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &transforms)
     {
         aligned_models_.resize(models.size());
         aligned_normals_.resize(models.size());

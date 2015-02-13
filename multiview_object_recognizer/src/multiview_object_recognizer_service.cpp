@@ -313,7 +313,9 @@ extendFeatureMatchesRecursive ( Graph &grph,
     pcl::copyPointCloud(*(grph[vrtx_start].pKeypointNormalsMultipipe_), *pKeypointNormals);
 
     std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::const_iterator it_copy_hyp;
-    for(it_copy_hyp = grph[vrtx_start].hypotheses_.begin(); it_copy_hyp !=grph[vrtx_start].hypotheses_.end(); ++it_copy_hyp)
+    for(it_copy_hyp = grph[vrtx_start].hypotheses_.begin();
+        it_copy_hyp !=grph[vrtx_start].hypotheses_.end();
+        ++it_copy_hyp)
     {
         faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> oh;
         oh.model_ = it_copy_hyp->second.model_;
@@ -326,6 +328,7 @@ extendFeatureMatchesRecursive ( Graph &grph,
     }
 
     assert(pKeypoints->points.size() == pKeypointNormals->points.size());
+    size_t num_keypoints_single_view = pKeypoints->points.size();
 
     grph[vrtx_start].has_been_hopped_ = true;
 
@@ -354,7 +357,7 @@ extendFeatureMatchesRecursive ( Graph &grph,
                     edge_transform = grph[*out_i].transformation.inverse();
                 }
 
-                PCL_INFO("Hopping to vertex %s...", grph[remote_vertex].pScenePCl->header.frame_id.c_str());
+                std::cout << "Hopping to vertex "<< grph[remote_vertex].pScenePCl->header.frame_id.c_str() << std::endl;
 
                 std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> > new_hypotheses;
                 pcl::PointCloud<PointT>::Ptr pNewKeypoints (new pcl::PointCloud<PointT>);
@@ -379,6 +382,9 @@ extendFeatureMatchesRecursive ( Graph &grph,
                 {
                     pKeypointsXYZ->points[i].getVector3fMap() = pKeypoints->points[i].getVector3fMap();
                 }
+
+                *pKeypoints += *pNewKeypoints;
+                *pKeypointNormals += *pNewKeypointNormals;
 
                 std::map<std::string, faat_pcl::rec_3d_framework::ObjectHypothesis<PointT> >::const_iterator it_new_hyp;
                 for(it_new_hyp = new_hypotheses.begin(); it_new_hyp !=new_hypotheses.end(); ++it_new_hyp)
@@ -406,6 +412,20 @@ extendFeatureMatchesRecursive ( Graph &grph,
                     }
                     else
                     { //merge hypotheses
+
+                        assert(it_new_hyp->second.correspondences_to_inputcloud->size() ==  it_new_hyp->second.correspondences_pointcloud->size() ==
+                               it_new_hyp->second.correspondences_pointcloud->size() == it_new_hyp->second.indices_to_flann_models_.size());
+
+                        size_t num_existing_corrs = it_existing_hyp->second.correspondences_to_inputcloud->size();
+                        size_t num_new_corrs = it_new_hyp->second.correspondences_to_inputcloud->size();
+
+                        it_existing_hyp->second.correspondences_to_inputcloud->resize( num_existing_corrs + num_new_corrs );
+                        it_existing_hyp->second.correspondences_pointcloud->resize( num_existing_corrs + num_new_corrs );
+                        it_existing_hyp->second.normals_pointcloud->resize( num_existing_corrs + num_new_corrs );
+                        it_existing_hyp->second.indices_to_flann_models_.resize( num_existing_corrs + num_new_corrs );
+
+                        size_t kept_corrs = num_existing_corrs;
+
                         for(size_t j=0; j < it_new_hyp->second.correspondences_to_inputcloud->size(); j++)
                         {
                             bool drop_new_correspondence = false;
@@ -421,12 +441,15 @@ extendFeatureMatchesRecursive ( Graph &grph,
                             new_model_pt_XYZ.getVector3fMap() = new_model_pt.getVector3fMap();
                             const pcl::Normal new_model_normal = it_new_hyp->second.normals_pointcloud->points[ c_new.index_query ];
 
+                            int idx_to_flann_model = it_new_hyp->second.indices_to_flann_models_[j];
+
                             if (!pcl::isFinite(new_kp_XYZ) || !pcl::isFinite(new_model_pt_XYZ))
                             {
                                 PCL_WARN("Keypoint of scene or model is infinity!!");
                                 continue;
                             }
-                            for(size_t j=0; j < it_existing_hyp->second.correspondences_to_inputcloud->size(); j++)
+
+                            for(size_t j=0; j < num_existing_corrs; j++)
                             {
                                 const pcl::Correspondence c_existing = it_existing_hyp->second.correspondences_to_inputcloud->at(j);
                                 const PointT existing_model_pt = it_existing_hyp->second.correspondences_pointcloud->points[ c_existing.index_query ];
@@ -456,21 +479,24 @@ extendFeatureMatchesRecursive ( Graph &grph,
                             }
                             if (!drop_new_correspondence)
                             {
-                                it_existing_hyp->second.indices_to_flann_models_.push_back(
-                                            it_new_hyp->second.indices_to_flann_models_[c_new.index_query]); //check that
-                                c_new.index_query = it_existing_hyp->second.correspondences_pointcloud->points.size();
-                                c_new.index_match += pKeypoints->points.size();
-                                it_existing_hyp->second.correspondences_to_inputcloud->push_back(c_new);
-                                it_existing_hyp->second.correspondences_pointcloud->points.push_back(new_model_pt);
-                                it_existing_hyp->second.normals_pointcloud->points.push_back(new_model_normal);
+                                it_existing_hyp->second.indices_to_flann_models_[kept_corrs] = idx_to_flann_model; //check that
+                                c_new.index_query = kept_corrs;
+                                c_new.index_match += num_keypoints_single_view;
+                                it_existing_hyp->second.correspondences_to_inputcloud->at(kept_corrs) = c_new;
+                                it_existing_hyp->second.correspondences_pointcloud->points[kept_corrs] = new_model_pt;
+                                it_existing_hyp->second.normals_pointcloud->points[kept_corrs] = new_model_normal;
+                                kept_corrs++;
                             }
                         }
+                        it_existing_hyp->second.correspondences_to_inputcloud->resize( kept_corrs );
+                        it_existing_hyp->second.correspondences_pointcloud->resize( kept_corrs );
+                        it_existing_hyp->second.normals_pointcloud->resize( kept_corrs );
+                        it_existing_hyp->second.indices_to_flann_models_.resize( kept_corrs );
+
                         //                    std::cout << "INFO: Size for " << id <<
                         //                                 " of correspondes_pointcloud after merge: " << it_existing_hyp->second.correspondences_pointcloud->points.size() << std::endl;
                     }
                 }
-                *pKeypoints += *pNewKeypoints;
-                *pKeypointNormals += *pNewKeypointNormals;
             }
         }
     }
@@ -484,14 +510,14 @@ extendHypothesisRecursive ( Graph &grph, Vertex &vrtx_start, std::vector<Hypothe
 {
     grph[vrtx_start].has_been_hopped_ = true;
 
-    for ( std::vector<Hypothesis<PointT>>::const_iterator it_hyp = grph[vrtx_start].hypothesis_mv_.begin (); it_hyp != grph[vrtx_start].hypothesis_mv_.end (); ++it_hyp )
+    for ( std::vector<Hypothesis<PointT> >::const_iterator it_hyp = grph[vrtx_start].hypothesis_mv_.begin (); it_hyp != grph[vrtx_start].hypothesis_mv_.end (); ++it_hyp )
     {
         if(!it_hyp->verified_ && !use_unverified_hypotheses)
             continue;
 
         bool id_already_exists = false;
         //--check if hypothesis already exists
-        for ( std::vector<Hypothesis<PointT>>::const_iterator it_existing_hyp = hyp_vec.begin ();
+        for ( std::vector<Hypothesis<PointT> >::const_iterator it_existing_hyp = hyp_vec.begin ();
               it_existing_hyp != hyp_vec.end ();
               ++it_existing_hyp )
         {
@@ -1172,13 +1198,13 @@ bool multiviewGraph::recognize
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr octree_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
                 faat_pcl::utils::NMBasedCloudIntegration<pcl::PointXYZRGB> nmIntegration;
                 nmIntegration.setInputClouds(original_clouds);
-                nmIntegration.setResolution(pSingleview_recognizer_->hv_params_.resolution_);
+                nmIntegration.setResolution(pSingleview_recognizer_->hv_params_.resolution_/4);
                 nmIntegration.setWeights(views_noise_weights);
                 nmIntegration.setTransformations(transforms_to_global);
                 nmIntegration.setMinWeight(nm_integration_min_weight_);
                 nmIntegration.setInputNormals(normal_clouds);
                 nmIntegration.setMinPointsPerVoxel(1);
-                nmIntegration.setFinalResolution(pSingleview_recognizer_->hv_params_.resolution_);
+                nmIntegration.setFinalResolution(pSingleview_recognizer_->hv_params_.resolution_/4);
                 nmIntegration.compute(octree_cloud);
 
                 std::vector<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> used_clouds;
@@ -1479,19 +1505,34 @@ bool multiviewGraph::recognize
                         go3d_vis_->removeAllPointClouds(go_3d_viewports_[vp_id]);
                     }
 
-                    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler (big_cloud_go3D);
+                    pcl::visualization::PointCloudColorHandlerRGBField<PointT> handler (big_cloud_go3D);
                     go3d_vis_->addPointCloud (big_cloud_go3D, handler, "big", go_3d_viewports_[0]);
+                    pcl::io::savePCDFile<PointT>(std::string("/home/thomas/Desktop/big_cloud_go3d.pcd"), *big_cloud_go3D);
+                    pcl::io::savePCDFile<PointT>("/home/thomas/Desktop/scene.pcd", *grph_final_[vrtx_final].pScenePCl_f);
 
                     /*pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler (big_cloud_vx_after_mv);
             vis.addPointCloud (big_cloud_vx_after_mv, handler, "big", v1);*/
+
+                    typename pcl::PointCloud<PointT>::Ptr all_hypotheses ( new pcl::PointCloud<PointT> );
 
                     for(size_t i=0; i < grph_final_[vrtx_final].hypothesis_mv_.size(); i++)
                     {
                         pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler_rgb_verified (aligned_models[i]);
                         std::stringstream name;
                         name << "Hypothesis_model_" << i;
-                        go3d_vis_->addPointCloud<pcl::PointXYZRGB> (aligned_models[i], handler_rgb_verified, name.str (), go_3d_viewports_[1]);
+                        *all_hypotheses += *(aligned_models[i]);
+                        go3d_vis_->addPointCloud<PointT> (aligned_models[i], handler_rgb_verified, name.str (), go_3d_viewports_[1]);
                     }
+                    std::string filename_tmp = "/home/thomas/Desktop/my_pcl_temp.pcd";
+                    pcl::io::savePCDFile<PointT>(filename_tmp, *all_hypotheses);
+
+                    cv::Mat_ < cv::Vec3b > colorImage;
+                    PCLOpenCV::ConvertUnorganizedPCLCloud2Image<PointT> (all_hypotheses,
+                                                                         colorImage,
+                                                                         255.0f,
+                                                                         255.0f,
+                                                                         255.0f);
+                    cv::imwrite("/home/thomas/Desktop/my_image_temp.jpg", colorImage);
 
                     pcl::PointCloud<pcl::PointXYZRGBA>::Ptr smooth_cloud_ =  go3d.getSmoothClustersRGBCloud();
                     if(smooth_cloud_)
@@ -1586,7 +1627,7 @@ bool multiviewGraph::recognize
                          <<  ".pcd";
 
         ofstream camera_pose_file;
-        camera_pose_file.open (camera_pose_filename_ss.str());
+        camera_pose_file.open (camera_pose_filename_ss.str().c_str());
         camera_pose_file << grph_final_[*vp.first].absolute_pose_(0,0)
                 << " " << grph_final_[*vp.first].absolute_pose_(0,1)
                 << " " << grph_final_[*vp.first].absolute_pose_(0,2)

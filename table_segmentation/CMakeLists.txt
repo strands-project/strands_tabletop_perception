@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(table_segmentation)
 
-SET (CMAKE_BUILD_TYPE Debug)
-
 add_definitions(-std=c++0x)
 
 ## Find catkin macros and libraries

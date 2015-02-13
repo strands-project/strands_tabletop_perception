@@ -19,7 +19,13 @@
 #include <boost/lexical_cast.hpp>
 
 #define USE_SIFT_GPU
-//#define SOC_VISUALIZE
+//#define USE_CUDA
+
+#ifdef USE_CUDA
+    #include <v4r/ORRecognition/ghv_cuda.h>
+    #include <v4r/ORRecognition/ghv_cuda_wrapper.h>
+#endif
+
 
 bool USE_SEGMENTATION_ = false;
 
@@ -83,6 +89,8 @@ void Recognizer::constructHypotheses()
         multi_recog_->getKeypointCloud(pKeypointsMultipipe_);
         multi_recog_->getKeypointIndices(keypointIndices_);
 
+        assert(pKeypointsMultipipe_->points.size() == keypointIndices_.indices.size());
+
         models_ = multi_recog_->getModels ();
         transforms_ = multi_recog_->getTransforms ();
         std::cout << "Number of recognition hypotheses " << models_->size() << std::endl;
@@ -115,18 +123,14 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     typename pcl::PointCloud<PointT>::Ptr occlusion_cloud (new pcl::PointCloud<PointT>(*pInputCloud_));
 
     mask_hv.resize(aligned_models_.size());
-    //initialize go
-    boost::shared_ptr<faat_pcl::GHV<PointT, PointT> > go (
-                    new faat_pcl::GHV<PointT,
-                    PointT>);
 
-    assert(pSceneNormals_->points.size() == pInputCloud_->points.size());
+    //initialize go
+#ifdef USE_CUDA
+    boost::shared_ptr<faat_pcl::recognition::GHVCudaWrapper<PointT> > go (new faat_pcl::recognition::GHVCudaWrapper<PointT>);
+#else
+    boost::shared_ptr<faat_pcl::GHV<PointT, PointT> > go (new faat_pcl::GHV<PointT, PointT>);
     //go->setRadiusNormals(0.03f);
     go->setResolution (hv_params_.resolution_);
-    go->setInlierThreshold (hv_params_.inlier_threshold_);
-    go->setRadiusClutter (hv_params_.radius_clutter_);
-    go->setRegularizer (hv_params_.regularizer_ );
-    go->setClutterRegularizer (hv_params_.clutter_regularizer_);
     go->setDetectClutter (hv_params_.detect_clutter_);
     go->setOcclusionThreshold (hv_params_.occlusion_threshold_);
     go->setOptimizerType (hv_params_.optimizer_type_);
@@ -135,7 +139,6 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     go->setRequiresNormals(hv_params_.requires_normals_);
     go->setInitialStatus(hv_params_.initial_status_);
     go->setIgnoreColor(hv_params_.ignore_color_);
-    go->setColorSigma (hv_params_.color_sigma_l_, hv_params_.color_sigma_ab_);
     go->setHistogramSpecification(hv_params_.histogram_specification_);
     go->setSmoothSegParameters(hv_params_.smooth_seg_params_eps_,
                                hv_params_.smooth_seg_params_curv_t_,
@@ -144,19 +147,80 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
     go->setVisualizeGoCues(0);
     go->setUseSuperVoxels(hv_params_.use_supervoxels_);
     go->setZBufferSelfOcclusionResolution (hv_params_.z_buffer_self_occlusion_resolution_);
-    go->setOcclusionCloud (occlusion_cloud);
     go->setHypPenalty (hv_params_.hyp_penalty_);
     go->setDuplicityCMWeight(hv_params_.duplicity_cm_weight_);
+#endif
+
+    assert(pSceneNormals_->points.size() == pInputCloud_->points.size());
+    go->setInlierThreshold (hv_params_.inlier_threshold_);
+    go->setRadiusClutter (hv_params_.radius_clutter_);
+    go->setRegularizer (hv_params_.regularizer_ );
+    go->setClutterRegularizer (hv_params_.clutter_regularizer_);
+    go->setColorSigma (hv_params_.color_sigma_l_, hv_params_.color_sigma_ab_);
+    go->setOcclusionCloud (occlusion_cloud);
     go->setSceneCloud (pInputCloud_);
     go->setNormalsForClutterTerm(pSceneNormals_);
 
-    //addModels
+
+#ifdef USE_CUDA
+    std::vector<typename pcl::PointCloud<PointT>::ConstPtr> aligned_models;
+    std::vector<pcl::PointCloud<pcl::Normal>::ConstPtr> aligned_normals;
+    std::vector<pcl::PointCloud<pcl::PointXYZL>::Ptr> aligned_smooth_faces;
+
+    aligned_models.resize (models_->size ());
+    aligned_smooth_faces.resize (models_->size ());
+    aligned_normals.resize (models_->size ());
+
+    std::map<std::string, int> id_to_model_clouds;
+    std::map<std::string, int>::iterator it;
+    std::vector<Eigen::Matrix4f> transformations;
+    std::vector<int> transforms_to_models;
+    transforms_to_models.resize(models_->size());
+    transformations.resize(models_->size());
+
+    int individual_models = 0;
+
+    for (size_t kk = 0; kk < models_->size (); kk++)
+    {
+
+        int pos = 0;
+        it = id_to_model_clouds.find(models_->at(kk)->id_);
+        if(it == id_to_model_clouds.end())
+        {
+            //not included yet
+            ConstPointInTPtr model_cloud = models_->at (kk)->getAssembled (hv_params_.resolution_);
+            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = models_->at (kk)->getNormalsAssembled (hv_params_.resolution_);
+            aligned_models[individual_models] = model_cloud;
+            aligned_normals[individual_models] = normal_cloud;
+            pos = individual_models;
+
+            id_to_model_clouds.insert(std::make_pair(models_->at(kk)->id_, individual_models));
+
+            individual_models++;
+        }
+        else
+        {
+            pos = it->second;
+        }
+
+        transformations[kk] = transforms_->at(kk);
+        transforms_to_models[kk] = pos;
+    }
+
+    aligned_models.resize(individual_models);
+    aligned_normals.resize(individual_models);
+    std::cout << "aligned models size:" << aligned_models.size() << " " << models_->size() << std::endl;
+
+    go->addModelNormals(aligned_normals);
+    go->addModels(aligned_models, transformations, transforms_to_models);
+#else
     go->addModels (aligned_models_, true);
 
-//    if(aligned_models_.size() == aligned_smooth_faces_.size())
-//        go->setSmoothFaces(aligned_smooth_faces_);
+    if(aligned_models_.size() == aligned_smooth_faces_.size())
+        go->setSmoothFaces(aligned_smooth_faces_);
 
     go->addNormalsClouds(aligned_normals_);
+#endif
 
     //append planar models
     if(add_planes_)
@@ -178,7 +242,10 @@ bool Recognizer::hypothesesVerification(std::vector<bool> &mask_hv)
         return true;
     }
 
+#ifndef USE_CUDA
     go->setObjectIds(model_ids_);
+#endif
+
     //verify
     {
         pcl::ScopeTime t("Go verify");
@@ -629,7 +696,7 @@ bool Recognizer::recognize ()
       new_sift_local->setFeatureEstimator (cast_estimator);
       new_sift_local->setUseCache (true);
 //      new_sift_local_->setCGAlgorithm (cast_cg_alg);
-      new_sift_local->setKnn (5);
+      new_sift_local->setKnn (knn_sift_);
       new_sift_local->setUseCache (true);
       new_sift_local->setSaveHypotheses(true);
       new_sift_local->initialize (false);

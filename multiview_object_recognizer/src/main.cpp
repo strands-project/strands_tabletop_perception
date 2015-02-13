@@ -8,6 +8,9 @@
 #include <v4r/ORUtils/filesystem_utils.h>
 
 #include <pcl/io/pcd_io.h>
+
+#define USE_WILLOW_DATASET_FOR_EVAL
+
 ros::ServiceClient client_;
 
 int main (int argc, char **argv)
@@ -216,13 +219,13 @@ int main (int argc, char **argv)
     {
         int id = 0;
 
-//        for (pSingleview_recognizer->hv_params_.regularizer_ = 3; pSingleview_recognizer->hv_params_.regularizer_ <= 7; pSingleview_recognizer->hv_params_.regularizer_+=1)
+//        for (pSingleview_recognizer->hv_params_.regularizer_ = 1; pSingleview_recognizer->hv_params_.regularizer_ <= 7; pSingleview_recognizer->hv_params_.regularizer_+=2)
         {
-//        for (pSingleview_recognizer->hv_params_.color_sigma_l_ = 0.2; pSingleview_recognizer->hv_params_.color_sigma_l_ <= 0.6; pSingleview_recognizer->hv_params_.color_sigma_l_ +=0.2)
+//        for (pSingleview_recognizer->hv_params_.color_sigma_l_ = 0.2; pSingleview_recognizer->hv_params_.color_sigma_l_ <= 0.4; pSingleview_recognizer->hv_params_.color_sigma_l_ +=0.2)
         {
-//            for (pSingleview_recognizer->hv_params_.clutter_regularizer_ = 0.5;
-//                 pSingleview_recognizer->hv_params_.clutter_regularizer_ < 2.6;
-//                 pSingleview_recognizer->hv_params_.clutter_regularizer_ += 0.9)
+//            for (pSingleview_recognizer->hv_params_.clutter_regularizer_ = 1;
+//                 pSingleview_recognizer->hv_params_.clutter_regularizer_ <= 5;
+//                 pSingleview_recognizer->hv_params_.clutter_regularizer_ += 2)
             {
 
 //                if ((pSingleview_recognizer->hv_params_.regularizer_ == 3 &&
@@ -277,7 +280,7 @@ int main (int argc, char **argv)
 //            std::string scenes_dir = scenes_dir_ss.str();
 
 
-            std::cout << "Starting eval for " << seq_path_ss.str();
+            std::cout << "Starting eval for " << seq_path_ss.str() << std::endl;
             boost::filesystem::path scenes_dir_bf = seq_path_ss.str();
             std::vector < std::string > files_intern;
             std::string start = "";
@@ -355,19 +358,19 @@ int main (int argc, char **argv)
                 std::stringstream or_filepath_parameter_ss_sv;
                 or_filepath_parameter_ss_sv << or_folderpath_sv_ss.str() << "parameter.nfo";
                 ofstream or_file;
-                or_file.open (or_filepath_parameter_ss_sv.str());
+                or_file.open (or_filepath_parameter_ss_sv.str().c_str());
                 or_file << param_file_text.str();
                 or_file.close();
 
                 std::stringstream or_filepath_parameter_ss_mv;
                 or_filepath_parameter_ss_mv << or_folderpath_mv_ss.str() << "parameter.nfo";
-                or_file.open (or_filepath_parameter_ss_mv.str());
+                or_file.open (or_filepath_parameter_ss_mv.str().c_str());
                 or_file << param_file_text.str();
                 or_file.close();
 
                 or_filepath_parameter_ss_mv.str(std::string());
                 or_filepath_parameter_ss_mv << or_folderpath_mv_ss.str() << "view_temporal_order.nfo";
-                or_file.open (or_filepath_parameter_ss_mv.str());
+                or_file.open (or_filepath_parameter_ss_mv.str().c_str());
                 for (size_t file_id=0; file_id < files_intern.size(); file_id++)
                 {
                     or_file << files_intern[file_id] << std::endl;
@@ -385,17 +388,37 @@ int main (int argc, char **argv)
                     transform.clear();
 
                     std::stringstream transform_ss;
+#ifndef USE_WILLOW_DATASET_FOR_EVAL
                     transform_ss << dataset_path << "/" << scene_folder[seq_id] << "/" << transform_prefix_ << files_intern[file_id].substr(0, files_intern[file_id].length() - ext.length()) << "txt";
+#else
+                    transform_ss << dataset_path << "/" << scene_folder[seq_id] << "/" << "pose_" << files_intern[file_id].substr(6, files_intern[file_id].length() - ext.length()-6) << "txt";
+#endif
                     std::cout << "Checking if path " << transform_ss.str() << " for transform exists. " << std::endl;
 
                     if ( boost::filesystem::exists( transform_ss.str() ) )
                     {
                         std::cout << "File exists." << std::endl;
-                        std::ifstream is(transform_ss.str());
+                        std::ifstream is(transform_ss.str().c_str());
+
+#ifdef USE_WILLOW_DATASET_FOR_EVAL
+                        std::string s;
+                        std::vector<std::string> file_parts;
+                        std::getline( is, s );
+                        std::istringstream ss( s );
+                        std::vector<double> numbers;
+                        while (ss)
+                        {
+                          std::string s;
+                          if (!std::getline( ss, s, ' ' )) break;
+                          file_parts.push_back( s );
+                          if(file_parts.size()>1)
+                              numbers.push_back(atof(s.c_str()));
+                        }
+#else
                         std::istream_iterator<double> start(is), end;
                         std::vector<double> numbers(start, end);
                         std::cout << "Read " << numbers.size() << " numbers" << std::endl;
-
+#endif
                         // print the numbers to stdout
                         std::cout << "Transform to world coordinate system: " << std::endl;
                         for(size_t i=0; i<numbers.size(); i++)
