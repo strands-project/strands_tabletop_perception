@@ -228,7 +228,7 @@ int main (int argc, char **argv)
 //                 pSingleview_recognizer->hv_params_.clutter_regularizer_ += 2)
             {
 
-//                if ((pSingleview_recognizer->hv_params_.regularizer_ == 3 &&
+//                if ((pSingleview_recognizer->hv_params_.regularizer_ == 5 &&
 //                     pSingleview_recognizer->hv_params_.color_sigma_l_ == 0.2 &&
 //                     pSingleview_recognizer->hv_params_.clutter_regularizer_ <= 1.5))
 ////                    || (pSingleview_recognizer->cg_params_.cg_size_ ==0.01 && pSingleview_recognizer->cg_params_.cg_size_threshold_ == 4
