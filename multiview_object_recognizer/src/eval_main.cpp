@@ -225,9 +225,7 @@ int main (int argc, char **argv)
     {
         std::cout << "Starting eval for " << scenes_dir_ss.str();
         std::vector < std::string > files_intern;
-        std::string start = "";
-        std::string ext = std::string ("pcd");
-        faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, start, files_intern, ext);
+        faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, files_intern, "", ".*.pcd", true);
 
         if (files_intern.size())
         {

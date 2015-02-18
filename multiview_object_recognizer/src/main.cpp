@@ -9,7 +9,7 @@
 
 #include <pcl/io/pcd_io.h>
 
-#define USE_WILLOW_DATASET_FOR_EVAL
+//#define USE_WILLOW_DATASET_FOR_EVAL
 
 ros::ServiceClient client_;
 
@@ -283,9 +283,7 @@ int main (int argc, char **argv)
             std::cout << "Starting eval for " << seq_path_ss.str() << std::endl;
             boost::filesystem::path scenes_dir_bf = seq_path_ss.str();
             std::vector < std::string > files_intern;
-            std::string start = "";
-            std::string ext = "pcd";
-            faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, start, files_intern, ext);
+            faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, files_intern, "", ".*.pcd", true);
 
             if(play_sequence_randomly)
                 std::random_shuffle(files_intern.begin(), files_intern.end());
@@ -389,9 +387,9 @@ int main (int argc, char **argv)
 
                     std::stringstream transform_ss;
 #ifndef USE_WILLOW_DATASET_FOR_EVAL
-                    transform_ss << dataset_path << "/" << scene_folder[seq_id] << "/" << transform_prefix_ << files_intern[file_id].substr(0, files_intern[file_id].length() - ext.length()) << "txt";
+                    transform_ss << dataset_path << "/" << scene_folder[seq_id] << "/" << transform_prefix_ << files_intern[file_id].substr(0, files_intern[file_id].length() - 3) << "txt";
 #else
-                    transform_ss << dataset_path << "/" << scene_folder[seq_id] << "/" << "pose_" << files_intern[file_id].substr(6, files_intern[file_id].length() - ext.length()-6) << "txt";
+                    transform_ss << dataset_path << "/" << scene_folder[seq_id] << "/" << "pose_" << files_intern[file_id].substr(6, files_intern[file_id].length() - 3 - 6 ) << "txt";
 #endif
                     std::cout << "Checking if path " << transform_ss.str() << " for transform exists. " << std::endl;
 
@@ -437,7 +435,7 @@ int main (int argc, char **argv)
                     std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > transforms_mv;
                     myWorld.recognize(pScene,
                                       scene_folder[seq_id],
-                                      files_intern[file_id].substr(0, files_intern[file_id].length() - ext.length() - 1),
+                                      files_intern[file_id].substr(0, files_intern[file_id].length() - 3 - 1),
                                       ros::Time::now().nsec,
                                       transform,
                                       models_mv,
