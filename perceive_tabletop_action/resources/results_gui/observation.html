@@ -1,4 +1,4 @@
-$def with (table_name,stamp,nice_stamp,objects,view_no,view_count)
+$def with (table_name,stamp,nice_stamp,objects)
 
 <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
 <script src="/static/jquery.min.js"></script>
@@ -48,6 +48,9 @@ var next_visualise_qsr = function(qq) {
     );
 }
 
+var resegment = function() {
+jQuery("#status").load("/resegment/$table_name/$stamp");
+};
 </script>
 
 <div class="row">
@@ -90,8 +93,14 @@ var next_visualise_qsr = function(qq) {
             <ul>
             <li>Date and Time: $nice_stamp</li>
             <li>ROS Time: $stamp</li>
-            <li>View $view_no of $view_count in perceive_tabletop_action session</li>
+            <!--<li>View view_no of view_count in perceive_tabletop_action session</li>-->
             </ul>
+            $ prev=report.get_prev_stamp(table_name, float(stamp))
+            $if prev is not None:
+                <a href="/observation/$table_name/${'%f'%prev[0].stamp}">Prev</a>
+            $ next = report.get_next_stamp(table_name, float(stamp))
+            $if next is not None:
+                <a href="/observation/$table_name/${'%f'%next[0].stamp}">Next</a>
         </div>
         <div class="row">
             <h4>Objects in Scene</h4>
@@ -100,6 +109,11 @@ var next_visualise_qsr = function(qq) {
                 <li>$obj.identification.class_type[0], 
                 confidence=$obj.identification.class_type[1], id=$obj.name</li>
             </ul>
+        </div>
+        <div class="row">
+            <h4>Utilities</h4>
+            <button type="button" onclick="resegment();" class="btn btn-default">Resegment Table</button>
+
         </div>
         <div class="row">
             <h4>Visualisations</h4>

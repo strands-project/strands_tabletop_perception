@@ -70,7 +70,6 @@ bool service_callback(table_segmentation::SegmentTable::Request& req,
 {
     std::vector<boost::shared_ptr<strands_perception_msgs::Table> > results;
     std::string name = req.table_id;
-
     //Get it back, by default get one
     if (!messageStore->queryNamed<strands_perception_msgs::Table>(name, results)) {
         ROS_ERROR("Couldn't find table %s in datacentre.", name.c_str());
@@ -83,48 +82,43 @@ bool service_callback(table_segmentation::SegmentTable::Request& req,
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr msg_cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
     pcl::fromROSMsg(req.cloud, *msg_cloud);
     size_t n = msg_cloud->points.size();
-
+    
+       
     Matrix3f R;
     Vector3f t;
-    if(req.transform.size()==16)
-    {
-        Eigen::Matrix4f trans;
-        for (size_t row=0; row <4; row++)
-        {
-            for(size_t col=0; col<4; col++)
-            {
-                trans(row, col) = req.transform[4*row + col];
-            }
-        }
-        R = trans.block<3,3>(0,0);
-        t(0) = trans(0,3);
-        t(1) = trans(1,3);
-        t(2) = trans(2,3);
+	if (req.transform.size() == 16) { // we got a transform supplied already
+	    Eigen::Matrix<float, 4, 4, Eigen::RowMajor> transform;
+		std::cout << "A transform was supplied, not using ROS TF" << std::endl;
+		for (unsigned int i=0;i<16;i++) {
+		  *(transform.data()+i) = req.transform[i];
+		}		
+		//basis = transform.topLeftCorner<3,3>();
+		R = transform.block<3,3>(0,0);
+		t = transform.block<3,1>(0,3);
+		std::cout << R << std::endl;
+		std::cout << t << std::endl;
+	} else {
+		std::string dest_frame = "/map";
+		tf::StampedTransform transform;
+		try {
+			//listener->transformPointCloud("/head_xtion_rgb_optical_frame", msg->header.stamp, *msg, msg->header.frame_id, cout);
+			listener->lookupTransform(dest_frame, req.cloud.header.frame_id, req.cloud.header.stamp, transform);
+		}
+		catch (tf::TransformException ex) {
+			ROS_INFO("%s",ex.what());
+			return false;
+		}
+	 
+		tf::Vector3 origin = transform.getOrigin();
+		tf::Matrix3x3 basis = transform.getBasis();
+		for (size_t i = 0; i < 3; ++i) {
+			t(i) = origin.m_floats[i];
+			for (size_t j = 0; j < 3; ++j) {
+				R(i, j) = basis.getRow(i).m_floats[j];
+			}
+		}
     }
-    else
-    {
-        std::cout << "Getting transform to map..." << std::endl;
-        std::string dest_frame = "/map";
-        tf::StampedTransform transform;
-        try {
-            //listener->transformPointCloud("/head_xtion_rgb_optical_frame", msg->header.stamp, *msg, msg->header.frame_id, cout);
-            listener->lookupTransform(dest_frame, req.cloud.header.frame_id, req.cloud.header.stamp, transform);
-        }
-        catch (tf::TransformException ex) {
-            ROS_INFO("%s",ex.what());
-            return false;
-        }
-
-        tf::Matrix3x3 basis = transform.getBasis();
-        tf::Vector3 origin = transform.getOrigin();
-
-        for (size_t i = 0; i < 3; ++i) {
-            t(i) = origin.m_floats[i];
-            for (size_t j = 0; j < 3; ++j) {
-                R(i, j) = basis.getRow(i).m_floats[j];
-            }
-        }
-    }
+	
     
     Vector3f point;
     Vector2f point2d;
@@ -138,9 +132,9 @@ bool service_callback(table_segmentation::SegmentTable::Request& req,
         ly = point2d.dot(axes.col(1));
         // check if inbetween certain heights and in table rectangle
         if (lx < -lengths(0)/2.0 || lx > lengths(0)/2.0 || ly < -lengths(1)/2.0 || ly > lengths(1)/2.0 || point(2) < zmin) {
-            msg_cloud->points[i].x = std::numeric_limits<float>::quiet_NaN ();;
-            msg_cloud->points[i].y = std::numeric_limits<float>::quiet_NaN ();;
-            msg_cloud->points[i].z = std::numeric_limits<float>::quiet_NaN ();;
+            msg_cloud->points[i].x = INFINITY;
+            msg_cloud->points[i].y = INFINITY;
+            msg_cloud->points[i].z = INFINITY;
         }
     }
     
