@@ -12,8 +12,8 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <faat_pcl/utils/filesystem_utils.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
+#include <v4r/ORUtils/filesystem_utils.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/transformation_estimation_svd.h>
 #include "classifier_srv_definitions/mv_classify.h"
@@ -155,7 +155,6 @@ public:
     {
         //iterate over files and register them, then call service incrementally
         bf::path p = files_folder_;
-        std::string pattern = "cloud.*.pcd";
         std::string session_id;
         srand(time(NULL));
         gen_random(session_id, 10);
@@ -164,7 +163,7 @@ public:
         std::vector<pcl::PointCloud<FeatureT>::Ptr> signatures;
         std::vector<pcl::PointCloud<PointT>::Ptr> keypoints;
         std::vector<pcl::PointCloud<PointT>::Ptr> clouds;
-        faat_pcl::utils::getFilesInDirectory(p, files, pattern);
+        faat_pcl::utils::getFilesInDirectory(p, files, "", "cloud.*.pcd", false);
 
         std::cout << files.size() << std::endl;
         clouds.resize(files.size());

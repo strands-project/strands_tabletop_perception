@@ -12,12 +12,12 @@
 #include <pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <faat_pcl/3d_rec_framework/pc_source/mesh_source.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/vfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/esf_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/cvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/utils/metrics.h>
-#include <faat_pcl/3d_rec_framework/pipeline/global_nn_classifier.h>
+#include <v4r/ORFramework/mesh_source.h>
+#include <v4r/ORFramework/vfh_estimator.h>
+#include <v4r/ORFramework/esf_estimator.h>
+#include <v4r/ORFramework/cvfh_estimator.h>
+#include <v4r/ORFramework/metrics.h>
+#include <v4r/ORFramework/global_nn_classifier.h>
 #include "classifier_srv_definitions/segment_and_classify.h"
 #include "classifier_srv_definitions/classify.h"
 #include "object_perception_msgs/classification.h"
@@ -31,6 +31,7 @@
 #include "geometry_msgs/Point32.h"
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
+#include <sstream>
 
 class ShapeClassifier
 {
@@ -86,9 +87,9 @@ class ShapeClassifier
           for(size_t kk=0; kk < req.clusters_indices[i].data.size(); kk++)
           {
               cluster_indices_int.push_back(static_cast<int>(req.clusters_indices[i].data[kk]));
-                pClusteredPCl->at(req.clusters_indices[i].data[kk]).r = r;
-                pClusteredPCl->at(req.clusters_indices[i].data[kk]).g = g;
-                pClusteredPCl->at(req.clusters_indices[i].data[kk]).b = b;
+                pClusteredPCl->at(req.clusters_indices[i].data[kk]).r = 0.8*r;
+                pClusteredPCl->at(req.clusters_indices[i].data[kk]).g = 0.8*g;
+                pClusteredPCl->at(req.clusters_indices[i].data[kk]).b = 0.8*b;
           }
 
           classifier_->setIndices(cluster_indices_int);
@@ -175,18 +176,19 @@ class ShapeClassifier
             marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
             marker.action = visualization_msgs::Marker::ADD;
             marker.pose.position.x = centroid_ros.x;
-            marker.pose.position.y = centroid_ros.y;
-            marker.pose.position.z = centroid_ros.z;
+            marker.pose.position.y = centroid_ros.y - 0.1;
+            marker.pose.position.z = centroid_ros.z - 0.1;
             marker.pose.orientation.x = 0;
             marker.pose.orientation.y = 0;
             marker.pose.orientation.z = 0;
             marker.pose.orientation.w = 1.0;
             marker.scale.z = 0.1;
             marker.color.a = 1.0;
-            marker.color.r = 0.8*r/255.f;
-            marker.color.g = 0.8*g/255.f;
-            marker.color.b = 0.8*b/255.f;
+            marker.color.r = r/255.f;
+            marker.color.g = g/255.f;
+            marker.color.b = b/255.f;
             std::stringstream marker_text;
+            marker_text.precision(2);
             marker_text << categories_[0] << conf_[0];
             marker.text = marker_text.str();
             markerArray_.markers.push_back(marker);

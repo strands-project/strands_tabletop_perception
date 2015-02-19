@@ -10,8 +10,6 @@
   <maintainer email="aldoma@acin.tuwien.ac.at">Aitor Aldoma</maintainer>
   <maintainer email="faeulhammer@acin.tuwien.ac.at">Thomas Fäulhammer</maintainer>
 
-
-
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
   <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
@@ -48,7 +46,7 @@
 	<build_depend>object_perception_msgs</build_depend>
     <build_depend>segmentation_srv_definitions</build_depend>
     <build_depend>classifier_srv_definitions</build_depend>
-    <build_depend>strandsv4r</build_depend>
+    <build_depend>strands_v4r</build_depend>
     <build_depend>pcl_conversions</build_depend>
 	<run_depend>roscpp</run_depend>
 	<run_depend>sensor_msgs</run_depend>
@@ -56,7 +54,7 @@
     <run_depend>object_perception_msgs</run_depend>
     <run_depend>segmentation_srv_definitions</run_depend>
     <run_depend>classifier_srv_definitions</run_depend>
-    <run_depend>strandsv4r</run_depend>
+    <run_depend>strands_v4r</run_depend>
     <run_depend>pcl_conversions</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->

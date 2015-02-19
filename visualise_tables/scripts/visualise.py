@@ -120,8 +120,8 @@ class Visualiser(object):
 
         self._marker_server.insert(marker, self._marker_feedback)
         self._marker_server.applyChanges()
-
-        self._marker_server.setPose( marker.name, table.pose.pose )
+        
+	self._marker_server.setPose( marker.name, table.pose.pose )
         self._marker_server.applyChanges()
 
 

@@ -1,9 +1,9 @@
 
 <launch>
 
-	<arg name="models_dir" default="/media/Data/datasets/my_classifier/Cat200_ModelDatabase__small" />
-	<arg name="training_dir" default="/media/Data/datasets/my_classifier/class_trained" />
-
+	<arg name="models_dir" default="~/data/Cat200_ModelDatabase__small" />
+	<arg name="training_dir" default="~/data/Cat200_ModelDatabase__small_trained" />
+	
 	<arg name="descriptor_name" default="esf" />
 	<arg name="nn" default="13" />
 	<arg name="chop_z" default="3.5" />
@@ -14,6 +14,7 @@
 	<arg name="sensor_noise_max" default="0.01" />
 	<arg name="table_range_min" default="0.6" />
 	<arg name="table_range_max" default="0.75" />
+	<arg name="max_angle_plane_to_ground" default="15.0" />
 
 	<arg name="segmenation_models_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.model.txt" />
 	<arg name="segmentation_scaling_filename" default="$(find object_rgbd_segmenter)/data/ST-TrainAll.scalingparams.txt" />
@@ -45,5 +46,6 @@
                 <param name="sensor_noise_max" value="$(arg sensor_noise_max)" type="double"/>
                 <param name="table_range_min" value="$(arg table_range_min)" type="double" />
                 <param name="table_range_max" value="$(arg table_range_max)" type="double" />
+		<param name="max_angle_plane_to_ground" value="$(arg max_angle_plane_to_ground)" type="double" />
 	</node>
 </launch>

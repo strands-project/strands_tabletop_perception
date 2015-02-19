@@ -1,13 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(pcl_object_segmenter)
-SET (CMAKE_BUILD_TYPE RelWithDebInfo)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS segmentation_srv_definitions roscpp rospy sensor_msgs std_msgs strandsv4r tf)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
+find_package(catkin REQUIRED COMPONENTS segmentation_srv_definitions roscpp rospy sensor_msgs std_msgs strands_v4r tf)
 find_package(PCL REQUIRED)
 
 ## System dependencies are found with CMake's conventions
@@ -34,7 +31,7 @@ find_package(PCL REQUIRED)
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES grasping_recognition_master
-   CATKIN_DEPENDS segmentation_srv_definitions strandsv4r
+   CATKIN_DEPENDS segmentation_srv_definitions strands_v4r
 #  DEPENDS system_lib
 )
 
@@ -73,11 +70,13 @@ add_dependencies(pcl_object_segmenter_demo ${catkin_EXPORTED_TARGETS} ${STRANDSV
 target_link_libraries(pcl_object_segmenter_service
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
+    ${STRANDSV4R_LIBS}
 )
 
 target_link_libraries(pcl_object_segmenter_demo
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
+    ${STRANDSV4R_LIBS}
 )
 
 #############

@@ -6,6 +6,7 @@ typedef pcl::PointXYZRGB PointT;
 
 
 std::string indices_prefix_ = "object_indices_";
+std::string cloud_prefix = "view_";
 
 
 struct IndexPoint
@@ -48,7 +49,7 @@ void getFilenamesFromFolder(const std::string dir, std::vector<std::string> & fi
 #if BOOST_FILESYSTEM_VERSION == 3
         path = dir_bf.string() + "/" +  (itr->path ().filename ()).string();
 #else
-        path = dir + "/" +  (itr->path ()).filename ();
+        path = dir + "/" +  itr->path ().filename ();
 #endif
 
         if (bf::is_directory (*itr))
@@ -84,8 +85,9 @@ void getFileList(const std::string dir, std::vector<std::string> &fileList_v)
         }
 
         std::stringstream path_indices;
-        path_indices << directory << "/" << indices_prefix_ << filename ;
+        path_indices << directory << "/" << indices_prefix_ << filename.erase(0, cloud_prefix.length()) ;
 
+        std::cout << "Checking if " << path_indices.str() << " exists. " << std::endl;
         if(bf::exists(path_indices.str()))
         {
             fileList_v.push_back(path);
@@ -105,6 +107,10 @@ main (int argc, char ** argv)
     {
         std::cerr << "No input dir set. " << std::endl;
         return -1;
+    }
+    else
+    {
+        std::cout << "Input dir set to: " << dir << std::endl;
     }
 
     std::vector <std::string> fileList_v;
@@ -161,7 +167,7 @@ std:cout << fileList_v[i] << std::endl;
         }
 
         std::stringstream path_indices;
-        path_indices << directory << "/" << indices_prefix_ << filename ;
+        path_indices << directory << "/" << indices_prefix_ << filename.erase(0, cloud_prefix.length()) ;
 
         pcl::PointCloud<IndexPoint> obj_indices_cloud;
         pcl::io::loadPCDFile (path_indices.str(), obj_indices_cloud);

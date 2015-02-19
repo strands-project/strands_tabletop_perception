@@ -1,0 +1,9 @@
+# Define the goal
+string scene_name
+uint32 session_id
+---
+# Define the result
+uint32 view_id
+---
+# Define a feedback message
+string status

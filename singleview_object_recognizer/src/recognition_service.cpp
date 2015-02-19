@@ -9,32 +9,30 @@
 
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+#include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
-#include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
-#include <faat_pcl/3d_rec_framework/pc_source/partial_pcd_source.h>
 #include "segmenter.h"
-#include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
-#include <faat_pcl/3d_rec_framework/pipeline/local_recognizer.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/ourcvfh_estimator.h>
-#include "faat_pcl/3d_rec_framework/utils/metrics.h"
-#include <faat_pcl/3d_rec_framework/pc_source/registered_views_source.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/sift_local_estimator.h>
-#include <faat_pcl/recognition/cg/graph_geometric_consistency.h>
-#include <faat_pcl/3d_rec_framework/pipeline/multi_pipeline_recognizer.h>
-#include <faat_pcl/recognition/hv/hv_go_1.h>
-#include <faat_pcl/3d_rec_framework/segmentation/multiplane_segmentation.h>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/global/organized_color_ourcvfh_estimator.h>
-#include <faat_pcl/3d_rec_framework/pipeline/global_nn_recognizer_cvfh.h>
-#include <faat_pcl/3d_rec_framework/utils/metrics.h>
+#include <v4r/ORFramework/color_ourcvfh_estimator.h>
+#include <v4r/ORFramework/global_nn_recognizer_cvfh.h>
+#include <v4r/ORFramework/local_recognizer.h>
+#include <v4r/ORFramework/metrics.h>
+#include <v4r/ORFramework/multi_pipeline_recognizer.h>
+#include <v4r/ORFramework/multiplane_segmentation.h>
+#include <v4r/ORFramework/opencv_sift_local_estimator.h>
+#include <v4r/ORFramework/organized_color_ourcvfh_estimator.h>
+#include <v4r/ORFramework/ourcvfh_estimator.h>
+#include <v4r/ORFramework/partial_pcd_source.h>
+#include <v4r/ORFramework/registered_views_source.h>
+#include <v4r/ORFramework/sift_local_estimator.h>
+#include <v4r/ORRecognition/correspondence_grouping.h>
+#include <v4r/ORRecognition/graph_geometric_consistency.h>
+#include <v4r/ORRecognition/hv_go_3D.h>
 #include "recognition_srv_definitions/recognize.h"
-#include <pcl/apps/dominant_plane_segmentation.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
-#include <faat_pcl/3d_rec_framework/feature_wrapper/local/image/opencv_sift_local_estimator.h>
 
 #define USE_SIFT_GPU
 //#define SOC_VISUALIZE
@@ -71,6 +69,7 @@ private:
   int v1_,v2_, v3_;
   ros::ServiceServer recognize_;
   boost::shared_ptr<ros::NodeHandle> n_;
+  ros::Publisher vis_pc_pub_;
   int cg_size_;
   bool ignore_color_;
 
@@ -92,8 +91,8 @@ private:
     bool add_planes = true;
 
     //initialize go
-    boost::shared_ptr<faat_pcl::GlobalHypothesesVerification_1<PointT, PointT> > go (
-                    new faat_pcl::GlobalHypothesesVerification_1<PointT,
+    boost::shared_ptr<faat_pcl::GHV<PointT, PointT> > go (
+                    new faat_pcl::GHV<PointT,
                     PointT>);
 
     go->setSmoothSegParameters(0.1, 0.035, 0.005);
@@ -213,7 +212,8 @@ private:
     if(model_ids.size() == 0)
     {
         ROS_DEBUG("No models to verify, returning.\n");
-        return false;
+        ROS_ERROR("Cancelling service request.");
+        return true;
     }
 
     go->setObjectIds(model_ids);
@@ -328,6 +328,9 @@ private:
 
     //parse verified_models and generate response to service call
       //vector of id + pose
+
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pRecognizedModels (new pcl::PointCloud<pcl::PointXYZRGB>);
+
     for (size_t j = 0; j < verified_models->size (); j++)
     {
       std_msgs::String ss;
@@ -347,7 +350,18 @@ private:
       tt.rotation.z = q.z();
       tt.rotation.w = q.w();
       response.transforms.push_back(tt);
+
+
+      ConstPointInTPtr model_cloud = verified_models->at(j)->getAssembled (0.01);
+      typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
+      pcl::transformPointCloud (*model_cloud, *model_aligned, verified_transforms->at(j));
+      *pRecognizedModels += *model_aligned;
     }
+    sensor_msgs::PointCloud2 recognizedModelsRos;
+    pcl::toROSMsg (*pRecognizedModels, recognizedModelsRos);
+    recognizedModelsRos.header.frame_id = "camera_link";
+    vis_pc_pub_.publish(recognizedModelsRos);
+
 
 #ifdef SOC_VISUALIZE
     vis_->spin ();
@@ -363,7 +377,7 @@ public:
     do_sift_ = true;
     do_ourcvfh_ = false;
     icp_iterations_ = 0;
-    cg_size_ = 5;
+    cg_size_ = 3;
 
 #ifdef SOC_VISUALIZE
     vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
@@ -388,6 +402,7 @@ public:
       n_->getParam ( "do_ourcvfh", do_ourcvfh_);
       n_->getParam ( "ignore_color", ignore_color_);
 
+      std::cout << chop_at_z_ << ", " << ignore_color_ << std::endl;
     if (models_dir_.compare ("") == 0)
     {
       PCL_ERROR ("Set -models_dir option in the command line, ABORTING");
@@ -410,7 +425,7 @@ public:
     campos_constraints = camPosConstraints ();
 
     multi_recog_.reset (new faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT>);
-    boost::shared_ptr < pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
+    boost::shared_ptr <faat_pcl::CorrespondenceGrouping<PointT, PointT> > cast_cg_alg;
     boost::shared_ptr < faat_pcl::GraphGeometricConsistencyGrouping<PointT, PointT> > gcg_alg (
                                                                                                new faat_pcl::GraphGeometricConsistencyGrouping<
                                                                                                    PointT, PointT>);
@@ -423,7 +438,7 @@ public:
     gcg_alg->setMaxTaken(2);
     gcg_alg->setMaxTimeForCliquesComputation(100);
     gcg_alg->setDotDistance (0.2);
-    cast_cg_alg = boost::static_pointer_cast<pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
+    cast_cg_alg = boost::static_pointer_cast<faat_pcl::CorrespondenceGrouping<PointT, PointT> > (gcg_alg);
 
     if (do_sift_)
     {
@@ -583,7 +598,8 @@ public:
     multi_recog_->setICPIterations(icp_iterations_);
     multi_recog_->initialize();
 
-    recognize_ = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
+    recognize_  = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
+    vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "sv_recogniced_object_instances_", 1 );
     std::cout << "Ready to get service calls..." << std::endl;
     ros::spin ();
   }

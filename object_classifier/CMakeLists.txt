@@ -1,15 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(object_classifier)
-set(CMAKE_BUILD_TYPE Debug)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp sensor_msgs std_msgs segmentation_srv_definitions classifier_srv_definitions object_perception_msgs strandsv4r)
+find_package(catkin REQUIRED COMPONENTS roscpp sensor_msgs std_msgs segmentation_srv_definitions classifier_srv_definitions object_perception_msgs strands_v4r table_segmentation)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-include(${CMAKE_CURRENT_SOURCE_DIR}/../use_v4r_pcl.cmake)
 find_package(PCL 1.7 REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
@@ -36,7 +34,7 @@ include_directories(${PCL_INCLUDE_DIRS})
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES object_classifier
-   CATKIN_DEPENDS segmentation_srv_definitions classifier_srv_definitions strandsv4r
+   CATKIN_DEPENDS segmentation_srv_definitions classifier_srv_definitions strands_v4r table_segmentation
 #  DEPENDS system_lib
 )
 
@@ -70,11 +68,13 @@ add_dependencies(object_classifier_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_
  target_link_libraries(object_classifier_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
+  ${STRANDSV4R_LIBS}
 )
 
 target_link_libraries(object_classifier_demo_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
+  ${STRANDSV4R_LIBS}
   )
 
 #############
