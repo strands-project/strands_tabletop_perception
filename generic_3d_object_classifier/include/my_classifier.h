@@ -15,6 +15,7 @@
 
 #include <v4r/ORFramework/unregistered_views_source.h>
 #include <v4r/ORFramework/source2d.h>
+#include <v4r/ORUtils/filesystem_utils.h>
 
 #include <v4r/SVM/svmWrapper.h>
 

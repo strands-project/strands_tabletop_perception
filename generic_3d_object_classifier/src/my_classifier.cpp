@@ -101,10 +101,8 @@ void MyClassifier::init()
     if(bf::is_directory(trained_dir_))
     {
         std::vector<std::string> training_filenames;
-        std::string empty_string = "";
-        std::string extension = "txt";
 
-        pPCSource_->getFilesInDirectory(trained_dir_bf, empty_string, training_filenames, extension);
+        faat_pcl::utils::getFilesInDirectory(trained_dir_bf, training_filenames, "", ".*.txt", false);
         for(int i=0; i<training_filenames.size(); i++)
         {
             std::cout << training_filenames[i] << std::endl;
