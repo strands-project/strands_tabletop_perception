@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <v4r/ORUtils/filesystem_utils.h>
+#include <v4r/utils/filesystem_utils.h>
 
 #include <pcl/io/pcd_io.h>
 
@@ -261,7 +261,7 @@ int main (int argc, char **argv)
         std::vector < std::string > scene_folder;
         bf::path dir = dataset_path;
         std::string start = "";
-        faat_pcl::utils::getFoldersInDirectory(dir, start, scene_folder);
+        v4r::utils::getFoldersInDirectory(dir, start, scene_folder);
 
         std::cout << "There are " << scene_folder.size() << " folders in directory " << dataset_path << "." << std::endl;
 
@@ -283,7 +283,7 @@ int main (int argc, char **argv)
             std::cout << "Starting eval for " << seq_path_ss.str() << std::endl;
             boost::filesystem::path scenes_dir_bf = seq_path_ss.str();
             std::vector < std::string > files_intern;
-            faat_pcl::utils::getFilesInDirectory (scenes_dir_bf, files_intern, "", ".*.pcd", true);
+            v4r::utils::getFilesInDirectory (scenes_dir_bf, files_intern, "", ".*.pcd", true);
 
             if(play_sequence_randomly)
                 std::random_shuffle(files_intern.begin(), files_intern.end());

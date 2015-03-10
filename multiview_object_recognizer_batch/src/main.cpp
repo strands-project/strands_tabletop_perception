@@ -51,7 +51,7 @@
 #include <v4r/ORRecognition/hv_go_3D.h>
 #include <v4r/ORRegistration/fast_icp_with_gc.h>
 //#include <faat_pcl/registration/mv_lm_icp.h>
-#include <v4r/ORUtils/filesystem_utils.h>
+#include <v4r/utils/filesystem_utils.h>
 #include <v4r/ORUtils/registration_utils.h>
 #include <v4r/ORUtils/pcl_opencv.h>
 #include <v4r/ORUtils/noise_models.h>
@@ -1432,7 +1432,7 @@ main (int argc, char **argv)
                 {
                     std::stringstream pose_path;
                     pose_path << output_dir_3d_results << "/transformation_" << setw(5) << setfill('0') << i << ".txt";
-                    faat_pcl::utils::writeMatrixToFile(pose_path.str(), transforms_to_global[i]);
+                    v4r::utils::writeMatrixToFile(pose_path.str(), transforms_to_global[i]);
 
                     std::stringstream cloud_path;
                     cloud_path << output_dir_3d_results << "/cloud_" << setw(5) << setfill('0') << i << ".pcd";
@@ -1702,7 +1702,7 @@ main (int argc, char **argv)
                 std::stringstream pose_file;
                 pose_file << fn_str.str() << scene << "_" << model_id_replaced << "_" << id_c_it->second << ".txt";
                 std::cout << pose_file.str() << std::endl;
-                faat_pcl::utils::writeMatrixToFile(pose_file.str(), grph_final[*it_vrtx].hypothesis[hypVec_id].transform_);
+                v4r::utils::writeMatrixToFile(pose_file.str(), grph_final[*it_vrtx].hypothesis[hypVec_id].transform_);
                 //grph_final[*it_vrtx].hypothesis[hypVec_id].transform_
             }
         }
