@@ -12,7 +12,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/visualization/pcl_visualizer.h>
-#include <v4r/ORUtils/filesystem_utils.h>
+#include <v4r/utils/filesystem_utils.h>
 #include <v4r/ORFramework/sift_local_estimator.h>
 #include <pcl/registration/correspondence_rejection_sample_consensus.h>
 #include <pcl/registration/transformation_estimation_svd.h>
@@ -163,7 +163,7 @@ public:
         std::vector<pcl::PointCloud<FeatureT>::Ptr> signatures;
         std::vector<pcl::PointCloud<PointT>::Ptr> keypoints;
         std::vector<pcl::PointCloud<PointT>::Ptr> clouds;
-        faat_pcl::utils::getFilesInDirectory(p, files, "", "cloud.*.pcd", false);
+        v4r::utils::getFilesInDirectory(p, files, "", "cloud.*.pcd", false);
 
         std::cout << files.size() << std::endl;
         clouds.resize(files.size());

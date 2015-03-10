@@ -102,7 +102,7 @@ void MyClassifier::init()
     {
         std::vector<std::string> training_filenames;
 
-        faat_pcl::utils::getFilesInDirectory(trained_dir_bf, training_filenames, "", ".*.txt", false);
+        v4r::utils::getFilesInDirectory(trained_dir_bf, training_filenames, "", ".*.txt", false);
         for(int i=0; i<training_filenames.size(); i++)
         {
             std::cout << training_filenames[i] << std::endl;
