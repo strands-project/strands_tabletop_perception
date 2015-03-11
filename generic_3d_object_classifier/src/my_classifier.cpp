@@ -98,11 +98,9 @@ void MyClassifier::init()
     std::string indices_prefix = "object_indices_";
 
     bf::path trained_dir_bf = trained_dir_;
-    if(bf::is_directory(trained_dir_))
+    std::vector<std::string> training_filenames;
+    if(v4r::utils::getFilesInDirectory(trained_dir_, training_filenames, "", ".*.txt", false) != -1)
     {
-        std::vector<std::string> training_filenames;
-
-        v4r::utils::getFilesInDirectory(trained_dir_bf, training_filenames, "", ".*.txt", false);
         for(int i=0; i<training_filenames.size(); i++)
         {
             std::cout << training_filenames[i] << std::endl;
