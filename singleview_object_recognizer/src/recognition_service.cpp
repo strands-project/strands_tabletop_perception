@@ -23,6 +23,7 @@
 #include <v4r/ORFramework/multiplane_segmentation.h>
 #include <v4r/ORFramework/opencv_sift_local_estimator.h>
 #include <v4r/ORFramework/organized_color_ourcvfh_estimator.h>
+#include <v4r/ORFramework/shot_local_estimator_omp.h>
 #include <v4r/ORFramework/ourcvfh_estimator.h>
 #include <v4r/ORFramework/partial_pcd_source.h>
 #include <v4r/ORFramework/registered_views_source.h>
@@ -31,6 +32,7 @@
 #include <v4r/ORRecognition/graph_geometric_consistency.h>
 #include <v4r/ORRecognition/hv_go_3D.h>
 #include "recognition_srv_definitions/recognize.h"
+#include "recognition_srv_definitions/retrain_recognizer.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
 
@@ -58,24 +60,53 @@ private:
   typedef pcl::PointXYZRGB PointT;
   std::string models_dir_;
   std::string training_dir_sift_;
+  std::string training_dir_shot_;
   std::string sift_structure_;
   std::string training_dir_ourcvfh_;
   bool do_sift_;
   bool do_ourcvfh_;
+  bool do_shot_;
   double chop_at_z_;
   int icp_iterations_;
   std::vector<std::string> text_3d_;
   boost::shared_ptr<faat_pcl::rec_3d_framework::MultiRecognitionPipeline<PointT> > multi_recog_;
   int v1_,v2_, v3_;
   ros::ServiceServer recognize_;
+  ros::ServiceServer retrain_recognizer_;
+
   boost::shared_ptr<ros::NodeHandle> n_;
   ros::Publisher vis_pc_pub_;
   int cg_size_;
   bool ignore_color_;
+  std::string idx_flann_fn_sift_;
+  std::string idx_flann_fn_shot_;
 
 #ifdef SOC_VISUALIZE
   boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
 #endif
+
+  bool
+  retrain (recognition_srv_definitions::retrain_recognizer::Request & req,
+           recognition_srv_definitions::retrain_recognizer::Response & response)
+  {
+        //delete .idx files from recognizers
+        { //sift flann idx
+            bf::path file(idx_flann_fn_sift_);
+             if(bf::exists(file))
+                bf::remove(file);
+        }
+
+        { //shot flann idx
+          bf::path file(idx_flann_fn_shot_);
+           if(bf::exists(file))
+              bf::remove(file);
+        }
+
+        //call multi_recog_->reinitialize()
+        multi_recog_->reinitialize();
+
+        return true;
+  }
 
   bool
   recognize (recognition_srv_definitions::recognize::Request & req, recognition_srv_definitions::recognize::Response & response)
@@ -375,9 +406,12 @@ public:
     //default values
     chop_at_z_ = 1.5;
     do_sift_ = true;
+    do_shot_ = false;
     do_ourcvfh_ = false;
     icp_iterations_ = 0;
     cg_size_ = 3;
+    idx_flann_fn_sift_ = "sift_flann.idx";
+    idx_flann_fn_shot_ = "shot_flann.idx";
 
 #ifdef SOC_VISUALIZE
     vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
@@ -394,15 +428,18 @@ public:
       n_.reset( new ros::NodeHandle ( "~" ) );
       n_->getParam ( "models_dir", models_dir_);
       n_->getParam ( "training_dir_sift", training_dir_sift_);
+      n_->getParam ( "training_dir_shot", training_dir_shot_);
       n_->getParam ( "recognizer_structure_sift", sift_structure_);
       n_->getParam ( "training_dir_ourcvfh", training_dir_ourcvfh_);
       n_->getParam ( "chop_z", chop_at_z_ );
       n_->getParam ( "icp_iterations", icp_iterations_);
       n_->getParam ( "do_sift", do_sift_);
+      n_->getParam ( "do_shot", do_shot_);
       n_->getParam ( "do_ourcvfh", do_ourcvfh_);
       n_->getParam ( "ignore_color", ignore_color_);
+      n_->getParam ( "cg_size", cg_size_);
 
-      std::cout << chop_at_z_ << ", " << ignore_color_ << std::endl;
+      std::cout << chop_at_z_ << ", " << ignore_color_ << ", do_shot:" << do_shot_ << std::endl;
     if (models_dir_.compare ("") == 0)
     {
       PCL_ERROR ("Set -models_dir option in the command line, ABORTING");
@@ -418,6 +455,12 @@ public:
     if (do_ourcvfh_ && training_dir_ourcvfh_.compare ("") == 0)
     {
       PCL_ERROR ("do_ourcvfh is activated but training_dir_ourcvfh_ is empty! Set -training_dir_ourcvfh option in the command line, ABORTING");
+      return;
+    }
+
+    if (do_shot_ && training_dir_shot_.compare ("") == 0)
+    {
+      PCL_ERROR ("do_shot is activated but training_dir_shot_ is empty! Set -training_dir_shot option in the command line, ABORTING");
       return;
     }
 
@@ -443,7 +486,6 @@ public:
     if (do_sift_)
     {
 
-      std::string idx_flann_fn = "sift_flann.idx";
       std::string desc_name = "sift";
 
       boost::shared_ptr < faat_pcl::rec_3d_framework::RegisteredViewsSource<pcl::PointXYZRGBNormal, PointT, PointT>
@@ -471,7 +513,7 @@ public:
 #endif
 
       boost::shared_ptr<faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > > new_sift_local_;
-      new_sift_local_.reset (new faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > (idx_flann_fn));
+      new_sift_local_.reset (new faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > (idx_flann_fn_sift_));
       new_sift_local_->setDataSource (cast_source);
       new_sift_local_->setTrainingDir (training_dir_sift_);
       new_sift_local_->setDescriptorName (desc_name);
@@ -487,6 +529,71 @@ public:
       cast_recog = boost::static_pointer_cast<faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<128> > > (
                                                                                                                                         new_sift_local_);
       multi_recog_->addRecognizer (cast_recog);
+    }
+
+    if(do_shot_)
+    {
+        std::cout << "do_shot_ is activated, should do something..." << std::endl;
+        boost::shared_ptr<faat_pcl::rec_3d_framework::UniformSamplingExtractor<PointT> > uniform_keypoint_extractor ( new faat_pcl::rec_3d_framework::UniformSamplingExtractor<PointT>);
+        uniform_keypoint_extractor->setSamplingDensity (0.01f);
+        uniform_keypoint_extractor->setFilterPlanar (true);
+        uniform_keypoint_extractor->setThresholdPlanar(0.05);
+        uniform_keypoint_extractor->setMaxDistance(chop_at_z_);
+
+        boost::shared_ptr<faat_pcl::rec_3d_framework::KeypointExtractor<PointT> > keypoint_extractor;
+        keypoint_extractor = boost::static_pointer_cast<faat_pcl::rec_3d_framework::KeypointExtractor<PointT> > (uniform_keypoint_extractor);
+
+        boost::shared_ptr<faat_pcl::rec_3d_framework::PreProcessorAndNormalEstimator<PointT, pcl::Normal> > normal_estimator;
+        normal_estimator.reset (new faat_pcl::rec_3d_framework::PreProcessorAndNormalEstimator<PointT, pcl::Normal>);
+        normal_estimator->setCMR (false);
+        normal_estimator->setDoVoxelGrid (true);
+        normal_estimator->setRemoveOutliers (true);
+        normal_estimator->setValuesForCMRFalse (0.003f, 0.02f);
+
+        std::string desc_name("shot");
+        boost::shared_ptr<faat_pcl::rec_3d_framework::SHOTLocalEstimationOMP<PointT, pcl::Histogram<352> > > estimator;
+        estimator.reset (new faat_pcl::rec_3d_framework::SHOTLocalEstimationOMP<PointT, pcl::Histogram<352> >);
+        estimator->setNormalEstimator (normal_estimator);
+        estimator->addKeypointExtractor (keypoint_extractor);
+        estimator->setSupportRadius (0.04);
+        estimator->setAdaptativeMLS (false);
+
+        boost::shared_ptr<faat_pcl::rec_3d_framework::LocalEstimator<PointT, pcl::Histogram<352> > > cast_estimator;
+        cast_estimator = boost::dynamic_pointer_cast<faat_pcl::rec_3d_framework::LocalEstimator<PointT, pcl::Histogram<352> > > (estimator);
+
+        boost::shared_ptr<faat_pcl::rec_3d_framework::RegisteredViewsSource<pcl::PointXYZRGBNormal, PointT, PointT> >
+                source (
+                    new faat_pcl::rec_3d_framework::RegisteredViewsSource<
+                    pcl::PointXYZRGBNormal,
+                    pcl::PointXYZRGB,
+                    pcl::PointXYZRGB>);
+        source->setPath (models_dir_);
+        source->setModelStructureDir (sift_structure_);
+        source->generate (training_dir_shot_);
+
+        boost::shared_ptr<faat_pcl::rec_3d_framework::Source<pcl::PointXYZRGB> > cast_source;
+        cast_source = boost::static_pointer_cast<faat_pcl::rec_3d_framework::RegisteredViewsSource<pcl::PointXYZRGBNormal, pcl::PointXYZRGB> > (source);
+
+        boost::shared_ptr<faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<352> > > local;
+        local.reset(new faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<352> > (idx_flann_fn_shot_));
+        local->setDataSource (cast_source);
+        local->setTrainingDir (training_dir_shot_);
+        local->setDescriptorName (desc_name);
+        local->setFeatureEstimator (cast_estimator);
+        local->setCGAlgorithm (cast_cg_alg);
+        local->setKnn(1);
+        local->setUseCache (static_cast<bool> (true));
+        uniform_keypoint_extractor->setSamplingDensity (0.01f);
+        local->setICPIterations (0);
+        local->setKdtreeSplits (512);
+        local->setICPType(0);
+        local->setUseCodebook(false);
+        local->initialize (static_cast<bool> (false));
+
+        boost::shared_ptr < faat_pcl::rec_3d_framework::Recognizer<PointT> > cast_recog =
+            boost::static_pointer_cast<faat_pcl::rec_3d_framework::LocalRecognitionPipeline<flann::L1, PointT, pcl::Histogram<352> > > (local);
+
+        multi_recog_->addRecognizer(cast_recog);
     }
 
     if(do_ourcvfh_ && USE_SEGMENTATION_)
@@ -599,6 +706,8 @@ public:
     multi_recog_->initialize();
 
     recognize_  = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
+    retrain_recognizer_  = n_->advertiseService ("mp_recognition_retrain", &Recognizer::retrain, this);
+
     vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "sv_recogniced_object_instances_", 1 );
     std::cout << "Ready to get service calls..." << std::endl;
     ros::spin ();

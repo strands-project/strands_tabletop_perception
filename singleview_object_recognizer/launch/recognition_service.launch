@@ -6,23 +6,29 @@
 
 	<arg name="models_dir" default="" />
 	<arg name="training_dir_sift" default="" />
+	<arg name="training_dir_shot" default="" />
 	<arg name="recognizer_structure_sift" default="" />
 	<arg name="training_dir_ourcvfh" default="" />
 	<arg name="chop_z" default="2.5" />
 	<arg name="icp_iterations" default="10" />
 	<arg name="do_sift" default="true" />
+	<arg name="do_shot" default="false" />
 	<arg name="do_ourcvfh" default="false" />
 	<arg name="ignore_color" default="false" />
+	<arg name="cg_size" default="5" />
 	
 	<!-- recognition service service -->
 	<node pkg="singleview_object_recognizer" type="recognition_service" name="recognition_service" output="screen" >
 		<param name="models_dir" value="$(arg models_dir)" type="string"/>
 		<param name="training_dir_sift" value="$(arg training_dir_sift)" type="string"/>
+		<param name="training_dir_shot" value="$(arg training_dir_shot)" type="string"/>
 		<param name="recognizer_structure_sift" value="$(arg recognizer_structure_sift)" type="string"/>
 		<param name="icp_iterations" value="$(arg icp_iterations)" type="int"/>
 		<param name="do_sift" value="$(arg do_sift)" type="bool"/>
+		<param name="do_shot" value="$(arg do_shot)" type="bool"/>
 		<param name="do_ourcvfh" value="$(arg do_ourcvfh)" type="bool"/>
 		<param name="chop_z" value="$(arg chop_z)" type="double"/>
 		<param name="ignore_color" value="$(arg ignore_color)" type="bool"/>
+		<param name="cg_size" value="$(arg cg_size)" type="int"/>
 	</node>
 </launch>
