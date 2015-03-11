@@ -49,6 +49,7 @@ find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs messa
 ## Generate services in the 'srv' folder
  add_service_files(
   FILES
+   retrain_recognizer.srv
    recognize.srv
    multiview_recognize.srv
  )

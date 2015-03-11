@@ -154,7 +154,6 @@ public:
     void run()
     {
         //iterate over files and register them, then call service incrementally
-        bf::path p = files_folder_;
         std::string session_id;
         srand(time(NULL));
         gen_random(session_id, 10);
@@ -163,7 +162,7 @@ public:
         std::vector<pcl::PointCloud<FeatureT>::Ptr> signatures;
         std::vector<pcl::PointCloud<PointT>::Ptr> keypoints;
         std::vector<pcl::PointCloud<PointT>::Ptr> clouds;
-        v4r::utils::getFilesInDirectory(p, files, "", "cloud.*.pcd", false);
+        v4r::utils::getFilesInDirectory(files_folder_, files, "", "cloud.*.pcd", false);
 
         std::cout << files.size() << std::endl;
         clouds.resize(files.size());
