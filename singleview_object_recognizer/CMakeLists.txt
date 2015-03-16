@@ -89,11 +89,19 @@ add_dependencies(test_recognition_service ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 
+FIND_PACKAGE(Ceres)
+IF(${Ceres_FOUND})
+  INCLUDE_DIRECTORIES(${CERES_INCLUDES})
+ELSE(${Ceres_FOUND})
+  MESSAGE("\nATTENTION: Ceres solver is not installed!\n")
+ENDIF(${Ceres_FOUND})
+
 target_link_libraries(recognition_service
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
    ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
 )
 
 target_link_libraries(checkObjectPresence
@@ -110,6 +118,7 @@ target_link_libraries(test_recognition_service
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
 )
 
 target_link_libraries(ply_to_pcl

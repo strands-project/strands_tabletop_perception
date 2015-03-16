@@ -69,12 +69,20 @@ add_executable(mv_object_classifier_node src/mv_object_classifier_node.cpp)
 add_dependencies(mv_object_classifier_demo_from_file ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 add_dependencies(mv_object_classifier_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
+FIND_PACKAGE(Ceres)
+IF(${Ceres_FOUND})
+  INCLUDE_DIRECTORIES(${CERES_INCLUDES})
+ELSE(${Ceres_FOUND})
+  MESSAGE("\nATTENTION: Ceres solver is not installed!\n")
+ENDIF(${Ceres_FOUND})
+
 ## Specify libraries to link a library or executable target against
  target_link_libraries(mv_object_classifier_demo_from_file
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   ${OpenCV_LIBS}
  ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
 )
 
 target_link_libraries(mv_object_classifier_node
@@ -82,6 +90,8 @@ target_link_libraries(mv_object_classifier_node
   ${PCL_LIBRARIES}
   ${OpenCV_LIBS}
  ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
+
 )
 
 #############
