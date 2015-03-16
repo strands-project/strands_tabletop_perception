@@ -4,7 +4,7 @@ project(recognition_srv_definitions)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs message_generation)
+find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs object_perception_msgs message_generation)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -67,6 +67,7 @@ generate_messages(
    std_msgs
    sensor_msgs
    geometry_msgs  # Or other packages containing msgs
+   object_perception_msgs
  )
 
 ###################################

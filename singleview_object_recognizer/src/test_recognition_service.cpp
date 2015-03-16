@@ -87,6 +87,8 @@ private:
         ros::ServiceClient segAndClassifierClient = n_->serviceClient<recognition_srv_definitions::recognize>("/recognition_service/mp_recognition");
         recognition_srv_definitions::recognize srv;
         srv.request.cloud = *msg;
+        srv.request.complex_result.data = true;
+
         if (segAndClassifierClient.call(srv))
         {
             model_ids_.clear();

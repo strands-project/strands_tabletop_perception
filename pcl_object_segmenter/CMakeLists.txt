@@ -66,17 +66,28 @@ add_dependencies(pcl_object_segmenter_demo ${catkin_EXPORTED_TARGETS} ${STRANDSV
 #message(STATUS "V4R_INCLUDES:" ${V4R_INCLUDE_DIR})
 
 #link_directories(${V4R_LIB_DIR})
+
+FIND_PACKAGE(Ceres)
+IF(${Ceres_FOUND})
+  INCLUDE_DIRECTORIES(${CERES_INCLUDES})
+ELSE(${Ceres_FOUND})
+  MESSAGE("\nATTENTION: Ceres solver is not installed!\n")
+ENDIF(${Ceres_FOUND})
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(pcl_object_segmenter_service
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
-    ${STRANDSV4R_LIBS}
+   ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
 )
 
 target_link_libraries(pcl_object_segmenter_demo
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
     ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
+
 )
 
 #############

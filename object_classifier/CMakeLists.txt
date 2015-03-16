@@ -64,17 +64,27 @@ add_executable(object_classifier_demo_node src/test.cpp)
 add_dependencies(object_classifier_demo_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 add_dependencies(object_classifier_node ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIBS})
 
+FIND_PACKAGE(Ceres)
+IF(${Ceres_FOUND})
+  INCLUDE_DIRECTORIES(${CERES_INCLUDES})
+ELSE(${Ceres_FOUND})
+  MESSAGE("\nATTENTION: Ceres solver is not installed!\n")
+ENDIF(${Ceres_FOUND})
+
 ## Specify libraries to link a library or executable target against
  target_link_libraries(object_classifier_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   ${STRANDSV4R_LIBS}
+  ${CERES_LIBRARIES}
+
 )
 
 target_link_libraries(object_classifier_demo_node
   ${catkin_LIBRARIES}
   ${PCL_LIBRARIES}
   ${STRANDSV4R_LIBS}
+  ${CERES_LIBRARIES}
   )
 
 #############

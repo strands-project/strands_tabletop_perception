@@ -71,12 +71,20 @@ add_dependencies(object_rgbd_segmenter_demo ${catkin_EXPORTED_TARGETS} ${STRANDS
 
 #link_directories(${V4R_LIB_DIR})
 
+FIND_PACKAGE(Ceres)
+IF(${Ceres_FOUND})
+  INCLUDE_DIRECTORIES(${CERES_INCLUDES})
+ELSE(${Ceres_FOUND})
+  MESSAGE("\nATTENTION: Ceres solver is not installed!\n")
+ENDIF(${Ceres_FOUND})
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(object_rgbd_segmenter_service
    ${catkin_LIBRARIES} 
    ${PCL_LIBRARIES}
    ${OpenCV_LIBS}
    ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
 )
 
 target_link_libraries(object_rgbd_segmenter_demo

@@ -9,6 +9,8 @@
 
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "std_msgs/Float32.h"
+#include "object_perception_msgs/BBox.h"
 #include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
@@ -21,7 +23,6 @@
 #include <v4r/ORFramework/metrics.h>
 #include <v4r/ORFramework/multi_pipeline_recognizer.h>
 #include <v4r/ORFramework/multiplane_segmentation.h>
-#include <v4r/ORFramework/opencv_sift_local_estimator.h>
 #include <v4r/ORFramework/organized_color_ourcvfh_estimator.h>
 #include <v4r/ORFramework/shot_local_estimator_omp.h>
 #include <v4r/ORFramework/ourcvfh_estimator.h>
@@ -35,9 +36,17 @@
 #include "recognition_srv_definitions/retrain_recognizer.h"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
+#include <v4r/Registration/VisibilityReasoning.h>
+#include <v4r/ORUtils/miscellaneous.h>
 
 #define USE_SIFT_GPU
 //#define SOC_VISUALIZE
+
+#ifndef USE_SIFT_GPU
+    //WARNING: The SIFT feature is not included in the opencv bundled within ROS
+    //make sure to link to the proper opencv version including nonfree features
+    #include <v4r/ORFramework/opencv_sift_local_estimator.h>
+#endif
 
 bool USE_SEGMENTATION_ = false;
 
@@ -393,6 +402,81 @@ private:
     recognizedModelsRos.header.frame_id = "camera_link";
     vis_pc_pub_.publish(recognizedModelsRos);
 
+    if(req.complex_result.data)
+    {
+        //fill the rest of the output
+
+/*
+#ratio of visible points
+float32[] confidence
+
+# centroid of the cluster
+geometry_msgs/Point32[] centroid
+
+# bounding box of the cluster
+object_perception_msgs/BBox[] bbox
+
+# point cloud of the model transformed into camera coordinates
+sensor_msgs/PointCloud2[] cloud
+*/
+
+        float res = 0.005f;
+
+        for (size_t j = 0; j < verified_models->size (); j++)
+        {
+            ConstPointInTPtr model_cloud = verified_models->at(j)->getAssembled (res);
+            typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
+            pcl::transformPointCloud (*model_cloud, *model_aligned, verified_transforms->at(j));
+
+            pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = verified_models->at(j)->getNormalsAssembled (res);
+
+            typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>);
+            faat_pcl::utils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms->at (j));
+
+            //ratio of inlier points
+            float confidence = 0;
+
+            v4r::registration::VisibilityReasoning<pcl::PointXYZRGB> vr (525.f, 640, 480);
+            vr.setThresholdTSS (0.01f);
+            /*float fsv_ratio =*/ vr.computeFSVWithNormals (scene, model_aligned, normal_aligned);
+            int ss = vr.getFSVUsedPoints();
+            confidence = 1.f - ss / static_cast<float>(model_aligned->points.size());
+
+            response.confidence.push_back(confidence);
+
+            //centroid and BBox
+            Eigen::Vector4f centroid;
+            pcl::compute3DCentroid(*model_aligned, centroid);
+            geometry_msgs::Point32 centroid_msg;
+            centroid_msg.x = centroid[0];
+            centroid_msg.y = centroid[1];
+            centroid_msg.z = centroid[2];
+
+            response.centroid.push_back(centroid_msg);
+
+            Eigen::Vector4f min;
+            Eigen::Vector4f max;
+            pcl::getMinMax3D (*model_aligned, min, max);
+
+            object_perception_msgs::BBox bbox;
+            geometry_msgs::Point32 pt;
+            pt.x = min[0]; pt.y = min[1]; pt.z = min[2]; bbox.point.push_back(pt);
+            pt.x = min[0]; pt.y = min[1]; pt.z = max[2]; bbox.point.push_back(pt);
+            pt.x = min[0]; pt.y = max[1]; pt.z = min[2]; bbox.point.push_back(pt);
+            pt.x = min[0]; pt.y = max[1]; pt.z = max[2]; bbox.point.push_back(pt);
+            pt.x = max[0]; pt.y = min[1]; pt.z = min[2]; bbox.point.push_back(pt);
+            pt.x = max[0]; pt.y = min[1]; pt.z = max[2]; bbox.point.push_back(pt);
+            pt.x = max[0]; pt.y = max[1]; pt.z = min[2]; bbox.point.push_back(pt);
+            pt.x = max[0]; pt.y = max[1]; pt.z = max[2]; bbox.point.push_back(pt);
+            response.bbox.push_back(bbox);
+
+            sensor_msgs::PointCloud2 model_msg;
+            pcl::toROSMsg(*model_aligned, model_msg);
+
+            response.models_cloud.push_back(model_msg);
+        }
+
+    }
 
 #ifdef SOC_VISUALIZE
     vis_->spin ();
