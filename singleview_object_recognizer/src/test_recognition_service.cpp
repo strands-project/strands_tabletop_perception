@@ -13,6 +13,8 @@
 #include "recognition_srv_definitions/recognize.h"
 #include "recognition_srv_definitions/retrain_recognizer.h"
 #include "v4r/ORFramework/model_only_source.h"
+#include <opencv2/opencv.hpp>
+#include <v4r/ORUtils/pcl_opencv.h>
 
 class SOCDemo
 {
@@ -33,8 +35,11 @@ private:
 
     std::vector<std::string> model_ids_;
     std::vector<Eigen::Matrix4f> transforms_;
+    std::vector<float> confidences_;
+    std::vector<std::pair<cv::Point, cv::Point> > box_rectangles_;
 
     bool new_models_added_;
+    bool extended_request_;
 
     void
     checkCloudArrive (const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -87,12 +92,18 @@ private:
         ros::ServiceClient segAndClassifierClient = n_->serviceClient<recognition_srv_definitions::recognize>("/recognition_service/mp_recognition");
         recognition_srv_definitions::recognize srv;
         srv.request.cloud = *msg;
-        srv.request.complex_result.data = true;
+        srv.request.complex_result.data = extended_request_;
 
         if (segAndClassifierClient.call(srv))
         {
             model_ids_.clear();
             transforms_.clear();
+
+            if(extended_request_)
+            {
+                confidences_.clear();
+                box_rectangles_.clear();
+            }
 
             for(size_t i=0; i < srv.response.ids.size(); i++)
             {
@@ -112,6 +123,62 @@ private:
                 trans.block<3,3>(0,0) = q.toRotationMatrix();
                 trans.block<3,1>(0,3) = translation;
                 transforms_.push_back(trans);
+
+                if(extended_request_)
+                {
+                    confidences_.push_back(srv.response.confidence[i]);
+                    pcl::PointCloud<pcl::PointXYZRGB> model;
+                    pcl::fromROSMsg(srv.response.models_cloud[i], model);
+
+                    int cx_, cy_;
+                    cx_ = 640;
+                    cy_ = 480;
+                    float focal_length_ = 525.f;
+
+                    float cx, cy;
+                    cx = static_cast<float> (cx_) / 2.f; //- 0.5f;
+                    cy = static_cast<float> (cy_) / 2.f; // - 0.5f;
+
+                    int min_u, min_v, max_u, max_v;
+                    min_u = min_v = cx_;
+                    max_u = max_v = 0;
+
+                    for(size_t j=0; j < model.points.size(); j++)
+                    {
+
+                        float x = model.points[j].x;
+                        float y = model.points[j].y;
+                        float z = model.points[j].z;
+                        int u = static_cast<int> (focal_length_ * x / z + cx);
+                        int v = static_cast<int> (focal_length_ * y / z + cy);
+
+                        if (u >= cx_ || v >= cy_ || u < 0 || v < 0)
+                          continue;
+
+                        if(u < min_u)
+                            min_u = u;
+
+                        if(v < min_v)
+                            min_v = v;
+
+                        if(u > max_u)
+                            max_u = u;
+
+                        if(v > max_v)
+                            max_v = v;
+                    }
+
+                    cv::Point min, max;
+                    min.x = min_u;
+                    min.y = min_v;
+
+                    max.x = max_u;
+                    max.y = max_v;
+
+                    std::cout << min_u << " " << min_v << " .... " << max_u << " " << max_v << std::endl;
+
+                    box_rectangles_.push_back(std::make_pair(min,max));
+                }
             }
 
             std::cout << "Called done..." << std::endl;
@@ -155,6 +222,7 @@ public:
         new_models_added_ = false;
         visualize_output_ = false;
         models_dir_ = "";
+        extended_request_ = true;
     }
 
     bool initialize(int argc, char ** argv)
@@ -204,48 +272,70 @@ public:
 
     void visualize_output()
     {
-        if(!vis_)
+
+        if(extended_request_)
         {
-            vis_.reset(new pcl::visualization::PCLVisualizer("classifier visualization"));
-        }
-
-        int v1, v2;
-        vis_->createViewPort(0,0,0.5,1,v1);
-        vis_->createViewPort(0.5,0,1,1,v2);
-
-        vis_->addCoordinateSystem(0.2f);
-
-        std::cout << scene_->points.size() << std::endl;
-        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler(scene_);
-        vis_->addPointCloud(scene_, handler, "scene", v1);
-
-        std::cout << models_dir_ << " " << transforms_.size() << std::endl;
-
-        if(models_dir_.compare("") != 0 && transforms_.size() > 0)
-        {
-            //show models
+            cv::Mat_<cv::Vec3b> image;
+            PCLOpenCV::ConvertPCLCloud2Image<pcl::PointXYZRGB>(scene_, image);
 
             for(size_t kk=0; kk < transforms_.size(); kk++)
             {
-                boost::shared_ptr<faat_pcl::rec_3d_framework::Model<pcl::PointXYZRGB> > model;
 
-                models_source_->getModelById(model_ids_[kk], model);
-                pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr model_cloud = model->getAssembled (0.003f);
-                pcl::PointCloud<pcl::PointXYZRGB>::Ptr model_aligned (new pcl::PointCloud<pcl::PointXYZRGB>);
-                pcl::transformPointCloud (*model_cloud, *model_aligned, transforms_[kk]);
+                std::string model_id(model_ids_[kk], 0, 15);
+                cv::putText(image, model_id, box_rectangles_[kk].first,
+                    cv::FONT_HERSHEY_COMPLEX_SMALL, 0.65, cv::Scalar(255,0,0), 1, CV_AA);
 
-                std::stringstream name;
-                name << "hypotheses_" << kk;
-
-                pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler(model_aligned);
-                vis_->addPointCloud<pcl::PointXYZRGB> (model_aligned, handler, name.str (), v2);
-
-                std::cout << "adding " << name.str() << std::endl;
+                cv::rectangle(image, box_rectangles_[kk].first, box_rectangles_[kk].second, cv::Scalar( 0, 255, 255 ), 2);
             }
-        }
-        vis_->spin();
 
-        vis_->removeAllPointClouds();
+            cv::imshow("results", image);
+            cv::waitKey(0);
+        }
+        else
+        {
+            if(!vis_)
+            {
+                vis_.reset(new pcl::visualization::PCLVisualizer("classifier visualization"));
+            }
+
+            int v1, v2;
+            vis_->createViewPort(0,0,0.5,1,v1);
+            vis_->createViewPort(0.5,0,1,1,v2);
+
+            vis_->addCoordinateSystem(0.2f);
+
+            std::cout << scene_->points.size() << std::endl;
+            pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler(scene_);
+            vis_->addPointCloud(scene_, handler, "scene", v1);
+
+            std::cout << models_dir_ << " " << transforms_.size() << std::endl;
+
+            if(models_dir_.compare("") != 0 && transforms_.size() > 0)
+            {
+                //show models
+
+                for(size_t kk=0; kk < transforms_.size(); kk++)
+                {
+                    boost::shared_ptr<faat_pcl::rec_3d_framework::Model<pcl::PointXYZRGB> > model;
+
+                    models_source_->getModelById(model_ids_[kk], model);
+                    pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr model_cloud = model->getAssembled (0.003f);
+                    pcl::PointCloud<pcl::PointXYZRGB>::Ptr model_aligned (new pcl::PointCloud<pcl::PointXYZRGB>);
+                    pcl::transformPointCloud (*model_cloud, *model_aligned, transforms_[kk]);
+
+                    std::stringstream name;
+                    name << "hypotheses_" << kk;
+
+                    pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> handler(model_aligned);
+                    vis_->addPointCloud<pcl::PointXYZRGB> (model_aligned, handler, name.str (), v2);
+
+                    std::cout << "adding " << name.str() << std::endl;
+                }
+            }
+            vis_->spin();
+
+            vis_->removeAllPointClouds();
+        }
     }
 };
 
