@@ -85,10 +85,16 @@ private:
 
   boost::shared_ptr<ros::NodeHandle> n_;
   ros::Publisher vis_pc_pub_;
-  int cg_size_;
-  bool ignore_color_;
+
   std::string idx_flann_fn_sift_;
   std::string idx_flann_fn_shot_;
+
+  //Parameters for recognition
+  int knn_sift_;
+  int cg_size_;
+
+  //Parameters for hypothesis verification
+  bool ignore_color_;
 
 #ifdef SOC_VISUALIZE
   boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
@@ -399,7 +405,7 @@ private:
     }
     sensor_msgs::PointCloud2 recognizedModelsRos;
     pcl::toROSMsg (*pRecognizedModels, recognizedModelsRos);
-    recognizedModelsRos.header.frame_id = "camera_link";
+    recognizedModelsRos.header.frame_id = "camera_rgb_optical_frame";
     vis_pc_pub_.publish(recognizedModelsRos);
 
     if(req.complex_result.data)
@@ -522,6 +528,7 @@ public:
       n_->getParam ( "do_ourcvfh", do_ourcvfh_);
       n_->getParam ( "ignore_color", ignore_color_);
       n_->getParam ( "cg_size", cg_size_);
+      n_->getParam ( "knn_sift", knn_sift_);
 
       std::cout << chop_at_z_ << ", " << ignore_color_ << ", do_shot:" << do_shot_ << std::endl;
     if (models_dir_.compare ("") == 0)
@@ -605,7 +612,7 @@ public:
       new_sift_local_->setFeatureEstimator (cast_estimator);
       new_sift_local_->setUseCache (true);
       new_sift_local_->setCGAlgorithm (cast_cg_alg);
-      new_sift_local_->setKnn (5);
+      new_sift_local_->setKnn (knn_sift_);
       new_sift_local_->setUseCache (true);
       new_sift_local_->initialize (false);
 
