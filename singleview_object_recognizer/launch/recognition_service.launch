@@ -15,7 +15,10 @@
 	<arg name="do_shot" default="false" />
 	<arg name="do_ourcvfh" default="false" />
 	<arg name="ignore_color" default="false" />
-	<arg name="cg_size" default="5" />
+	<!-- minimum number of consistent correspondences to generate a hypothesis -->
+	<arg name="cg_size" default="7" />
+	<!-- each SIFT keypoint in the scene is associated to the closest (in feature space) knn_sift model keypoints -->
+	<arg name="knn_sift" default="2" />
 	
 	<!-- recognition service service -->
 	<node pkg="singleview_object_recognizer" type="recognition_service" name="recognition_service" output="screen" >
@@ -30,5 +33,6 @@
 		<param name="chop_z" value="$(arg chop_z)" type="double"/>
 		<param name="ignore_color" value="$(arg ignore_color)" type="bool"/>
 		<param name="cg_size" value="$(arg cg_size)" type="int"/>
+		<param name="knn_sift" value="$(arg knn_sift)" type="int"/>
 	</node>
 </launch>
