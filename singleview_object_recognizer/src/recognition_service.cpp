@@ -92,6 +92,7 @@ private:
   //Parameters for recognition
   int knn_sift_;
   int cg_size_;
+  bool use_cg_graph_;
 
   //Parameters for hypothesis verification
   bool ignore_color_;
@@ -550,6 +551,7 @@ public:
       n_->getParam ( "ignore_color", ignore_color_);
       n_->getParam ( "cg_size", cg_size_);
       n_->getParam ( "knn_sift", knn_sift_);
+      n_->getParam ( "use_cg_graph_", use_cg_graph_);
 
       std::cout << chop_at_z_ << ", " << ignore_color_ << ", do_shot:" << do_shot_ << std::endl;
     if (models_dir_.compare ("") == 0)
@@ -588,7 +590,7 @@ public:
     gcg_alg->setGCThreshold (cg_size_);
     gcg_alg->setGCSize (0.015);
     gcg_alg->setRansacThreshold (0.015);
-    gcg_alg->setUseGraph (true);
+    gcg_alg->setUseGraph (use_cg_graph_);
     gcg_alg->setDistForClusterFactor (0);
     gcg_alg->setMaxTaken(2);
     gcg_alg->setMaxTimeForCliquesComputation(100);
