@@ -1,0 +1,9 @@
+# Define the goal
+string roi_id  # Specify a ROI that you want to observe
+string mode    # Specify the mode of object search (...)
+---
+# Define the result
+uint32 status_code
+---
+# Define a feedback message
+float32 percent_complete
