@@ -203,7 +203,7 @@ private:
         num_clouds_ = 0;
         saved_clouds_ = 0;
 
-        camera_topic_subscriber_ = n_->subscribe("/camera/depth_registered/points", 100, &CamTracker::getCloud, this);
+        camera_topic_subscriber_ = n_->subscribe("/camera/depth_registered/points", 1, &CamTracker::getCloud, this);
 
         cv::Mat_<double> distCoeffs = cv::Mat::zeros(4, 1, CV_64F);
         cv::Mat_<double> intrinsic = cv::Mat_<double>::eye(3,3);
@@ -344,6 +344,10 @@ public:
         cos_min_delta_angle_ = cos(20*M_PI/180.);
         sqr_min_cam_distance_ = 1.*1.;
         num_clouds_ = 0;
+
+        param.det_param.nfeatures = 150;
+        param.kt_param.plk_param.use_ncc = true;
+        param.kt_param.plk_param.ncc_residual = .5; //   (default .2)
 
         param.kd_param.rt_param.inl_dist = 0.01; //e.g. 0.01 .. table top, 0.03 ..rooms
         param.lk_param.rt_param.inl_dist = 0.01; //e.g. 0.01 .. table top, 0.03 ..rooms
