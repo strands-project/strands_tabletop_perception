@@ -30,9 +30,12 @@ class ObjectSearchSM(smach.StateMachine):
 
         self.userdata.action_completed = False
 
-        #self._action_monitor  = ActionMonitor()
-        #self._view_planning   = ViewPlanning()
-
+        # self._setup  = Setup()
+        # self._view_planning   = ViewPlanning()
+        # self._executive       = Executive()
+        # self._navigation      = Navigation()
+        # self._shutdown        = Shutdown()
+        
         robot = rospy.get_param('robot', 'real')
         if robot == 'real':
             reload (percept)
@@ -44,6 +47,26 @@ class ObjectSearchSM(smach.StateMachine):
 
 
         with self:
+            # smach.StateMachine.add('Setup', self._setup, 
+            #                        transitions={'succeeded': 'ViewPlanning',
+            #                                     'aborted':'aborted',
+            #                                     'preempted':'preempted'})
+
+            # smach.StateMachine.add('ViewPlanning', self._view_planning, 
+            #                        transitions={'succeeded': 'Executive',
+            #                                     'aborted':'aborted',
+            #                                     'preempted':'preempted'})
+
+            # smach.StateMachine.add('Executive', self._executive, 
+            #                        transitions={'succeeded': 'Navigation',
+            #                                     'aborted':'aborted',
+            #                                     'preempted':'preempted'})
+
+            # smach.StateMachine.add('Navigation', self._perception, 
+            #                        transitions={'succeeded': 'Perception',
+            #                                     'aborted':'',
+            #                                     'preempted':'preempted'})
+
             # smach.StateMachine.add('ActionMonitor', self._action_monitor, 
             #                        transitions={'succeeded': 'succeeded',
             #                                     'action_in_progress':'ViewPlanning',

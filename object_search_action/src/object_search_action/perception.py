@@ -7,7 +7,7 @@ import json
 from std_msgs.msg import *
 from sensor_msgs.msg import *
 
-from recognition_srv_definitions.srv import recognize
+from recognition_srv_definitions.srv import recognize, recognizeResponse, recognizeRequest
 
 # from world_state.observation import MessageStoreObject, Observation, TransformationStore
 # from world_state.identification import ObjectIdentification
@@ -73,16 +73,20 @@ class PerceptionReal (smach.State):
         except rospy.ROSException, e:
             rospy.logwarn("Failed to get %s" % self.pc_frame)
             return 'aborted'
-        
+
+        rospy.loginfo('Calling IR service')
         try:
-            res = self.ir_service(pointcloud)
-        except rospy.ServiceException, e:
-            rospy.logerr("Service call failed: %s" % e)
+            req = recognizeRequest()
+            req.cloud = pointcloud
+            req.complex_result.data = True
+            res = self.ir_service(req)
+        except rospy.ServiceException, e2:
+            rospy.loginfo("Service call failed: %s", e2)
+            return 'aborted'
 
         for i in range(len(res.ids)):
             rospy.loginfo("Recognized: %s %s" % (res.ids[i], res.confidence[i]))
             self.obj_list.append(res.ids[i])
-
             
         return 'succeeded'
 
