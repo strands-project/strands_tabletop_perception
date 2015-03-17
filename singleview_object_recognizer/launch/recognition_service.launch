@@ -19,6 +19,7 @@
 	<arg name="cg_size" default="7" />
 	<!-- each SIFT keypoint in the scene is associated to the closest (in feature space) knn_sift model keypoints -->
 	<arg name="knn_sift" default="2" />
+	<arg name="use_cg_graph" default="false" />
 	
 	<!-- recognition service service -->
 	<node pkg="singleview_object_recognizer" type="recognition_service" name="recognition_service" output="screen" >
@@ -34,5 +35,6 @@
 		<param name="ignore_color" value="$(arg ignore_color)" type="bool"/>
 		<param name="cg_size" value="$(arg cg_size)" type="int"/>
 		<param name="knn_sift" value="$(arg knn_sift)" type="int"/>
+		<param name="use_cg_graph" value="$(arg use_cg_graph)" type="bool"/>
 	</node>
 </launch>
