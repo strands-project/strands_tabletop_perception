@@ -40,6 +40,7 @@ private:
 
     bool new_models_added_;
     bool extended_request_;
+    std::vector<std::string> model_ids_to_be_loaded_;
 
     void
     checkCloudArrive (const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -85,6 +86,28 @@ private:
                 exit(-1);
             }
         }
+
+        /*if(model_ids_to_be_loaded_.size() > 0)
+        {*/
+        ros::ServiceClient retrainClient = n_->serviceClient<recognition_srv_definitions::retrain_recognizer>("/recognition_service/mp_recognition_retrain");
+        recognition_srv_definitions::retrain_recognizer srv;
+        for(size_t k=0; k < model_ids_to_be_loaded_.size(); k++)
+        {
+            std_msgs::String a;
+            a.data = model_ids_to_be_loaded_[k];
+            srv.request.load_ids.push_back(a);
+        }
+
+        if(retrainClient.call(srv))
+        {
+            std::cout << "called retrain succesfull" << std::endl;
+        }
+        else
+        {
+            ROS_ERROR("Failed to call /recognition_service/mp_recognition_retrain");
+            exit(-1);
+        }
+        //}
     }
 
     bool callSegAndClassifierService(const sensor_msgs::PointCloud2::ConstPtr& msg)
@@ -245,6 +268,22 @@ public:
 
         if(!n_->getParam ( "new_models", new_models_added_ ))
             new_models_added_ = false;
+
+        std::string test_models_to_load;
+        if(!n_->getParam ( "load_models", test_models_to_load ))
+            test_models_to_load = "";
+
+        std::cout << "aaa" << test_models_to_load << "aaa" << std::endl;
+
+        if(test_models_to_load.compare("") != 0)
+        {
+            boost::split(model_ids_to_be_loaded_, test_models_to_load, boost::is_any_of(","), boost::token_compress_on);
+        }
+        else
+        {
+            std::cout << "aaa" << test_models_to_load << "aaa" << std::endl;
+            model_ids_to_be_loaded_.clear();
+        }
 
         checkKinect();
 
