@@ -7,7 +7,8 @@ project(singleview_object_recognizer)
 
 find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
                                         strands_v4r genmsg actionlib_msgs actionlib
-                                        scitos_ptu mongodb_store_msgs mongodb_store)
+                                        scitos_ptu mongodb_store_msgs mongodb_store
+                                        cv_bridge sensor_msgs image_transport )
 
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )

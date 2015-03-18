@@ -50,6 +50,9 @@
   <build_depend>mongodb_store_msgs</build_depend>
   <build_depend>mongodb_store</build_depend>
   <build_depend>scitos_ptu</build_depend>
+  <build_depend>cv_bridge</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>image_transport</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
@@ -61,6 +64,10 @@
   <run_depend>mongodb_store_msgs</run_depend>
   <run_depend>mongodb_store</run_depend>
   <run_depend>scitos_ptu</run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>image_transport</run_depend>
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- You can specify that this package is a metapackage here: -->
