@@ -38,6 +38,8 @@
 #include <boost/lexical_cast.hpp>
 #include <v4r/Registration/VisibilityReasoning.h>
 #include <v4r/ORUtils/miscellaneous.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
 
 #define USE_SIFT_GPU
 //#define SOC_VISUALIZE
@@ -97,9 +99,122 @@ private:
   //Parameters for hypothesis verification
   bool ignore_color_;
 
+  //PUblishing image
+  bool debug_publish_;
+  boost::shared_ptr<image_transport::ImageTransport> it_;
+  image_transport::Publisher image_pub_;
+
 #ifdef SOC_VISUALIZE
   boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
 #endif
+
+  void createDebugImageAndPublish(recognition_srv_definitions::recognize::Response & response,
+                                  pcl::PointCloud<pcl::PointXYZRGB>::Ptr & scene_)
+  {
+
+      std::vector<std::string> model_ids_;
+      std::vector<Eigen::Matrix4f> transforms_;
+      std::vector<float> confidences_;
+      std::vector<std::pair<cv::Point, cv::Point> > box_rectangles_;
+
+      bool extended_request_ = true;
+
+      for(size_t i=0; i < response.ids.size(); i++)
+      {
+          model_ids_.push_back(response.ids[i].data);
+
+          Eigen::Quaternionf q(response.transforms[i].rotation.w,
+                               response.transforms[i].rotation.x,
+                               response.transforms[i].rotation.y,
+                               response.transforms[i].rotation.z);
+
+          Eigen::Vector3f translation(response.transforms[i].translation.x,
+                                      response.transforms[i].translation.y,
+                                      response.transforms[i].translation.z);
+
+
+          Eigen::Matrix4f trans;
+          trans.block<3,3>(0,0) = q.toRotationMatrix();
+          trans.block<3,1>(0,3) = translation;
+          transforms_.push_back(trans);
+
+          if(extended_request_)
+          {
+              confidences_.push_back(response.confidence[i]);
+              pcl::PointCloud<pcl::PointXYZRGB> model;
+              pcl::fromROSMsg(response.models_cloud[i], model);
+
+              int cx_, cy_;
+              cx_ = 640;
+              cy_ = 480;
+              float focal_length_ = 525.f;
+
+              float cx, cy;
+              cx = static_cast<float> (cx_) / 2.f; //- 0.5f;
+              cy = static_cast<float> (cy_) / 2.f; // - 0.5f;
+
+              int min_u, min_v, max_u, max_v;
+              min_u = min_v = cx_;
+              max_u = max_v = 0;
+
+              for(size_t j=0; j < model.points.size(); j++)
+              {
+
+                  float x = model.points[j].x;
+                  float y = model.points[j].y;
+                  float z = model.points[j].z;
+                  int u = static_cast<int> (focal_length_ * x / z + cx);
+                  int v = static_cast<int> (focal_length_ * y / z + cy);
+
+                  if (u >= cx_ || v >= cy_ || u < 0 || v < 0)
+                    continue;
+
+                  if(u < min_u)
+                      min_u = u;
+
+                  if(v < min_v)
+                      min_v = v;
+
+                  if(u > max_u)
+                      max_u = u;
+
+                  if(v > max_v)
+                      max_v = v;
+              }
+
+              cv::Point min, max;
+              min.x = min_u;
+              min.y = min_v;
+
+              max.x = max_u;
+              max.y = max_v;
+
+              std::cout << min_u << " " << min_v << " .... " << max_u << " " << max_v << std::endl;
+
+              box_rectangles_.push_back(std::make_pair(min,max));
+          }
+      }
+
+      cv::Mat_<cv::Vec3b> image;
+      PCLOpenCV::ConvertPCLCloud2Image<pcl::PointXYZRGB>(scene_, image);
+
+      for(size_t kk=0; kk < transforms_.size(); kk++)
+      {
+
+
+          cv::Point text_start;
+          text_start.x = box_rectangles_[kk].first.x;
+          text_start.y = std::max(0, box_rectangles_[kk].first.y - 10);
+          std::string model_id(model_ids_[kk], 0, 15);
+          cv::putText(image, model_id, text_start,
+              cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, cv::Scalar(255,0,255), 1, CV_AA);
+
+          cv::rectangle(image, box_rectangles_[kk].first, box_rectangles_[kk].second, cv::Scalar( 0, 255, 255 ), 2);
+      }
+
+      sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
+      image_pub_.publish(msg);
+  }
 
   bool
   retrain (recognition_srv_definitions::retrain_recognizer::Request & req,
@@ -502,6 +617,9 @@ sensor_msgs/PointCloud2[] cloud
             response.models_cloud.push_back(model_msg);
         }
 
+        if(debug_publish_)
+            createDebugImageAndPublish(response, scene);
+
     }
 
 #ifdef SOC_VISUALIZE
@@ -550,6 +668,7 @@ public:
       n_->getParam ( "cg_size", cg_size_);
       n_->getParam ( "knn_sift", knn_sift_);
       n_->getParam ( "use_cg_graph", use_cg_graph_);
+      n_->getParam ( "publish_debug", debug_publish_);
 
       std::cout << chop_at_z_ << ", " << ignore_color_ << ", do_shot:" << do_shot_ << std::endl;
     if (models_dir_.compare ("") == 0)
@@ -821,6 +940,12 @@ public:
     retrain_recognizer_  = n_->advertiseService ("mp_recognition_retrain", &Recognizer::retrain, this);
 
     vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "sv_recogniced_object_instances_", 1 );
+
+    it_.reset(new image_transport::ImageTransport(*n_));
+
+    if(debug_publish_)
+        image_pub_ = it_->advertise("/mp_recognition/debug_image", 1, true);
+
     std::cout << "Ready to get service calls..." << std::endl;
     ros::spin ();
   }
