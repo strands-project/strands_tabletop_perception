@@ -247,6 +247,11 @@ private:
     boost::shared_ptr < std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > > transforms = multi_recog_->getTransforms ();
 
     ROS_DEBUG("Number of recognition hypotheses %d\n", static_cast<int>(models->size()));
+    if(models->size() == 0)
+    {
+        ROS_INFO("No models to verify, returning from service.");
+        return true;
+    }
 
     std::vector<typename pcl::PointCloud<PointT>::ConstPtr> aligned_models;
     aligned_models.resize (models->size ());
@@ -275,13 +280,6 @@ private:
             plane_id << "plane_" << kk;
             model_ids.push_back(plane_id.str());
         }
-    }
-
-    if(model_ids.size() == 0)
-    {
-        ROS_DEBUG("No models to verify, returning.\n");
-        ROS_ERROR("Cancelling service request.");
-        return true;
     }
 
     go->setObjectIds(model_ids);
@@ -551,7 +549,7 @@ public:
       n_->getParam ( "ignore_color", ignore_color_);
       n_->getParam ( "cg_size", cg_size_);
       n_->getParam ( "knn_sift", knn_sift_);
-      n_->getParam ( "use_cg_graph_", use_cg_graph_);
+      n_->getParam ( "use_cg_graph", use_cg_graph_);
 
       std::cout << chop_at_z_ << ", " << ignore_color_ << ", do_shot:" << do_shot_ << std::endl;
     if (models_dir_.compare ("") == 0)
