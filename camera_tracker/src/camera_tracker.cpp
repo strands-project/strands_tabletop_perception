@@ -70,6 +70,7 @@ private:
     int saved_clouds_;
     boost::posix_time::ptime last_cloud_;
     ros::Time last_cloud_ros_time_;
+    std::string camera_topic_;
 
     void drawConfidenceBar(cv::Mat &im, const double &conf)
     {
@@ -203,7 +204,7 @@ private:
         num_clouds_ = 0;
         saved_clouds_ = 0;
 
-        camera_topic_subscriber_ = n_->subscribe("/camera/depth_registered/points", 1, &CamTracker::getCloud, this);
+        camera_topic_subscriber_ = n_->subscribe(camera_topic_, 1, &CamTracker::getCloud, this);
 
         cv::Mat_<double> distCoeffs = cv::Mat::zeros(4, 1, CV_64F);
         cv::Mat_<double> intrinsic = cv::Mat_<double>::eye(3,3);
@@ -355,6 +356,7 @@ public:
         param.om_param.kd_param.rt_param.inl_dist = 0.01; //e.g. 0.01 .. table top, 0.03 ..rooms
         param.om_param.kt_param.rt_param.inl_dist = 0.03;  //e.g. 0.04 .. table top, 0.1 ..room
 
+        camera_topic_ = "/camera/depth_registered/points";
     }
 
     void
@@ -366,6 +368,9 @@ public:
         cam_tracker_start_  = n_->advertiseService ("start_recording", &CamTracker::start, this);
         cam_tracker_stop_  = n_->advertiseService ("stop_recording", &CamTracker::stop, this);
         cam_tracker_vis_compound_  = n_->advertiseService ("vis_compound", &CamTracker::visCompound, this);
+
+        if(!n_->getParam ( "camera_topic", camera_topic_ ))
+            camera_topic_ = "/camera/depth_registered/points";
 
         ros::spin ();
     }
