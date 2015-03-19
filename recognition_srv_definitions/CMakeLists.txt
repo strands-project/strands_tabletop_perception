@@ -52,6 +52,7 @@ find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs objec
    retrain_recognizer.srv
    recognize.srv
    multiview_recognize.srv
+   get_configuration.srv
  )
 
 ## Generate actions in the 'action' folder

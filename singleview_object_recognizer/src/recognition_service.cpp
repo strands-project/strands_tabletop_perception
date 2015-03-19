@@ -13,7 +13,6 @@
 #include "object_perception_msgs/BBox.h"
 #include <pcl/apps/dominant_plane_segmentation.h>
 #include <pcl/common/common.h>
-#include <pcl/visualization/pcl_visualizer.h>
 #include <pcl_conversions.h>
 #include <pcl/filters/passthrough.h>
 #include "segmenter.h"
@@ -34,6 +33,8 @@
 #include <v4r/ORRecognition/hv_go_3D.h>
 #include "recognition_srv_definitions/recognize.h"
 #include "recognition_srv_definitions/retrain_recognizer.h"
+#include "recognition_srv_definitions/get_configuration.h"
+
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
 #include <v4r/Registration/VisibilityReasoning.h>
@@ -43,6 +44,10 @@
 
 #define USE_SIFT_GPU
 //#define SOC_VISUALIZE
+
+#ifdef SOC_VISUALIZE
+#include <pcl/visualization/pcl_visualizer.h>
+#endif
 
 #ifndef USE_SIFT_GPU
     //WARNING: The SIFT feature is not included in the opencv bundled within ROS
@@ -84,6 +89,7 @@ private:
   int v1_,v2_, v3_;
   ros::ServiceServer recognize_;
   ros::ServiceServer retrain_recognizer_;
+  ros::ServiceServer get_configuration_;
 
   boost::shared_ptr<ros::NodeHandle> n_;
   ros::Publisher vis_pc_pub_;
@@ -214,6 +220,14 @@ private:
 
       sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
       image_pub_.publish(msg);
+  }
+
+  bool
+  getConfig (recognition_srv_definitions::get_configuration::Request & req,
+           recognition_srv_definitions::get_configuration::Response & response)
+  {
+        response.models_folder.data = models_dir_;
+        response.recognition_structure_folder.data = sift_structure_;
   }
 
   bool
@@ -445,7 +459,7 @@ private:
             {
                 if(coming_from[j] == 0)
                 {
-                    ConstPointInTPtr model_cloud = models->at (j)->getAssembled (assembled_resolution);
+                    ConstPointInTPtr model_cloud = models->at (j)->getAssembled (0.005f);
                     typename pcl::PointCloud<PointT>::Ptr model_aligned (new pcl::PointCloud<PointT>);
                     pcl::transformPointCloud (*model_cloud, *model_aligned, transforms->at (j));
                     pcl::visualization::PointCloudColorHandlerRGBField<PointT> random_handler (model_aligned);
@@ -938,6 +952,7 @@ public:
 
     recognize_  = n_->advertiseService ("mp_recognition", &Recognizer::recognize, this);
     retrain_recognizer_  = n_->advertiseService ("mp_recognition_retrain", &Recognizer::retrain, this);
+    get_configuration_  = n_->advertiseService ("get_configuration", &Recognizer::getConfig, this);
 
     vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "sv_recogniced_object_instances_", 1 );
 
