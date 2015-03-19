@@ -22,6 +22,7 @@
 #include <pcl/features/normal_3d_omp.h>
 
 #include "do_learning_srv_definitions/learn_object.h"
+#include "do_learning_srv_definitions/save_model.h"
 
 #include "v4r/KeypointConversions/convertImage.hpp"
 #include "v4r/KeypointConversions/convertCloud.hpp"
@@ -36,6 +37,17 @@
 #include <v4r/ORUtils/noise_models.h>
 #include <pcl/search/octree.h>
 #include <pcl/segmentation/supervoxel_clustering.h>
+#include <v4r/utils/filesystem_utils.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+
+struct IndexPoint
+{
+    int idx;
+};
+
+POINT_CLOUD_REGISTER_POINT_STRUCT (IndexPoint,
+                                   (int, idx, idx)
+                                   )
 
 class DOL
 {
@@ -43,6 +55,7 @@ private:
     typedef pcl::PointXYZRGB PointT;
     boost::shared_ptr<ros::NodeHandle> n_;
     ros::ServiceServer learn_object_;
+    ros::ServiceServer save_model_;
 
     std::vector<pcl::PointIndices> object_indices_;
     std::vector<Eigen::Matrix4f> cameras_;
@@ -355,6 +368,139 @@ private:
 
     }
 
+    void createDirIfNotExist(std::string & dirs)
+    {
+        boost::filesystem::path dir = dirs;
+        if(!boost::filesystem::exists(dir))
+        {
+            boost::filesystem::create_directory(dir);
+        }
+    }
+
+    bool
+    save_model (do_learning_srv_definitions::save_model::Request & req,
+                  do_learning_srv_definitions::save_model::Response & response)
+    {
+
+        std::string models_dir = req.models_folder.data;
+        std::string recognition_structure_dir = req.recognition_structure_folder.data;
+        std::string model_name = req.object_name.data;
+
+        std::vector<pcl::PointCloud<IndexPoint> > object_indices_clouds;
+
+        std::vector<std::vector<float> > weights;
+        std::vector<pcl::PointCloud<pcl::Normal>::Ptr > normals;
+        std::vector<std::vector<int> > indices;
+
+        weights.resize(keyframes_.size());
+        normals.resize(keyframes_.size());
+        indices.resize(keyframes_.size());
+        object_indices_clouds.resize(keyframes_.size());
+
+        //compute normals for all clouds
+        for(size_t i=0; i < keyframes_.size(); i++)
+        {
+            normals[i].reset(new pcl::PointCloud<pcl::Normal>);
+            pcl::NormalEstimation<PointT, pcl::Normal> n3d;
+            n3d.setRadiusSearch (0.015f);
+            n3d.setInputCloud (keyframes_[i]);
+            n3d.compute (*normals[i]);
+
+            indices[i] = object_indices_[i].indices;
+
+            pcl::PointCloud<IndexPoint> obj_indices_cloud;
+            object_indices_clouds[i].points.resize(indices[i].size());
+
+            for(size_t k=0; k < indices[i].size(); k++)
+            {
+                object_indices_clouds[i].points[k].idx = indices[i][k];
+            }
+        }
+
+        //compute noise weights
+        for(size_t i=0; i < keyframes_.size(); i++)
+        {
+            faat_pcl::utils::noise_models::NguyenNoiseModel<pcl::PointXYZRGB> nm;
+            nm.setInputCloud(keyframes_[i]);
+            nm.setInputNormals(normals[i]);
+            nm.setLateralSigma(0.001);
+            nm.setMaxAngle(60.f);
+            nm.setUseDepthEdges(true);
+            nm.compute();
+            nm.getWeights(weights[i]);
+        }
+
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr octree_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+        faat_pcl::utils::NMBasedCloudIntegration<pcl::PointXYZRGB> nmIntegration;
+        nmIntegration.setInputClouds(keyframes_);
+        nmIntegration.setResolution(0.002f);
+        nmIntegration.setWeights(weights);
+        nmIntegration.setTransformations(cameras_);
+        nmIntegration.setMinWeight(0.5f);
+        nmIntegration.setInputNormals(normals);
+        nmIntegration.setMinPointsPerVoxel(1);
+        nmIntegration.setFinalResolution(0.002f);
+        nmIntegration.setIndices(indices);
+        nmIntegration.setThresholdSameSurface(0.01f);
+        nmIntegration.compute(octree_cloud);
+
+        pcl::PointCloud<pcl::Normal>::Ptr octree_normals;
+        nmIntegration.getOutputNormals(octree_normals);
+
+        createDirIfNotExist(recognition_structure_dir);
+        createDirIfNotExist(models_dir);
+
+        std::stringstream export_to_rs;
+        export_to_rs << recognition_structure_dir << "/" << model_name << "/";
+        std::string export_to = export_to_rs.str();
+
+        createDirIfNotExist(export_to);
+
+        //save the data with new poses
+        for(size_t i=0; i < cameras_.size(); i++)
+        {
+            std::stringstream view_file;
+            view_file << export_to << "/cloud_" << setfill('0') << setw(8) << i << ".pcd";
+
+            pcl::io::savePCDFileBinary (view_file.str (), *(keyframes_[i]));
+            std::cout << view_file.str() << std::endl;
+
+            std::string file_replaced1 (view_file.str());
+            boost::replace_last (file_replaced1, "cloud", "pose");
+            boost::replace_last (file_replaced1, ".pcd", ".txt");
+
+            std::cout << file_replaced1 << std::endl;
+
+            //read pose as well
+            v4r::utils::writeMatrixToFile(file_replaced1, cameras_[i]);
+
+            std::string file_replaced2 (view_file.str());
+            boost::replace_last (file_replaced2, "cloud", "object_indices");
+
+            std::cout << file_replaced2 << std::endl;
+
+            pcl::io::savePCDFileBinary (file_replaced2, object_indices_clouds[i]);
+        }
+
+        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr filtered_with_normals_oriented (new pcl::PointCloud<pcl::PointXYZRGBNormal>());
+
+        std::stringstream model_output;
+        model_output << models_dir << "/" << model_name;
+        pcl::concatenateFields(*octree_normals, *octree_cloud, *filtered_with_normals_oriented);
+
+        pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_normals_oriented (new pcl::PointCloud<pcl::PointXYZRGBNormal>());
+
+        pcl::StatisticalOutlierRemoval<pcl::PointXYZRGBNormal> sor;
+        sor.setInputCloud (filtered_with_normals_oriented);
+        sor.setMeanK (50);
+        sor.setStddevMulThresh (3.0);
+        sor.filter (*cloud_normals_oriented);
+
+        pcl::io::savePCDFileBinary(model_output.str(), *cloud_normals_oriented);
+
+        return true;
+    }
+
     bool
     learn_object (do_learning_srv_definitions::learn_object::Request & req,
                   do_learning_srv_definitions::learn_object::Response & response)
@@ -422,13 +568,13 @@ private:
 
         }
 
-        pcl::visualization::PCLVisualizer vis("test");
+        /*pcl::visualization::PCLVisualizer vis("test");
         int v1, v2;
         vis.createViewPort(0,0,0.5,1,v1);
         vis.createViewPort(0.5,0,1,1,v2);
         vis.addPointCloud(big_cloud, "big", v1);
         vis.addPointCloud(big_cloud_segmented, "segmented", v2);
-        vis.spin();
+        vis.spin();*/
 
         return true;
     }
@@ -456,6 +602,8 @@ public:
         n_->getParam ( "ratio", ratio_);
 
         learn_object_  = n_->advertiseService ("learn_object", &DOL::learn_object, this);
+        save_model_  = n_->advertiseService ("save_model", &DOL::save_model, this);
+
         ros::spin ();
     }
 };
