@@ -26,6 +26,7 @@
 #include "camera_srv_definitions/visualize_compound.h"
 #include "camera_srv_definitions/get_tracking_results.h"
 #include "camera_srv_definitions/do_ba.h"
+#include "camera_srv_definitions/cleanup.h"
 
 #include "v4r/KeypointConversions/convertImage.hpp"
 #include "v4r/KeypointConversions/convertCloud.hpp"
@@ -59,6 +60,8 @@ private:
     ros::ServiceServer cam_tracker_vis_compound_;
     ros::ServiceServer cam_tracker_do_ba_;
     ros::ServiceServer cam_tracker_get_tracking_results_;
+    ros::ServiceServer cam_tracker_cleanup_;
+
     ros::Subscriber camera_topic_subscriber_;
     ros::Publisher confidence_publisher_;
 
@@ -75,6 +78,7 @@ private:
     boost::posix_time::ptime last_cloud_;
     ros::Time last_cloud_ros_time_;
     std::string camera_topic_;
+    bool debug_mode_;
 
     void drawConfidenceBar(cv::Mat &im, const double &conf)
     {
@@ -175,9 +179,12 @@ private:
 
         bool is_ok = camtracker->track(image, kp_cloud, pose, conf, cam_idx);
 
-        drawConfidenceBar(image, conf);
-        cv::imshow("image", image);
-        cv::waitKey(1);
+        if(debug_mode_)
+        {
+            drawConfidenceBar(image, conf);
+            cv::imshow("image", image);
+            cv::waitKey(1);
+        }
 
         std::cout << time_ms << " conf:" << conf << std::endl;
 
@@ -196,6 +203,16 @@ private:
     void getCloud(const sensor_msgs::PointCloud2Ptr& msg)
     {
         trackNewCloud(msg);
+    }
+
+    bool
+    cleanup (camera_srv_definitions::cleanup::Request & req,
+             camera_srv_definitions::cleanup::Response & response)
+    {
+        cameras_.clear();
+        keyframes_.clear();
+        num_clouds_ = 0;
+        saved_clouds_ = 0;
     }
 
     bool
@@ -419,6 +436,8 @@ public:
         param.om_param.kt_param.rt_param.inl_dist = 0.03;  //e.g. 0.04 .. table top, 0.1 ..room
 
         camera_topic_ = "/camera/depth_registered/points";
+        camera_topic_ = "/head_xtion/depth_registered/points";
+        debug_mode_ = false;
     }
 
     void
@@ -432,9 +451,13 @@ public:
         cam_tracker_vis_compound_  = n_->advertiseService ("vis_compound", &CamTracker::visCompound, this);
         cam_tracker_do_ba_  = n_->advertiseService ("do_ba", &CamTracker::doBA, this);
         cam_tracker_get_tracking_results_  = n_->advertiseService ("get_results", &CamTracker::getTrackingResults, this);
+        cam_tracker_cleanup_  = n_->advertiseService ("cleanup", &CamTracker::cleanup, this);
 
         if(!n_->getParam ( "camera_topic", camera_topic_ ))
             camera_topic_ = "/camera/depth_registered/points";
+
+        if(!n_->getParam ( "debug_mode", debug_mode_ ))
+            debug_mode_ = false;
 
         ros::spin ();
     }
