@@ -24,6 +24,8 @@
 #include "camera_srv_definitions/start_tracker.h"
 #include "camera_srv_definitions/stop_tracker.h"
 #include "camera_srv_definitions/visualize_compound.h"
+#include "camera_srv_definitions/get_tracking_results.h"
+#include "camera_srv_definitions/do_ba.h"
 
 #include "v4r/KeypointConversions/convertImage.hpp"
 #include "v4r/KeypointConversions/convertCloud.hpp"
@@ -55,6 +57,8 @@ private:
     ros::ServiceServer cam_tracker_start_;
     ros::ServiceServer cam_tracker_stop_;
     ros::ServiceServer cam_tracker_vis_compound_;
+    ros::ServiceServer cam_tracker_do_ba_;
+    ros::ServiceServer cam_tracker_get_tracking_results_;
     ros::Subscriber camera_topic_subscriber_;
     ros::Publisher confidence_publisher_;
 
@@ -289,6 +293,64 @@ private:
     }
 
     bool
+    doBA (camera_srv_definitions::do_ba::Request & req,
+                 camera_srv_definitions::do_ba::Response & response)
+    {
+
+        if(cameras_.size() == 0)
+        {
+            ROS_WARN("Called bundle adjusment but no camera poses available\n");
+            return false;
+        }
+
+        kp::Object &model = camtracker->getModel();
+        kp::ProjBundleAdjuster ba;
+        ba.optimize(model);
+
+        for(size_t i=0; i < cameras_.size(); i++)
+        {
+            Eigen::Matrix4f inv_pose_after_ba;
+            kp::invPose(model.cameras[keyframes_[i].first], inv_pose_after_ba);
+            cameras_[i] = inv_pose_after_ba;
+        }
+
+        return true;
+
+    }
+
+    bool
+    getTrackingResults (camera_srv_definitions::get_tracking_results::Request & req,
+                        camera_srv_definitions::get_tracking_results::Response & response)
+    {
+        for(size_t i=0; i < cameras_.size(); i++)
+        {
+
+            sensor_msgs::PointCloud2 msg;
+            pcl::toROSMsg(*(keyframes_[i].second), msg);
+            response.keyframes.push_back(msg);
+
+            Eigen::Matrix4f trans = cameras_[i];
+
+            geometry_msgs::Transform tt;
+            tt.translation.x = trans(0,3);
+            tt.translation.y = trans(1,3);
+            tt.translation.z = trans(2,3);
+
+            Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
+            Eigen::Quaternionf q(rotation);
+            tt.rotation.x = q.x();
+            tt.rotation.y = q.y();
+            tt.rotation.z = q.z();
+            tt.rotation.w = q.w();
+            response.transforms.push_back(tt);
+
+        }
+
+        return true;
+
+    }
+
+    bool
     visCompound (camera_srv_definitions::visualize_compound::Request & req,
                  camera_srv_definitions::visualize_compound::Response & response)
     {
@@ -368,6 +430,8 @@ public:
         cam_tracker_start_  = n_->advertiseService ("start_recording", &CamTracker::start, this);
         cam_tracker_stop_  = n_->advertiseService ("stop_recording", &CamTracker::stop, this);
         cam_tracker_vis_compound_  = n_->advertiseService ("vis_compound", &CamTracker::visCompound, this);
+        cam_tracker_do_ba_  = n_->advertiseService ("do_ba", &CamTracker::doBA, this);
+        cam_tracker_get_tracking_results_  = n_->advertiseService ("get_results", &CamTracker::getTrackingResults, this);
 
         if(!n_->getParam ( "camera_topic", camera_topic_ ))
             camera_topic_ = "/camera/depth_registered/points";
