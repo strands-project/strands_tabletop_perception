@@ -52,7 +52,9 @@ find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs messa
    start_tracker.srv
    stop_tracker.srv
    visualize_compound.srv
-   #get_tracker_results.srv
+   do_ba.srv
+   get_tracking_results.srv
+   cleanup.srv
  )
 
 ## Generate actions in the 'action' folder

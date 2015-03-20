@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>singleview_object_recognizer</name>
+  <name>dynamic_object_learning</name>
   <version>0.0.0</version>
-  <description>The recognition_service package</description>
+  <description>Using keyframes and poses from the camera tracker and initial indices of an object, tries to model an object and export its for instance recognition</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
@@ -43,31 +43,14 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>tf</build_depend>
-  <build_depend>recognition_srv_definitions</build_depend>
+  <build_depend>do_learning_srv_definitions</build_depend>
   <build_depend>strands_v4r</build_depend>
-  <build_depend>actionlib</build_depend>
-  <build_depend>actionlib_msgs</build_depend>
-  <build_depend>mongodb_store_msgs</build_depend>
-  <build_depend>mongodb_store</build_depend>
-  <build_depend>scitos_ptu</build_depend>
-  <build_depend>cv_bridge</build_depend>
-  <build_depend>sensor_msgs</build_depend>
-  <build_depend>image_transport</build_depend>
 
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>tf</run_depend>
-  <run_depend>recognition_srv_definitions</run_depend>
+  <run_depend>do_learning_srv_definitions</run_depend>
   <run_depend>strands_v4r</run_depend>
-  <run_depend>actionlib</run_depend>
-  <run_depend>actionlib_msgs</run_depend>
-  <run_depend>mongodb_store_msgs</run_depend>
-  <run_depend>mongodb_store</run_depend>
-  <run_depend>scitos_ptu</run_depend>
-  <run_depend>cv_bridge</run_depend>
-  <run_depend>sensor_msgs</run_depend>
-  <run_depend>image_transport</run_depend>
-
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- You can specify that this package is a metapackage here: -->
