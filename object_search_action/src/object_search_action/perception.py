@@ -27,14 +27,12 @@ class PerceptionNill(smach.State):
     def __init__(self):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=['view_list'],
-                             output_keys=['obj_list'])
-
+                             input_keys=[],
+                             output_keys=[])
 
     def execute(self, userdata):
         print "Sleeping for a bit of"
-        rospy.sleep(6)
-
+        rospy.sleep(3)
         return 'succeeded'
 
 class PerceptionReal (smach.State):
@@ -49,12 +47,12 @@ class PerceptionReal (smach.State):
         self.pc_frame = rospy.get_param('~camera', '/head_xtion/depth/points')
         self.obj_list = []
 
-        ir_service_name = '/recognition_service/mp_recognition'
-        rospy.loginfo('Wait for service %s', ir_service_name)
-        rospy.wait_for_service(ir_service_name)
+        self.ir_service_name = '/recognition_service/mp_recognition'
+        rospy.loginfo('Wait for service %s', self.ir_service_name)
+        rospy.wait_for_service(self.ir_service_name)
 
         try:
-            self.ir_service = rospy.ServiceProxy(ir_service_name, recognize)
+            self.ir_service = rospy.ServiceProxy(self.ir_service_name, recognize)
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
             
@@ -68,18 +66,20 @@ class PerceptionReal (smach.State):
         # get point cloud
         try:
             rospy.loginfo('Waiting for pointcloud')
-            pointcloud = rospy.wait_for_message(self.pc_frame, PointCloud2 , timeout=10.0)
+            pointcloud = rospy.wait_for_message(self.pc_frame, PointCloud2 , timeout=60.0)
             rospy.loginfo('Got pointcloud')
         except rospy.ROSException, e:
             rospy.logwarn("Failed to get %s" % self.pc_frame)
             return 'aborted'
 
-        rospy.loginfo('Calling IR service')
+
         try:
             req = recognizeRequest()
             req.cloud = pointcloud
             req.complex_result.data = True
+            rospy.loginfo('Calling service %s' %  self.ir_service_name)
             res = self.ir_service(req)
+            rospy.loginfo('Received result from %s' % self.ir_service_name)
         except rospy.ServiceException, e2:
             rospy.loginfo("Service call failed: %s", e2)
             return 'aborted'

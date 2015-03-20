@@ -14,9 +14,12 @@ from actionlib_msgs.msg import *
 #from geometry_msgs.msg import Point32
 #from geometry_msgs.msg import Pose
 
-#from perceive_tabletop_action.action_monitor import ActionMonitor
-#from perceive_tabletop_action.view_planning  import ViewPlanning
-#from perceive_tabletop.perception     import *
+from object_search_action.setup import Setup
+from object_search_action.view_planning  import ViewPlanning
+from object_search_action.executive import Executive
+from object_search_action.navigation import GoTo
+from object_search_action.shutdown import Shutdown
+
 import object_search_action.perception as percept
 
 import numpy
@@ -30,63 +33,57 @@ class ObjectSearchSM(smach.StateMachine):
 
         self.userdata.action_completed = False
 
-        # self._setup  = Setup()
-        # self._view_planning   = ViewPlanning()
-        # self._executive       = Executive()
-        # self._navigation      = Navigation()
-        # self._shutdown        = Shutdown()
+        self._setup  = Setup()
+        self._view_planning   = ViewPlanning()
+        self._executive       = Executive()
+        self._goto            = GoTo()
+        self._shutdown        = Shutdown()
         
-        robot = rospy.get_param('robot', 'real')
+        robot = rospy.get_param('robot', 'nill')
         if robot == 'real':
             reload (percept)
             self._perception = percept.PerceptionReal()
-        elif robot == 'nill':
-            self._perception = PerceptionNill()
-        else: # 'sim'
-            self._perception = PerceptionSim()
+        else: # robot == 'nill':
+            self._perception = percept.PerceptionNill()
+        # else: # 'sim'
+        #     self._perception = PerceptionSim()
 
 
         with self:
-            # smach.StateMachine.add('Setup', self._setup, 
-            #                        transitions={'succeeded': 'ViewPlanning',
-            #                                     'aborted':'aborted',
-            #                                     'preempted':'preempted'})
+            smach.StateMachine.add('Setup', self._setup, 
+                                   transitions={'succeeded': 'ViewPlanning',
+                                                'aborted':'aborted',
+                                                'preempted':'preempted'})
 
-            # smach.StateMachine.add('ViewPlanning', self._view_planning, 
-            #                        transitions={'succeeded': 'Executive',
-            #                                     'aborted':'aborted',
-            #                                     'preempted':'preempted'})
+            smach.StateMachine.add('ViewPlanning', self._view_planning, 
+                                   transitions={'succeeded': 'Executive',
+                                                'aborted':'aborted',
+                                                'preempted':'preempted'})
 
-            # smach.StateMachine.add('Executive', self._executive, 
-            #                        transitions={'succeeded': 'Navigation',
-            #                                     'aborted':'aborted',
-            #                                     'preempted':'preempted'})
+            smach.StateMachine.add('Executive', self._executive, 
+                                   transitions={'succeeded': 'GoTo',
+                                                'no_views': 'Shutdown',
+                                                'aborted':'aborted',
+                                                'preempted':'preempted'})
 
-            # smach.StateMachine.add('Navigation', self._perception, 
-            #                        transitions={'succeeded': 'Perception',
-            #                                     'aborted':'',
-            #                                     'preempted':'preempted'})
+            smach.StateMachine.add('GoTo', self._goto, 
+                                   transitions={'succeeded': 'Perception',
+                                                'aborted':'',
+                                                'preempted':'preempted'})
 
-            # smach.StateMachine.add('ActionMonitor', self._action_monitor, 
-            #                        transitions={'succeeded': 'succeeded',
-            #                                     'action_in_progress':'ViewPlanning',
-            #                                     'aborted':'aborted',
-            #                                     'preempted':'preempted',
-            #                                     'error': 'aborted',},
-            #                        remapping={'obj_list':'sm_obj_list' #  ,
-            #                                   }) #'action_completed':'sm_action_completed'
+            smach.StateMachine.add('Perception', self._perception, 
+                                   transitions={'succeeded':'Executive',
+                                                'aborted':'aborted',
+                                                'preempted':'preempted'}
+                               )
 
-            # smach.StateMachine.add('ViewPlanning', self._view_planning, 
-            #                        transitions={'succeeded':'Navigation',
-            #                                     'action_completed':'ActionMonitor',
-            #                                     'aborted':'aborted',
-            #                                     'preempted':'preempted'},
-            #                        remapping={'obj_list':'sm_obj_list',
-            #                                   'table_pose':'sm_table_pose',
-            #                                   'pose_output':'sm_pose_data',
-            #                                   'view_list':'sm_view_list' #,
-            #                                   }) #                                               'action_completed':'sm_action_completed'
-
+            smach.StateMachine.add('Shutdown', self._shutdown, 
+                                   transitions={'succeeded':'succeeded',
+                                                'aborted':'aborted',
+                                                'preempted':'preempted'}
+                               )
+                        
+            
             # # The navigation is realized via Move Base directly
             # # TODO: replace with monitored navigation in strands_navigation
             # smach.StateMachine.add('Navigation',
@@ -106,11 +103,6 @@ class ObjectSearchSM(smach.StateMachine):
             #                                     'preempted':'preempted'},
             #                        remapping={'pose_input':'sm_pose_data'},
             #                        )
-            smach.StateMachine.add('Perception', self._perception, 
-                                   transitions={'succeeded':'succeeded',
-                                                'aborted':'aborted',
-                                                'preempted':'preempted'}
-                                   )
 
 # def navigation_result_cb(userdata, status, result):
 #     rospy.loginfo("Monitored navigation result: %i (SUCCEEDED=0, BUMPER_FAILURE=1, LOCAL_PLANNER_FAILURE=2, GLOBAL_PLANNER_FAILURE=3, PREEMPTED=4)", result.sm_outcome)

@@ -41,11 +41,21 @@ class ObjectSearchActionServer:
         # create the state machine
         sm = ObjectSearchSM()
 
-        sm.userdata.current_view = 0
-        sm.userdata.num_of_views = 0
-        sm.userdata.roi_id = goal.roi_id
-        sm.userdata.mode   = goal.mode
 
+        sm.userdata.num_of_views = rospy.get_param('~num_of_views', 20)
+        sm.userdata.current_view = 0
+
+        sm.userdata.percentage_complete = 0
+
+        # set arguments from call
+        sm.userdata.mode   = goal.mode
+        sm.userdata.roi_id = goal.roi_id
+
+        # set parameters from parameter server
+        sm.userdata.soma_map = rospy.get_param('~soma_map', 'g4s')
+        sm.userdata.soma_conf = rospy.get_param('~soma_conf', 'main')
+
+                
         smach_thread = threading.Thread(target = sm.execute)
         smach_thread.start()
 
@@ -70,7 +80,8 @@ class ObjectSearchActionServer:
             if userdata.num_of_views == 0:
                 self._feedback.percent_complete = 0
             else:
-                self._feedback.percent_complete = (float(userdata.current_view) / float(userdata.num_of_views)) * 100 
+                self._feedback.percent_complete = userdata.percentage_complete #(float(userdata.current_view) / float(userdata.plan_lentgh)) * 100
+                print  self._feedback.percent_complete
 
             self._as.publish_feedback(self._feedback)
 
