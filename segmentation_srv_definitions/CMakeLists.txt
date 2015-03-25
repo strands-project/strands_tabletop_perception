@@ -42,6 +42,7 @@ find_package(catkin REQUIRED COMPONENTS std_msgs sensor_msgs message_generation)
 add_service_files(
   FILES
   segment.srv
+  MS_segment.srv
 )
 
 ## Generate added messages and services with any dependencies listed here
