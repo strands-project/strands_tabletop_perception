@@ -10,6 +10,7 @@
 #include <thread>
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "sensor_msgs/CameraInfo.h"
 #include "std_msgs/Float32.h"
 
 #include <pcl/common/common.h>
@@ -63,6 +64,7 @@ private:
     ros::ServiceServer cam_tracker_cleanup_;
 
     ros::Subscriber camera_topic_subscriber_;
+    ros::Subscriber camera_info_subscriber_;
     ros::Publisher confidence_publisher_;
 
     kp::KeypointSlamRGBD2::Parameter param;
@@ -79,6 +81,13 @@ private:
     ros::Time last_cloud_ros_time_;
     std::string camera_topic_;
     bool debug_mode_;
+    sensor_msgs::CameraInfo camera_info_;
+    bool got_camera_info_;
+
+    void camera_info_cb(const sensor_msgs::CameraInfoPtr& msg) {
+      camera_info_ = *msg;
+      got_camera_info_=true;
+    }
 
     void drawConfidenceBar(cv::Mat &im, const double &conf)
     {
@@ -105,7 +114,6 @@ private:
                      int cam_id, const Eigen::Matrix4f &pose)
     {
         int type = 0;
-
 
         if (cam_id>=0)
         {
@@ -225,13 +233,20 @@ private:
         num_clouds_ = 0;
         saved_clouds_ = 0;
 
-        camera_topic_subscriber_ = n_->subscribe(camera_topic_, 1, &CamTracker::getCloud, this);
+        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
+        camera_info_subscriber_ = n_->subscribe(camera_topic_ +"/camera_info", 1, &CamTracker::camera_info_cb, this);
 
-        cv::Mat_<double> distCoeffs = cv::Mat::zeros(4, 1, CV_64F);
-        cv::Mat_<double> intrinsic = cv::Mat_<double>::eye(3,3);
-        intrinsic(0,0)=intrinsic(1,1)=525;
-        intrinsic(0,2)=320, intrinsic(1,2)=240;
+        ROS_INFO_STREAM("Wating for camera info...topic=" << camera_topic_ << "/camera_info...");
+	while (!got_camera_info_) {
+	  ros::Duration(0.1).sleep();
+          ros::spinOnce();
+	}
+        ROS_INFO("got it.");
+	camera_info_subscriber_.shutdown();
 
+        cv::Mat_<double> distCoeffs = cv::Mat(4, 1, CV_64F, camera_info_.D.data());
+        cv::Mat_<double> intrinsic = cv::Mat(3, 3, CV_64F, camera_info_.K.data()); 
+	
         camtracker.reset( new kp::KeypointSlamRGBD2(param) );
         camtracker->setCameraParameter(intrinsic,distCoeffs);
 
@@ -419,7 +434,7 @@ private:
     }
 
 public:
-    CamTracker ()
+  CamTracker () : got_camera_info_(false)
     {
         cos_min_delta_angle_ = cos(20*M_PI/180.);
         sqr_min_cam_distance_ = 1.*1.;
@@ -454,7 +469,7 @@ public:
         cam_tracker_cleanup_  = n_->advertiseService ("cleanup", &CamTracker::cleanup, this);
 
         if(!n_->getParam ( "camera_topic", camera_topic_ ))
-            camera_topic_ = "/camera/depth_registered/points";
+            camera_topic_ = "/camera/depth_registered";
 
         if(!n_->getParam ( "debug_mode", debug_mode_ ))
             debug_mode_ = false;
