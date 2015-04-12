@@ -65,8 +65,8 @@ class TrajectoryGenerator(object):
         rospy.loginfo("Started nav_goal_tester service")
 
         # subscribing to a map
-        self.map_frame = rospy.get_param('~map_frame', '/move_base/global_costmap/costmap')
-        self.is_costmap = rospy.get_param('~is_costmap', True)
+        self.map_frame = rospy.get_param('~map_frame', '/waypoint_map')
+        self.is_costmap = rospy.get_param('~is_costmap', False)
         rospy.loginfo("Sampling goals in %s", self.map_frame)
 
         # setting up the service
@@ -101,7 +101,7 @@ class TrajectoryGenerator(object):
         max_dist = req.max_dist
         angle_jump = 2 * math.pi / req.number_views
 
-        res = NavGoalsResponse()
+        res = GetTrajectoryPointsResponse()
 
         try:
             rospy.loginfo("Getting a map...")
