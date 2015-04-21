@@ -16,6 +16,9 @@ from viper.core.plan import Plan
 from viper.core.view import View
 from viper.core.robot import Robot
 
+from octomap_msgs.msg import Octomap
+from semantic_map_publisher.srv import ObservationOctomapServiceRequest, ObservationOctomapService
+
 class ViewPlanning(smach.State):
     """
     View planning
@@ -25,7 +28,7 @@ class ViewPlanning(smach.State):
     def __init__(self):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=['num_of_views'],
+                             input_keys=['waypoint','num_of_views'],
                              output_keys=['views'])
         self.robot_poses_pub = rospy.Publisher('robot_poses', PoseArray, queue_size=100)
 
@@ -63,11 +66,37 @@ class ViewPlanning(smach.State):
         views = planner.sample_views(NUM_OF_VIEWS)
         rospy.loginfo('Generate views. Done. (%s views have been generated)' % len(views))
 
-        view_values = planner.compute_view_values(views)
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
+
+
+        octomap = Octomap()
+        rospy.loginfo("Requesting octomap from semantic map server....")
+        octomap_service_name = '/Semantic_map_publisher_node/SemanticMapPublisher/ObservationOctomapService'
+        #octomap_service_name = '/semantic_map_publisher/SemanticMapPublisher/ObservationOctomapService'
+        rospy.wait_for_service(octomap_service_name)
+        try:
+            octomap_service = rospy.ServiceProxy(octomap_service_name, ObservationOctomapService)
+            req = ObservationOctomapServiceRequest()
+            req.waypoint_id = userdata.waypoint
+            req.resolution = 0.05
+            res = octomap_service(req)
+            octomap = res.octomap
+            rospy.loginfo("Received octomap: size:%s resolution:%s", len(octomap.data), octomap.resolution)
+
+        except rospy.ServiceException, e:
+            rospy.logerr("Service call failed: %s"%e)
+        
+        view_values = planner.compute_view_values(views, octomap)
+        
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
+
         view_costs = planner.compute_view_costs(views)
 
         print view_values
-
         print view_costs
         
         current_view = self.get_current_view()
@@ -81,6 +110,11 @@ class ViewPlanning(smach.State):
 
         view_costs[current_view.ID] = vcosts
 
+
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
+
         NUM_OF_PLANS = rospy.get_param('~num_of_plans', 10)
         PLAN_LENGTH = rospy.get_param('~plan_length', 10)
         RHO  = rospy.get_param('~rho', 1.0)
@@ -88,8 +122,17 @@ class ViewPlanning(smach.State):
         plans = planner.sample_plans(NUM_OF_PLANS, PLAN_LENGTH, RHO, views, view_values, view_costs, current_view.ID)
         rospy.loginfo("Stopped plan sampling.")
 
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
+
 
         plan_values =  planner.compute_plan_values(plans, view_values, view_costs)
+
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
+
         best_plan_id = planner.min_cost_plan(plan_values)
 
         for p in plans:
@@ -99,7 +142,7 @@ class ViewPlanning(smach.State):
                 p = None
                 
         if p.ID != best_plan_id:
-            print "Something bad has happend!"
+            rospy.logerr("Something bad has happend!")
 
             
         userdata.views = p.views
@@ -109,7 +152,7 @@ class ViewPlanning(smach.State):
         robot_poses.poses = []
         for v in views:
             robot_poses.poses.append(v.get_robot_pose())
-            print len(robot_poses.poses)
+            #print len(robot_poses.poses)
         self.robot_poses_pub.publish(robot_poses)
         
         return 'succeeded'

@@ -31,7 +31,7 @@ class PerceptionNill(smach.State):
                              output_keys=[])
 
     def execute(self, userdata):
-        print "Sleeping for a bit of"
+        rospy.loginfo("Sleeping for a bit")
         rospy.sleep(3)
         return 'succeeded'
 
@@ -63,6 +63,11 @@ class PerceptionReal (smach.State):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         self.obj_list = []
 
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
+
+
         # get point cloud
         try:
             rospy.loginfo('Waiting for pointcloud')
@@ -72,6 +77,9 @@ class PerceptionReal (smach.State):
             rospy.logwarn("Failed to get %s" % self.pc_frame)
             return 'aborted'
 
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
 
         try:
             req = recognizeRequest()

@@ -32,7 +32,7 @@ class ObjectSearchActionServer:
         
     def execute_cb(self, goal):
 
-        rospy.loginfo('Received request: %s %s', goal.roi_id, goal.mode)
+        rospy.loginfo('Received request: waypoint:%s roi:%s', goal.waypoint, goal.roi_id)
         
         # helper variables
         r = rospy.Rate(1)
@@ -42,14 +42,16 @@ class ObjectSearchActionServer:
         sm = ObjectSearchSM()
 
 
+
         sm.userdata.num_of_views = rospy.get_param('~num_of_views', 20)
         sm.userdata.current_view = 0
 
         sm.userdata.percentage_complete = 0
 
         # set arguments from call
-        sm.userdata.mode   = goal.mode
+        sm.userdata.waypoint = goal.waypoint
         sm.userdata.roi_id = goal.roi_id
+        #sm.userdata.mode   = goal.mode
 
         # set parameters from parameter server
         sm.userdata.soma_map = rospy.get_param('~soma_map', 'g4s')
@@ -81,14 +83,13 @@ class ObjectSearchActionServer:
                 self._feedback.percent_complete = 0
             else:
                 self._feedback.percent_complete = userdata.percentage_complete #(float(userdata.current_view) / float(userdata.plan_lentgh)) * 100
-                print  self._feedback.percent_complete
+                rospy.loginfo("Percentage complete: %s", self._feedback.percent_complete)
 
             self._as.publish_feedback(self._feedback)
 
             r.sleep()
 
         if success:
-            
             rospy.loginfo('%s: Succeeded' % self._action_name)
             self._as.set_succeeded(self._result)
         else:
@@ -97,7 +98,7 @@ class ObjectSearchActionServer:
 
 if __name__ == '__main__':
     rospy.init_node('object_search_server')
-    os = ObjectSearchActionServer('object_search')
+    os = ObjectSearchActionServer('search_object')
     rospy.spin()
     
     

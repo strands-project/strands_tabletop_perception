@@ -1,7 +1,7 @@
 <launch>
   <arg name="camera" default="/camera/depth_registered/points"/>
-  <arg name="soma_map" default="g4s"/>
-  <arg name="soma_conf" default="main"/>
+  <arg name="soma_map" default="lg"/>
+  <arg name="soma_conf" default="test"/>
 
 
   <!-- VIEW PLANNING -->
