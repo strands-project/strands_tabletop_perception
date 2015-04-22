@@ -72,15 +72,17 @@ class ViewPlanning(smach.State):
 
 
         octomap = Octomap()
-        rospy.loginfo("Requesting octomap from semantic map server....")
-        octomap_service_name = '/Semantic_map_publisher_node/SemanticMapPublisher/ObservationOctomapService'
-        #octomap_service_name = '/semantic_map_publisher/SemanticMapPublisher/ObservationOctomapService'
+        #octomap_service_name = '/Semantic_map_publisher_node/SemanticMapPublisher/ObservationOctomapService'
+        rospy.loginfo("Waiting for semantic map service")
+        octomap_service_name = '/semantic_map_publisher/SemanticMapPublisher/ObservationOctomapService'
         rospy.wait_for_service(octomap_service_name)
+        rospy.loginfo("Done")
         try:
             octomap_service = rospy.ServiceProxy(octomap_service_name, ObservationOctomapService)
             req = ObservationOctomapServiceRequest()
             req.waypoint_id = userdata.waypoint
             req.resolution = 0.05
+            rospy.loginfo("Requesting octomap from semantic map service")
             res = octomap_service(req)
             octomap = res.octomap
             rospy.loginfo("Received octomap: size:%s resolution:%s", len(octomap.data), octomap.resolution)

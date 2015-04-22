@@ -10,13 +10,9 @@
   <param name="inflation_radius" type="double" value="0.1" />  
   <param name="views_at_pose" type="int" value="5" />  
 
-
-
-
   <!-- VIEW EVALUATION -->  
   <arg name="robot" default="scitos"/>
   <include file="$(find viper)/launch/$(arg robot)/_evalaute_views.launch"/>
-    
 
   <!-- NAV GOAL GENERATOR -->
   <arg name="map" default="/move_base/global_costmap/costmap"/>  
@@ -25,8 +21,7 @@
     <arg name="map" value="$(arg map)"/>
     <arg name="is_costmap" default="$(arg is_costmap)"/>
   </include>
-
-
+  <!-- <param name="inflation_radius" type="double" value="0.5" /> -->
 
   <!-- ACTION SERVER -->
   <node name="object_search_action" pkg="object_search_action" type="object_search_server.py" output="screen">
@@ -34,6 +29,9 @@
     <param name="soma_map" type="string" value="$(arg soma_map)"/>
     <param name="soma_conf" type="string" value="$(arg soma_conf)"/>
     <param name="num_of_views" type="int" value="15" />  
+    <param name="num_of_plans" type="int" value="10"/>
+    <param name="plan_length" type="int" value="10"/>
+    <param name="rho" type="double" value="1.0"/>
   </node>
   
 </launch>
