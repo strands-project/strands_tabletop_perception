@@ -39,7 +39,7 @@ class ObjectSearchSM(smach.StateMachine):
         self._goto            = GoTo()
         self._shutdown        = Shutdown()
         
-        robot = rospy.get_param('robot', 'nill')
+        robot = rospy.get_param('robot', 'real')
         if robot == 'real':
             reload (percept)
             self._perception = percept.PerceptionReal()

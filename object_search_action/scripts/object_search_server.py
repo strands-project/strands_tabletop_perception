@@ -83,7 +83,7 @@ class ObjectSearchActionServer:
                 self._feedback.percent_complete = 0
             else:
                 self._feedback.percent_complete = userdata.percentage_complete #(float(userdata.current_view) / float(userdata.plan_lentgh)) * 100
-                rospy.loginfo("Percentage complete: %s", self._feedback.percent_complete)
+                #rospy.loginfo("Percentage complete: %s", self._feedback.percent_complete)
 
             self._as.publish_feedback(self._feedback)
 
