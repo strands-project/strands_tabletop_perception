@@ -1,5 +1,5 @@
 <launch>
-  <arg name="camera" default="/head_xtion/depth/points"/>
+  <arg name="camera" default="/head_xtion/depth_registered/points"/>
   <arg name="soma_map" default="lg"/>
   <arg name="soma_conf" default="test"/>
 
