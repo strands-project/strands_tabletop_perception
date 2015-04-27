@@ -9,7 +9,7 @@ from sensor_msgs.msg import *
 from geometry_msgs.msg import *
 
 import viper
-from viper.robots.scitos import ScitosRobot
+from viper.robots.scitos_simple import ScitosRobot
 
 from viper.core.planner import ViewPlanner
 from viper.core.plan import Plan
@@ -18,6 +18,11 @@ from viper.core.robot import Robot
 
 from octomap_msgs.msg import Octomap
 from semantic_map_publisher.srv import ObservationOctomapServiceRequest, ObservationOctomapService
+
+from visualization_msgs.msg import Marker, InteractiveMarkerControl
+from interactive_markers.interactive_marker_server import *
+from visualization_msgs.msg import MarkerArray
+from std_msgs.msg import ColorRGBA
 
 class ViewPlanning(smach.State):
     """
@@ -31,6 +36,7 @@ class ViewPlanning(smach.State):
                              input_keys=['waypoint','num_of_views'],
                              output_keys=['views'])
         self.robot_poses_pub = rospy.Publisher('robot_poses', PoseArray, queue_size=100)
+        self.vis = Vis()
 
     def get_current_view(self):
         try:
@@ -137,8 +143,28 @@ class ViewPlanning(smach.State):
 
         best_plan_id = planner.min_cost_plan(plan_values)
 
+
         for p in plans:
             if p.ID == best_plan_id:
+                pids = []
+                for v in p.views:
+                    pids.append(v.ID)
+                    print "Best plan: ID: ", p.ID, " Value: ", plan_values[p.ID]
+                    self.vis.visualize_plan(p, plan_values)
+                    # frustum marker
+                    # call compute_values to calc the frustum
+                frustum_marker = MarkerArray()    
+                idx = 0
+                for view in views:
+                    if view.ID in pids:
+                        val = view_values[view.ID]
+                        print idx, val
+                        if val > 0:
+                            print "Create frustum marker with value", val
+                            self.vis.create_frustum_marker(frustum_marker, view, view.get_ptu_pose(), view_values)
+                        idx += 1
+                self.vis.pubfrustum.publish(frustum_marker)
+                #vis.delete(p)
                 break
             else:
                 p = None
@@ -146,7 +172,6 @@ class ViewPlanning(smach.State):
         if p.ID != best_plan_id:
             rospy.logerr("Something bad has happend!")
 
-            
         userdata.views = p.views
         # visulaize for debug
         robot_poses  = PoseArray()
@@ -159,3 +184,177 @@ class ViewPlanning(smach.State):
         
         return 'succeeded'
 
+
+
+def trapezoidal_shaped_func(a, b, c, d, x):
+    min_val = min(min((x - a)/(b - a), float(1.0)), (d - x)/(d - c))
+    return max(min_val, float(0.0))
+
+
+def r_func(x):
+    a = -0.125
+    b =  0.125
+    c =  0.375
+    d =  0.625
+    x = 1.0 - x
+    value = trapezoidal_shaped_func(a,b,c,d,x)
+    return value
+
+def g_func(x):
+    a =  0.125
+    b =  0.375
+    c =  0.625
+    d =  0.875
+    x = 1.0 - x
+    value = trapezoidal_shaped_func(a,b,c,d,x)
+    return value
+
+
+def b_func(x):
+    a =  0.375
+    b =  0.625
+    c =  0.875
+    d =  1.125
+    x = 1.0 - x
+    value = trapezoidal_shaped_func(a,b,c,d,x)
+    return value
+
+
+
+class Vis(object):
+    def __init__(self):
+        self._server = InteractiveMarkerServer("evaluated_plans")
+        self.pubfrustum = rospy.Publisher('frustums', MarkerArray, queue_size=100)
+        self.marker_id = 0
+
+        
+    def _update_cb(self,feedback):
+        return
+
+    def visualize_plan(self, plan, plan_values):
+        int_marker = self.create_plan_marker(plan, plan_values)
+        self._server.insert(int_marker, self._update_cb)
+        self._server.applyChanges()
+
+    
+    def delete(self, plan):
+        self._server.erase(plan.ID)
+        self._server.applyChanges()
+
+    def create_frustum_marker(self, markerArray, view, pose, view_values):
+        marker1 = Marker()
+        marker1.id = self.marker_id
+        self.marker_id += 1
+        marker1.header.frame_id = "/map"
+        marker1.type = marker1.LINE_LIST
+        marker1.action = marker1.ADD
+        marker1.scale.x = 0.05
+        marker1.color.a = 0.3
+
+        vals = view_values.values()
+        max_val = max(vals)
+        non_zero_vals = filter(lambda a: a != 0, vals)
+        min_val = min(non_zero_vals)
+        
+        print min_val, max_val, view_values[view.ID]
+        
+        marker1.color.r = r_func( float((view_values[view.ID] - min_val)) / float((max_val - min_val + 1)))
+        marker1.color.g = g_func( float((view_values[view.ID] - min_val)) / float((max_val - min_val + 1)))
+        marker1.color.b = b_func( float((view_values[view.ID] - min_val)) /  float((max_val - min_val + 1)))
+
+        marker1.pose.orientation = pose.orientation
+        marker1.pose.position = pose.position
+
+        points = view.get_frustum()
+
+        marker1.points.append(points[0])
+        marker1.points.append(points[1])
+
+        marker1.points.append(points[2])
+        marker1.points.append(points[3])
+        
+        marker1.points.append(points[0])
+        marker1.points.append(points[2])
+
+        marker1.points.append(points[1])
+        marker1.points.append(points[3])
+
+        marker1.points.append(points[4])
+        marker1.points.append(points[5])
+        
+        marker1.points.append(points[6])
+        marker1.points.append(points[7])
+
+        marker1.points.append(points[4])
+        marker1.points.append(points[6])
+        
+        marker1.points.append(points[5])
+        marker1.points.append(points[7])
+
+        marker1.points.append(points[0])
+        marker1.points.append(points[4])
+
+        marker1.points.append(points[2])
+        marker1.points.append(points[6])
+
+        marker1.points.append(points[1])
+        marker1.points.append(points[5])
+
+        marker1.points.append(points[3])
+        marker1.points.append(points[7])
+        
+        markerArray.markers.append(marker1)
+
+        
+    def create_plan_marker(self, plan, plan_values):
+        # create an interactive marker for our server
+        int_marker = InteractiveMarker()
+        int_marker.header.frame_id = "/map"
+        int_marker.name = plan.ID
+        int_marker.description = plan.ID
+        pose = Pose()
+        #pose.position.x = traj.pose[0]['position']['x']
+        #pose.position.y = traj.pose[0]['position']['y']
+        int_marker.pose = pose
+        
+        line_marker = Marker()
+        line_marker.type = Marker.LINE_STRIP
+        line_marker.scale.x = 0.1
+
+        # random.seed(float(plan.ID))
+        # val = random.random()
+        # line_marker.color.r = r_func(val)
+        # line_marker.color.g = g_func(val)
+        # line_marker.color.b = b_func(val)
+        # line_marker.color.a = 1.0
+
+        line_marker.points = []
+        for view in plan.views:
+            x = view.get_ptu_pose().position.x
+            y = view.get_ptu_pose().position.y
+            z = 0.0 # float(plan.ID) / 10
+            p = Point()
+            p.x = x - int_marker.pose.position.x  
+            p.y = y - int_marker.pose.position.y
+            p.z = z - int_marker.pose.position.z
+            line_marker.points.append(p)
+
+            line_marker.colors = []
+            for i, view in enumerate(plan.views):
+                color = ColorRGBA()
+                val = float(i) / len(plan.views)
+                color.r = r_func(val)
+                color.g = g_func(val)
+                color.b = b_func(val)
+                color.a = 1.0
+                line_marker.colors.append(color)
+                
+
+        # create a control which will move the box
+        # this control does not contain any markers,
+        # which will cause RViz to insert two arrows
+        control = InteractiveMarkerControl()
+        control.markers.append(line_marker) 
+        int_marker.controls.append(control)
+        
+        return int_marker
