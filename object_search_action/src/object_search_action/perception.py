@@ -44,7 +44,7 @@ class PerceptionReal (smach.State):
                              input_keys=[],
                              output_keys=[])
 
-        self.pc_frame = rospy.get_param('~camera', '/head_xtion/depth/points')
+        self.pc_frame = rospy.get_param('~camera', '/head_xtion/depth_registered/points')
         self.obj_list = []
 
         self.ir_service_name = '/recognition_service/mp_recognition'
@@ -70,7 +70,7 @@ class PerceptionReal (smach.State):
 
         # get point cloud
         try:
-            rospy.loginfo('Waiting for pointcloud')
+            rospy.loginfo('Waiting for pointcloud: %s', self.pc_frame)
             pointcloud = rospy.wait_for_message(self.pc_frame, PointCloud2 , timeout=60.0)
             rospy.loginfo('Got pointcloud')
         except rospy.ROSException, e:
