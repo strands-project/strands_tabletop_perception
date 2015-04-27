@@ -9,11 +9,14 @@ from sensor_msgs.msg import *
 
 from recognition_srv_definitions.srv import recognize, recognizeResponse, recognizeRequest
 
-# from world_state.observation import MessageStoreObject, Observation, TransformationStore
-# from world_state.identification import ObjectIdentification
-# from world_state.state import World, Object
-# from world_state.report import PointCloudVisualiser, create_robblog
-# import world_state.geometry as geometry
+from world_state.observation import MessageStoreObject, Observation, TransformationStore
+from world_state.identification import ObjectIdentification
+from world_state.state import World, Object
+#from world_state.report import PointCloudVisualiser #, create_robblog
+import world_state.geometry as geometry
+
+from sensor_msgs.msg import Image, PointCloud2, CameraInfo, JointState
+from geometry_msgs.msg import PoseWithCovarianceStamped
 
 import numpy as np
 
@@ -56,7 +59,7 @@ class PerceptionReal (smach.State):
         except rospy.ServiceException, e:
             rospy.logerr("Service call failed: %s" % e)
             
-        #self._world = World()
+        self._world = World()
         #self._pcv = PointCloudVisualiser()
 
     def execute(self, userdata):
@@ -69,13 +72,26 @@ class PerceptionReal (smach.State):
 
 
         # get point cloud
-        try:
-            rospy.loginfo('Waiting for pointcloud: %s', self.pc_frame)
-            pointcloud = rospy.wait_for_message(self.pc_frame, PointCloud2 , timeout=60.0)
-            rospy.loginfo('Got pointcloud')
-        except rospy.ROSException, e:
-            rospy.logwarn("Failed to get %s" % self.pc_frame)
-            return 'aborted'
+        # try:
+        #     rospy.loginfo('Waiting for pointcloud: %s', self.pc_frame)
+        #     pointcloud = rospy.wait_for_message(self.pc_frame, PointCloud2 , timeout=60.0)
+        #     rospy.loginfo('Got pointcloud')
+        # except rospy.ROSException, e:
+        #     rospy.logwarn("Failed to get %s" % self.pc_frame)
+        #     return 'aborted'
+        DEFAULT_TOPICS = [("/amcl_pose", PoseWithCovarianceStamped),
+                  ("/head_xtion/rgb/image_color", Image), 
+                  ("/head_xtion/rgb/camera_info", CameraInfo), 
+                  (self.pc_frame, PointCloud2),
+                  ("/head_xtion/depth/camera_info", CameraInfo),
+                  ("/ptu/state", JointState)]
+
+        observation =  Observation.make_observation(DEFAULT_TOPICS)
+        rospy.loginfo('Waiting for pointcloud: %s', self.pc_frame)
+        pointcloud = observation.get_message(self.pc_frame)
+        rospy.loginfo('Got pointcloud')
+        tf =  TransformationStore.msg_to_transformer(observation.get_message("/tf"))
+
 
         if self.preempt_requested():
             self.service_preempt()
@@ -92,9 +108,56 @@ class PerceptionReal (smach.State):
             rospy.loginfo("Service call failed: %s", e2)
             return 'aborted'
 
+        ################################################################################
+        # Store result into mongodb_store
+        # depth_to_world = tf.lookupTransform("/map", pointcloud.header.frame_id, 
+        #                                     pointcloud.header.stamp)
+        # print depth_to_world
+        # depth_to_world = geometry.Pose(geometry.Point(*(depth_to_world[0])),
+        #                                geometry.Quaternion(*(depth_to_world[1])))
+        
+        objects = res.ids
+        print "=" * 80
+        print "Perceived objects"
+        print "=" * 80, "\n"
         for i in range(len(res.ids)):
+
             rospy.loginfo("Recognized: %s %s" % (res.ids[i], res.confidence[i]))
             self.obj_list.append(res.ids[i])
+            new_object =  self._world.create_object()
+
+            # TODO
+            # add objects to waypoint!!!
+
+            # cloud (map frame!)
+            # bbox (map frame!)
+            # pose (map frame!)
+
+            new_object._point_cloud =  MessageStoreObject.create(res.models_cloud[i]) # cloud is in camera frame
+            new_object.add_observation(observation)
+            # info about object model and confidence (use: identification?)
+            new_object.add_identification("SingleViewClassifier",
+                                          ObjectIdentification({res.ids[i].data.strip('.pcd') : res.confidence[i]}))
+
+            # The position (centroid)
+            print "=" * 10, "\n", res.centroid[i]
+            position = geometry.Point.from_ros_point32(res.centroid[i])
+            print "-" * 10, "\n", position
+            #position.transform(depth_to_world)
+            # print "-" * 10, "\n", position
+            pose = geometry.Pose(position)
+            new_object.add_pose(pose) # no orientation
+            print "-" * 80, "\n"
+
+            bbox_array =  []
+            for pt in res.bbox[i].point:
+                p =  geometry.Point.from_ros_point32(pt)
+                #p.transform(depth_to_world)
+                bbox_array.append([p.x, p.y, p.z])
+            bbox = geometry.BBoxArray(bbox_array)
+            new_object._bounding_box = bbox
             
+        print "=" * 80, "\n"
+        #################################################################################
         return 'succeeded'
 

@@ -39,7 +39,7 @@ class ObjectSearchSM(smach.StateMachine):
         self._goto            = GoTo()
         self._shutdown        = Shutdown()
         
-        perception = rospy.get_param('perception', 'nill')
+        perception = rospy.get_param('perception', 'real')
         if perception == 'real':
             reload (percept)
             self._perception = percept.PerceptionReal()
@@ -61,7 +61,7 @@ class ObjectSearchSM(smach.StateMachine):
                                                 'preempted':'preempted'})
 
             smach.StateMachine.add('Executive', self._executive, 
-                                   transitions={'succeeded': 'GoTo',
+                                   transitions={'succeeded': 'Perception', #GoTo
                                                 'no_views': 'Shutdown',
                                                 'aborted':'aborted',
                                                 'preempted':'preempted'})
