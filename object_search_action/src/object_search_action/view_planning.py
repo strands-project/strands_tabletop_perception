@@ -97,6 +97,10 @@ class ViewPlanning(smach.State):
             rospy.logerr("Service call failed: %s"%e)
         
         view_values = planner.compute_view_values(views, octomap)
+
+        print "VIEWS SIZE:", len(views)
+        for v in views:
+            print v.ID, len(v.get_keys()), len(v.get_values())
         
         if self.preempt_requested():
             self.service_preempt()
@@ -149,10 +153,9 @@ class ViewPlanning(smach.State):
                 pids = []
                 for v in p.views:
                     pids.append(v.ID)
-                    print "Best plan: ID: ", p.ID, " Value: ", plan_values[p.ID]
-                    self.vis.visualize_plan(p, plan_values)
-                    # frustum marker
-                    # call compute_values to calc the frustum
+                self.vis.visualize_plan(p, plan_values)
+                # frustum marker
+                # call compute_values to calc the frustum
                 frustum_marker = MarkerArray()    
                 idx = 0
                 for view in views:
