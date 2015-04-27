@@ -8,10 +8,10 @@
   <include file="$(find scitos_moveit_config)/launch/move_group.launch"/>
   <node name="ptu_fk" pkg="viper" type="ptu_fk"/>
   <param name="inflation_radius" type="double" value="0.1" />  
-  <param name="views_at_pose" type="int" value="5" />  
+  <param name="views_at_pose" type="int" value="10" />  
 
   <!-- VIEW EVALUATION -->  
-  <arg name="robot" default="scitos"/>
+  <arg name="robot" default="scitos_simple"/>
   <include file="$(find viper)/launch/$(arg robot)/_evalaute_views.launch"/>
 
   <!-- NAV GOAL GENERATOR -->
@@ -28,10 +28,10 @@
     <param name="camera" type="string" value="$(arg camera)"/>
     <param name="soma_map" type="string" value="$(arg soma_map)"/>
     <param name="soma_conf" type="string" value="$(arg soma_conf)"/>
-    <param name="num_of_views" type="int" value="15" />  
-    <param name="num_of_plans" type="int" value="10"/>
-    <param name="plan_length" type="int" value="10"/>
-    <param name="rho" type="double" value="1.0"/>
+    <param name="num_of_views" type="int" value="100" />  
+    <param name="num_of_plans" type="int" value="500"/>
+    <param name="plan_length" type="int" value="15"/>
+    <param name="rho" type="double" value="2.0"/>
   </node>
   
 </launch>
