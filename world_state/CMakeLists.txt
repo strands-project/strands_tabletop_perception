@@ -7,7 +7,7 @@ project(world_state)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   rospy
-  strands_perception_msgs
+#  strands_perception_msgs
 )
 
 ## System dependencies are found with CMake's conventions
