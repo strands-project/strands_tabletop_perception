@@ -1,8 +1,8 @@
 <launch>
   <arg name="camera" default="/head_xtion/depth_registered/points"/>
   <!-- <arg name="camera" default="/camera/depth_registered/points"/> -->
-  <arg name="soma_map" default="lg"/>
-  <arg name="soma_conf" default="test"/>
+  <arg name="soma_map" default="g4s"/>
+  <arg name="soma_conf" default="g4s"/>
 
 
   <!-- VIEW PLANNING -->
@@ -29,9 +29,9 @@
     <param name="camera" type="string" value="$(arg camera)"/>
     <param name="soma_map" type="string" value="$(arg soma_map)"/>
     <param name="soma_conf" type="string" value="$(arg soma_conf)"/>
-    <param name="num_of_views" type="int" value="100" />  
+    <param name="num_of_views" type="int" value="200" />  
     <param name="num_of_plans" type="int" value="500"/>
-    <param name="plan_length" type="int" value="50"/>
+    <param name="plan_length" type="int" value="30"/>
     <param name="rho" type="double" value="2.0"/>
   </node>
   
