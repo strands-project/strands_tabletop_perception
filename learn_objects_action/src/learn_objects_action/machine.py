@@ -11,6 +11,8 @@ from ptu_track import ( TurnPTUToObject,  StartTransformation,
 from vision import StartCameraTrack,  StopCameraTrack, LearnObjectModel
 from control import TravelAroundObject
 from learn_objects_action.msg import LearnObjectResult
+from std_srvs.srv import Empty
+from learn_objects_action.util import get_ros_service
 
 class LearnObjectActionMachine(smach.StateMachine):
     def __init__(self):
@@ -43,19 +45,23 @@ class LearnObjectActionMachine(smach.StateMachine):
                 transitions={'error':'failed',
                              'success':'TRAVEL_AROUND' })
             smach.StateMachine.add('TRAVEL_AROUND', TravelAroundObject(),
-                transitions={'error':'STOP_CAMERA_TRACK',
-                             'done':'STOP_CAMERA_TRACK' })
-            smach.StateMachine.add('STOP_CAMERA_TRACK', StopCameraTrack(),
+                transitions={'error':'failed',
+                             'done':'STOP_CAMERA_TRACK',
+                             'preempted':'preempted'})
+            self._stop_cam_track = StopCameraTrack()
+            smach.StateMachine.add('STOP_CAMERA_TRACK', self._stop_cam_track,
                 transitions={'error':'failed',
                              'success':'STOP_PTU_TRACK' })
-            smach.StateMachine.add('STOP_PTU_TRACK', StopPTUTrack(),
+            self._stop_ptu_track = StopPTUTrack()
+            smach.StateMachine.add('STOP_PTU_TRACK', self._stop_ptu_track,
                 transitions={'error':'failed',
                              'success':'STOP_TRANSFORM' })
-            smach.StateMachine.add('STOP_TRANSFORM', StopSendingTransformation(),
-                transitions={'error':'LEARN_MODEL',
+            self._stop_static_tf = StopSendingTransformation()
+            smach.StateMachine.add('STOP_TRANSFORM', self._stop_static_tf,
+                transitions={'error':'failed',
                              'success':'LEARN_MODEL' })
             smach.StateMachine.add('LEARN_MODEL', LearnObjectModel(),
-                transitions={'error':'succeeded',
+                transitions={'error':'failed',
                              'done':'succeeded' })
             
             self.set_initial_state(["METRIC_MAP_SWEEP"], userdata=self.userdata)
@@ -65,21 +71,25 @@ class LearnObjectActionMachine(smach.StateMachine):
             self._reconfigure_client =  dynamic_reconfigure.client.Client(
                 "/move_base/DWAPlannerROS")
 
+            self._reset_ptu_srv = get_ros_service("/ptu/reset",Empty)
+
             
     def execute(self, parent_ud = smach.UserData()):
         # Reduce the robot velocity
         self._prior_movebase_config = self._reconfigure_client.update_configuration({})
-        self._reconfigure_client.update_configuration({'max_vel_x': 0.25,})
+        self._reconfigure_client.update_configuration({'max_vel_x': 0.25,
+                                                       'max_rot_vel':0.5})
 
         # Disable recoveries on monitored navigation
         self._prior_recoveries =  rospy.get_param("/monitored_navigation/recover_states")
+	rospy.loginfo("Prior monitored nav recoerise: %s" % str(self._prior_recoveries))
         recoveries =  copy.deepcopy(self._prior_recoveries)
         for r in recoveries.keys():
             if r == "sleep_and_retry":
                 continue
             recoveries[r][0] = False
         rospy.set_param("/monitored_navigation/recover_states", recoveries)
-        
+
         super(LearnObjectActionMachine, self).execute(parent_ud)
             
     
@@ -87,10 +97,28 @@ class LearnObjectActionMachine(smach.StateMachine):
         print "Restoring monitored_nav & move_base parameters"
         # Restore movebase velocities
         self._reconfigure_client.update_configuration(self._prior_movebase_config)
+	print "Parameters:"
+	print rospy.get_param("/monitored_navigation/recover_states")
         
         # Re-enable monitored nav recoveries
         rospy.set_param("/monitored_navigation/recover_states",
                         self._prior_recoveries)
+
+        # Make sure the PTU is not tracking anything
+	print "Stopping camera tracker."
+        self._stop_cam_track.execute(userdata) # this is such an uggly way of doing this!
+
+        # Ensure the PTU has zero velocity
+	print "Stopping PTU tracker."
+        self._stop_ptu_track.execute(userdata)
+
+        # Do a PTU Reset for safety
+	print "Resetting PTU."
+        self._reset_ptu_srv()
+
+        # Make sure no static TF is still active
+	print "Stopping static TFs."
+        self._stop_static_tf.execute(userdata)
 
         
 

@@ -8,11 +8,11 @@ from std_msgs.msg import String
 from util import get_ros_service
 from  strands_navigation_msgs.msg import MonitoredNavigationAction,MonitoredNavigationGoal
 from object_view_generator.srv import GetTrajectoryPoints
+import yaml
 
-
-class TravelAroundObject(smach.StateMachine):
+class TravelAroundObject(smach.State):
     def __init__(self):
-        smach.State.__init__( self, outcomes=['error', 'done'],input_keys=['dynamic_object_centroid'] )
+        smach.State.__init__( self, outcomes=['error', 'done','preempted'],input_keys=['dynamic_object_centroid','action_goal'] )
         ## Camera tracking services
         #start_camera_tracker = get_ros_service("/camera_tracker/start_recording", start_tracker)
         #stop_camera_tracker = get_ros_service("/camera_tracker/stop_recording", stop_tracker)
@@ -43,15 +43,26 @@ class TravelAroundObject(smach.StateMachine):
 
 
     def execute(self, userdata):
-        self._status_publisher.publish(String("started viewing"))
+        self._status_publisher.publish(String("start_viewing"))
+        # Load the waypoint to soma from file, ugly ugly ugly TODO: properly
+        with open("/home/strands/.waypointsomas", "r") as f:
+            somas = yaml.load(f.read())	
+        soma_region = somas[userdata.action_goal.waypoint]
+
         try:
             # stop transformation
             p =  Pose()
             p.position.x = userdata.dynamic_object_centroid.x
             p.position.y = userdata.dynamic_object_centroid.y
 
-            poses = self._get_plan_points(0.5, 1.5, 25, 0.5, p)
-
+            poses = self._get_plan_points(min_dist=0.5, 
+                                          max_dist=1.5,
+                                          number_views=25,
+                                          inflation_radius=0.3, 
+                                          target_pose=p,
+                                          SOMA_region=soma_region)
+            if len(poses.goals.poses)<1:
+                rospy.loginfo("This object has no observation points. That is a real shame.")
             for i,p in enumerate(poses.goals.poses):
                 rospy.loginfo("Navigationg to trajectory point %d / %d..." %
                               (i+1,len(poses.goals.poses)))
@@ -60,7 +71,16 @@ class TravelAroundObject(smach.StateMachine):
                 targ.pose=p
                 goal = MonitoredNavigationGoal("move_base", targ)
                 self._nav_client.send_goal(goal)
-                self._nav_client.wait_for_result()
+                while not self._nav_client.wait_for_result(rospy.Duration(0.5)):
+                    if self.preempt_requested():
+                        rospy.logwarn("FFS I've ben pre-empted while executing navigation.")
+                        self.service_preempt()
+                        self._nav_client.cancel_goal()
+                        self._nav_client.wait_for_result()
+                        self._status_publisher.publish(String("stop_viewing"))
+                        return "preempted"
+
+                        
                 result = self._nav_client.get_result()
                 if result.outcome !=  "succeeded" and result.recovered != True:
                     rospy.logwarn("Object learning failed to do navigation "
@@ -92,9 +112,9 @@ class TravelAroundObject(smach.StateMachine):
                                   "there may be a problem.")
 
 
-            self._status_publisher.publish(String("stopped viewing"))
+            self._status_publisher.publish(String("stop_viewing"))
             return "done"
         except Exception, e:
             print e
-            self._status_publisher.publish(String("stopped viewing"))
+            self._status_publisher.publish(String("stop_viewing"))
             return "error"

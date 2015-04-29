@@ -5,14 +5,15 @@ import math
 from std_srvs.srv import Empty
 from geometry_msgs.msg import TransformStamped
 from util import get_ros_service
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import JointState, PointCloud2
 from static_transform_manager.srv import SetTransformation, StopTransformation
 from ptu_follow_frame.srv import StartFollowing
 
 class TurnPTUToObject(smach.State):
     def __init__(self):
         smach.State.__init__( self, outcomes=['error', 'success'],
-                              input_keys=['dynamic_object'] )
+                              input_keys=['dynamic_object'],
+                              output_keys=['dynamic_object'])
 
         self._ptu_angle_pub = rospy.Publisher("/ptu/cmd", JointState)
         self._jnts = JointState()
@@ -27,6 +28,9 @@ class TurnPTUToObject(smach.State):
                                  math.radians(userdata.dynamic_object.tilt_angle)]
             self._ptu_angle_pub.publish(self._jnts)
             rospy.sleep(3)
+            print "Capturing a new shot of that object before tracking."
+            userdata.dynamic_object.object_cloud = rospy.wait_for_message("/head_xtion/depth_registered/points", PointCloud2)
+            print "ok."
             return "success"
         except Exception, e:
             print e

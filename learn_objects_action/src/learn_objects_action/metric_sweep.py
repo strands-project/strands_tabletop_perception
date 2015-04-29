@@ -10,6 +10,7 @@ from object_view_generator.srv import GetTrajectoryPoints, GetTrajectoryPointsRe
 from std_msgs.msg import String
 from util import get_ros_service
 from semantic_map_to_2d.srv import ChangeWaypoint
+import yaml
 
 class MetricSweep(smach.State):
     def __init__(self):
@@ -44,6 +45,7 @@ class MetricSweep(smach.State):
             self._metric_sweep_action.send_goal(self._goal)
             while not self._metric_sweep_action.wait_for_result(rospy.Duration(0.5)):
                 if self.preempt_requested():
+                    self.service_preempt()
                     break
             else:
                 # wait for the message that it has been processed...
@@ -87,6 +89,10 @@ class SelectCluster(smach.State):
         self._get_plan_points = get_ros_service('/test_nav_goal', GetTrajectoryPoints)
 
     def execute(self, userdata):
+        # Load the waypoint to soma from file, ugly ugly ugly TODO: properly
+        with open("/home/strands/.waypointsomas", "r") as f:
+            somas = yaml.load(f.read())	
+        soma_region = somas[userdata.action_goal.waypoint]
         #clusters = self._get_clusters(userdata['waypoint'])
         clusters = self._get_clusters(userdata.action_goal.waypoint)
         if len(clusters.object_id) == 0:
@@ -99,7 +105,12 @@ class SelectCluster(smach.State):
             p =  Pose()
             p.position.x = pnt.x
             p.position.y = pnt.y
-            poses = self._get_plan_points(0.5, 1.5, 25, 0.5, p)
+            poses = self._get_plan_points(min_dist=0.5, 
+                                          max_dist=1.5,
+                                          number_views=25,
+                                          inflation_radius=0.3, 
+                                          target_pose=p,
+					                      SOMA_region=soma_region)
             scores[i] = len(poses.goals.poses)
         ID=numpy.argmax(scores) # the one to look at is the one that has the most observation available
         rospy.logwarn( "Getting cluster: %s"%clusters.object_id[ID])

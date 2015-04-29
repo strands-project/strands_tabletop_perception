@@ -7,7 +7,7 @@ from geometry_msgs.msg import Point32
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.srv import GetPlan, GetPlanRequest
 import tf
-
+from soma_roi_manager.soma_roi import SOMAROIQuery
 import math
 import numpy
 import sys
@@ -62,10 +62,9 @@ def is_inside(p, poly):
 class TrajectoryGenerator(object):
     def __init__(self):
         rospy.init_node('view_trajectory_generator')
-        rospy.loginfo("Started nav_goal_tester service")
 
         # subscribing to a map
-        self.map_frame = rospy.get_param('~map_frame', '/waypoint_map')
+        self.map_frame = rospy.get_param('~map_topic', '/waypoint_map')
         self.is_costmap = rospy.get_param('~is_costmap', False)
         rospy.loginfo("Sampling goals in %s", self.map_frame)
 
@@ -115,9 +114,21 @@ class TrajectoryGenerator(object):
 
         # inflation radius must be positive
         if self.inflation_radius < 0:
-            self.inflation_raidus = 0.5
+            self.inflation_radius = 0.5
     
         self.inflated_footprint_size = int(self.inflation_radius / self.resolution) + 1
+
+        # If req.region is filled then get the SOMA region from it
+        self._poly = None
+        if req.SOMA_region != "":
+            try:
+                soma_map, soma_conf, roi_id = req.SOMA_region.split("/")
+                rospy.loginfo("Aiming for: %s, %s, %s"%(soma_map, soma_conf, roi_id))
+                soma = SOMAROIQuery(soma_map, soma_conf)
+                self._poly = soma.get_polygon(roi_id)
+            except:
+                rospy.logwarn("A soma region specified but can't decipher it, ignoring.")
+                rospy.logwarn("Region: %s"% req.SOMA_region)
 
         # generate response
         pose = req.target_pose
@@ -131,6 +142,8 @@ class TrajectoryGenerator(object):
                 p.orientation.w=1 # default
                 p.position.x = x
                 p.position.y = y
+                if self._poly is not None and not is_inside(p.position, self._poly.points):
+                    continue
                 if self.test_pose(p):
                     break
             else:

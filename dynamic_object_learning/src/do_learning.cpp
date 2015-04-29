@@ -516,7 +516,7 @@ private:
         pcl::PointIndices pind;
         for(size_t i=0; i < req.intial_object_indices.size(); i++)
         {
-            pind.indices.push_back(req.intial_object_indices[i].data);
+            pind.indices.push_back(req.intial_object_indices[i]);
         }
 
         //erode mask

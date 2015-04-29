@@ -59,7 +59,7 @@ class LearnObjectModel(smach.StateMachine):
         try:
             #rospy.sleep(20)
             tracks = self._get_tracking_results()
-            rospy.loginfo("Got soem tracking results!")
+            rospy.loginfo("Got some tracking results!")
             rospy.loginfo("Number of keyframes:%d"%len(tracks.keyframes))
             rospy.loginfo("Transforms:")
             transforms=[Transform()]
@@ -68,12 +68,18 @@ class LearnObjectModel(smach.StateMachine):
             frames = [userdata.dynamic_object.object_cloud]
             frames.extend(tracks.keyframes)
             rospy.loginfo(tracks.transforms)
+            print "About to call object learning, mask="
+            #print userdata.dynamic_object.object_mask
+            for f in frames:
+                print "Frame width x height was: %d x %d. Changing it."%(f.width, f.height)
+                f.width = 640
+                f.height = 480
             self._learn_object_model(frames, transforms,
                                      userdata.dynamic_object.object_mask)
             rospy.loginfo("Saving learnt model..")
             self._save_object_model(String("experiment27"),
                                     String("/home/strands/test_models"),
-                                    String("/home/strands/test_models/recostruct"))
+                                    String("/home/strands/test_models/reconstruct"))
             return 'done'
         except Exception, e:
             print e

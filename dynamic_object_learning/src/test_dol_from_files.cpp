@@ -74,9 +74,7 @@ public:
 
         for(size_t i=0; i < obj_indices_cloud.points.size(); i++)
         {
-            std_msgs::Int32 int_data;
-            int_data.data = obj_indices_cloud.points[i].idx;
-            srv.request.intial_object_indices.push_back(int_data);
+	   srv.request.intial_object_indices.push_back(obj_indices_cloud.points[i].idx);
         }
 
         for(size_t i=0; i < keyframes_str.size(); i++)
