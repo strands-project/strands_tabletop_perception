@@ -52,29 +52,29 @@ class ObjectSearchSM(smach.StateMachine):
         with self:
             smach.StateMachine.add('Setup', self._setup, 
                                    transitions={'succeeded': 'ViewPlanning',
-                                                'aborted':'aborted',
-                                                'preempted':'preempted'})
+                                                'aborted':'Shutdown',
+                                                'preempted':'Shutdown'})
 
             smach.StateMachine.add('ViewPlanning', self._view_planning, 
                                    transitions={'succeeded': 'Executive',
-                                                'aborted':'aborted',
-                                                'preempted':'preempted'})
+                                                'aborted':'Shutdown',
+                                                'preempted':'Shutdown'})
 
             smach.StateMachine.add('Executive', self._executive, 
-                                   transitions={'succeeded': 'Perception', #GoTo
+                                   transitions={'succeeded': 'GoTo', 
                                                 'no_views': 'Shutdown',
-                                                'aborted':'aborted',
-                                                'preempted':'preempted'})
+                                                'aborted':'Shutdown',
+                                                'preempted':'Shutdown'})
 
             smach.StateMachine.add('GoTo', self._goto, 
                                    transitions={'succeeded': 'Perception',
                                                 'aborted':'Executive',
-                                                'preempted':'preempted'})
+                                                'preempted':'Shutdown'})
 
             smach.StateMachine.add('Perception', self._perception, 
                                    transitions={'succeeded':'Executive',
-                                                'aborted':'aborted',
-                                                'preempted':'preempted'}
+                                                'aborted':'Shutdown',
+                                                'preempted':'Shutdown'}
                                )
 
             smach.StateMachine.add('Shutdown', self._shutdown, 
