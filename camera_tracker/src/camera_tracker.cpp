@@ -41,6 +41,10 @@
 #include <v4r/ORUtils/noise_model_based_cloud_integration.h>
 #include <v4r/ORUtils/noise_models.h>
 
+#include <tf/tf.h>
+#include <tf_conversions/tf_eigen.h>
+#include <tf/transform_broadcaster.h>
+
 void saveToDisk(pcl::PointCloud<pcl::PointXYZRGB> scene,
                 int saved_cloud)
 {
@@ -148,7 +152,7 @@ private:
 
     void trackNewCloud(const sensor_msgs::PointCloud2Ptr& msg)
     {
-
+        static tf::TransformBroadcaster br;
         ros::Time start_time_stamp = msg->header.stamp;
 
         boost::posix_time::ptime start_time = boost::posix_time::microsec_clock::local_time ();
@@ -184,6 +188,13 @@ private:
         double conf=0;
         int cam_idx=-1;
         Eigen::Matrix4f pose;
+
+	Eigen::Matrix4d md(pose.cast<double>());
+	Eigen::Affine3d affine(md);
+	tf::Transform transform;
+	tf::transformEigenToTF(affine, transform);
+	br.sendTransform(tf::StampedTransform(transform, msg->header.stamp, "initial", "tracker"));
+  
 
         bool is_ok = camtracker->track(image, kp_cloud, pose, conf, cam_idx);
 
