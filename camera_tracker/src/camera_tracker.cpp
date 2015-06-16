@@ -84,6 +84,8 @@ private:
     sensor_msgs::CameraInfo camera_info_;
     bool got_camera_info_;
 
+    kp::ProjBundleAdjuster ba;
+
     void camera_info_cb(const sensor_msgs::CameraInfoPtr& msg) {
       camera_info_ = *msg;
       got_camera_info_=true;
@@ -336,16 +338,24 @@ private:
         }
 
         kp::Object &model = camtracker->getModel();
-        kp::ProjBundleAdjuster ba;
-        ba.optimize(model);
+
+
+        std::cout << "creating bundle adj. " << std::endl;
+        {
+            ba.optimize(model);
+        }
+
+        std::cout << "destroying bundle adj. " << std::endl;
 
         for(size_t i=0; i < cameras_.size(); i++)
         {
             Eigen::Matrix4f inv_pose_after_ba;
+            std::cout << "keyframe [" << i << "]: " << keyframes_[i].first << std::endl;
             kp::invPose(model.cameras[keyframes_[i].first], inv_pose_after_ba);
             cameras_[i] = inv_pose_after_ba;
         }
 
+        std::cout << "I am done with bundle adjustment. " << std::endl;
         return true;
 
     }
@@ -399,14 +409,15 @@ private:
         if(do_ba_)
         {
             kp::Object &model = camtracker->getModel();
-            kp::ProjBundleAdjuster ba;
             ba.optimize(model);
 
+            std::cout << keyframes_.size() << " / cameras size: " << cameras_.size() << std::endl;
             for(size_t i=0; i < cameras_.size(); i++)
             {
                 Eigen::Matrix4f inv_pose_after_ba;
                 kp::invPose(model.cameras[keyframes_[i].first], inv_pose_after_ba);
                 cameras_[i] = inv_pose_after_ba;
+                std::cout << cameras_[i] << std::endl << std::endl;
             }
         }
 
@@ -453,7 +464,7 @@ public:
         camera_topic_ = "/camera/depth_registered/points";
         camera_topic_ = "/head_xtion/depth_registered/points";
         debug_mode_ = false;
-    }
+  }
 
     void
     initialize (int argc, char ** argv)
