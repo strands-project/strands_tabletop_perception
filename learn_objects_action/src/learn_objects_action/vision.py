@@ -6,8 +6,13 @@ from do_learning_srv_definitions.srv import learn_object, save_model
 from recognition_srv_definitions.srv import get_configuration, recognize
 from geometry_msgs.msg import Transform
 
-from std_msgs.msg import String
+from std_msgs.msg import String, Int32MultiArray
 from util import get_ros_service
+
+from world_state.observation import MessageStoreObject, Observation, TransformationStore
+from world_state.identification import ObjectIdentification
+from world_state.state import World, Object
+from object_manager.msg import DynamicObjectTracks
 
 class StartCameraTrack(smach.State):
     def __init__(self):
@@ -41,11 +46,16 @@ class StopCameraTrack(smach.State):
 class LearnObjectModel(smach.StateMachine):
     def __init__(self):
         smach.State.__init__( self, outcomes=['error', 'done'],
-                              input_keys=['dynamic_object',] )
+                              input_keys=['dynamic_object','object'],
+                              output_keys=['object'])
         self._get_tracking_results = get_ros_service("/camera_tracker/get_results", get_tracking_results)
         ## Object learning
         self._learn_object_model = get_ros_service("/dynamic_object_learning/learn_object", learn_object)
         self._save_object_model = get_ros_service("/dynamic_object_learning/save_model", save_model)
+
+        self._tracks_publisher = rospy.Publisher("/object_learning/dynamic_object_tracks", DynamicObjectTracks)
+        self._status_publisher =  rospy.Publisher("/object_learning/status",
+                                                  String)
 
         ## Recognition services
         #self._get_rec_configuration = get_ros_service(
@@ -63,21 +73,44 @@ class LearnObjectModel(smach.StateMachine):
             rospy.loginfo("Number of keyframes:%d"%len(tracks.keyframes))
             rospy.loginfo("Transforms:")
             transforms=[Transform()]
-            transforms[0].rotation.z=1
+            transforms[0].rotation.w=1 # this was z ! why was it z?
             transforms.extend(tracks.transforms)
             frames = [userdata.dynamic_object.object_cloud]
             frames.extend(tracks.keyframes)
             rospy.loginfo(tracks.transforms)
-            print "About to call object learning, mask="
+            print "About to call object learning"
             #print userdata.dynamic_object.object_mask
             for f in frames:
                 print "Frame width x height was: %d x %d. Changing it."%(f.width, f.height)
                 f.width = 640
                 f.height = 480
+
+            # Save the camera track to the DB, and to rombusdb
+            tracks_msg = DynamicObjectTracks()
+            tracks_msg.poses = transforms
+            tracks_msg.clouds = frames
+            self._tracks_publisher.publish(tracks_msg)
+            rospy.sleep(1)
+            self._status_publisher.publish(String("stop_viewing"))
+            # split it for message store size limit
+            for img, trans in zip(frames,transforms):
+                track_msg = DynamicObjectTracks()
+                track_msg.poses=[trans]
+                track_msg.clouds=[img]
+                stored = MessageStoreObject.create(track_msg)
+                userdata['object'].add_msg_store(stored)
+
+            # Get the mask and store it, stupid fool
+            mask = Int32MultiArray()
+            mask.data = userdata.dynamic_object.object_mask
+            stored = MessageStoreObject.create(mask)
+            userdata['object'].add_msg_store(stored)
+            print "Stored the mask"
+
             self._learn_object_model(frames, transforms,
                                      userdata.dynamic_object.object_mask)
             rospy.loginfo("Saving learnt model..")
-            self._save_object_model(String("experiment27"),
+            self._save_object_model(String(userdata['object'].name),
                                     String("/home/strands/test_models"),
                                     String("/home/strands/test_models/reconstruct"))
             return 'done'

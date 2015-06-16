@@ -12,6 +12,7 @@ from vision import StartCameraTrack,  StopCameraTrack, LearnObjectModel
 from control import TravelAroundObject
 from learn_objects_action.msg import LearnObjectResult
 from std_srvs.srv import Empty
+from std_msgs.msg import String
 from learn_objects_action.util import get_ros_service
 
 class LearnObjectActionMachine(smach.StateMachine):
@@ -72,6 +73,9 @@ class LearnObjectActionMachine(smach.StateMachine):
                 "/move_base/DWAPlannerROS")
 
             self._reset_ptu_srv = get_ros_service("/ptu/reset",Empty)
+            self._status_publisher =  rospy.Publisher("/object_learning/status",
+                                                  String)
+
 
             
     def execute(self, parent_ud = smach.UserData()):
@@ -120,6 +124,8 @@ class LearnObjectActionMachine(smach.StateMachine):
 	print "Stopping static TFs."
         self._stop_static_tf.execute(userdata)
 
+        # Double certain to save to RombusDB
+        self._status_publisher.publish(String("stop_viewing"))
         
 
 

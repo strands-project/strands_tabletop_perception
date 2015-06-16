@@ -1,0 +1,5 @@
+<launch>
+<node pkg="dynamic_object_learning" type="do_learning_service" name="do_learning_service" output="screen" respawn="true"> 
+<remap from="/do_learning_service" to="/dynamic_object_learning" />
+</node>
+</launch>
