@@ -12,6 +12,7 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/CameraInfo.h"
 #include "std_msgs/Float32.h"
+#include <tf/transform_broadcaster.h>
 
 #include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
@@ -83,6 +84,9 @@ private:
     bool debug_mode_;
     sensor_msgs::CameraInfo camera_info_;
     bool got_camera_info_;
+    tf::TransformBroadcaster cameraTransformBroadcaster;
+
+    kp::ProjBundleAdjuster ba;
 
     void camera_info_cb(const sensor_msgs::CameraInfoPtr& msg) {
       camera_info_ = *msg;
@@ -201,11 +205,22 @@ private:
             selectFrames(*scene_, cam_idx, pose);
         }
 
+        if(is_ok)
+        {
+            tf::Transform transform;
+            transform.setOrigin(tf::Vector3(pose(0,3), pose(1,3), pose(2,3)));
+            tf::Matrix3x3 R(pose(0,0), pose(0,1), pose(0,2),
+                            pose(1,0), pose(1,1), pose(1,2),
+                            pose(2,0), pose(2,1), pose(2,2));
+            tf::Quaternion q;
+            R.getRotation(q);
+            transform.setRotation(q);
+            cameraTransformBroadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "tracked_camera"));
+        }
+
         /*std_msgs::Float32 conf_mesage;
       conf_mesage.data = conf;
       confidence_publisher_.publish(conf_mesage);*/
-
-
     }
 
     void getCloud(const sensor_msgs::PointCloud2Ptr& msg)
@@ -336,16 +351,24 @@ private:
         }
 
         kp::Object &model = camtracker->getModel();
-        kp::ProjBundleAdjuster ba;
-        ba.optimize(model);
+
+
+        std::cout << "creating bundle adj. " << std::endl;
+        {
+            ba.optimize(model);
+        }
+
+        std::cout << "destroying bundle adj. " << std::endl;
 
         for(size_t i=0; i < cameras_.size(); i++)
         {
             Eigen::Matrix4f inv_pose_after_ba;
+            std::cout << "keyframe [" << i << "]: " << keyframes_[i].first << std::endl;
             kp::invPose(model.cameras[keyframes_[i].first], inv_pose_after_ba);
             cameras_[i] = inv_pose_after_ba;
         }
 
+        std::cout << "I am done with bundle adjustment. " << std::endl;
         return true;
 
     }
@@ -399,14 +422,15 @@ private:
         if(do_ba_)
         {
             kp::Object &model = camtracker->getModel();
-            kp::ProjBundleAdjuster ba;
             ba.optimize(model);
 
+            std::cout << keyframes_.size() << " / cameras size: " << cameras_.size() << std::endl;
             for(size_t i=0; i < cameras_.size(); i++)
             {
                 Eigen::Matrix4f inv_pose_after_ba;
                 kp::invPose(model.cameras[keyframes_[i].first], inv_pose_after_ba);
                 cameras_[i] = inv_pose_after_ba;
+                std::cout << cameras_[i] << std::endl << std::endl;
             }
         }
 
@@ -450,10 +474,9 @@ public:
         param.om_param.kd_param.rt_param.inl_dist = 0.01; //e.g. 0.01 .. table top, 0.03 ..rooms
         param.om_param.kt_param.rt_param.inl_dist = 0.03;  //e.g. 0.04 .. table top, 0.1 ..room
 
-        camera_topic_ = "/camera/depth_registered/points";
-        camera_topic_ = "/head_xtion/depth_registered/points";
+        camera_topic_ = "/camera/depth_registered;
         debug_mode_ = false;
-    }
+  }
 
     void
     initialize (int argc, char ** argv)
