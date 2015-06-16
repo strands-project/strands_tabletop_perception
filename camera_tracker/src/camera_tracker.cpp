@@ -208,15 +208,19 @@ private:
         if(is_ok)
         {
             tf::Transform transform;
-            transform.setOrigin(tf::Vector3(pose(0,3), pose(1,3), pose(2,3)));
-            tf::Matrix3x3 R(pose(0,0), pose(0,1), pose(0,2),
-                            pose(1,0), pose(1,1), pose(1,2),
-                            pose(2,0), pose(2,1), pose(2,2));
+
+            Eigen::Matrix4f inv_pose = pose;
+            //kp::invPose(pose, inv_pose);
+            transform.setOrigin(tf::Vector3(inv_pose(0,3), inv_pose(1,3), inv_pose(2,3)));
+            tf::Matrix3x3 R(inv_pose(0,0), inv_pose(0,1), inv_pose(0,2),
+                            inv_pose(1,0), inv_pose(1,1), inv_pose(1,2),
+                            inv_pose(2,0), inv_pose(2,1), inv_pose(2,2));
             tf::Quaternion q;
             R.getRotation(q);
             transform.setRotation(q);
-            cameraTransformBroadcaster.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "tracked_camera"));
-        }
+            ros::Time now_sync = ros::Time::now();
+            cameraTransformBroadcaster.sendTransform(tf::StampedTransform(transform, now_sync, "camera_rgb_optical_frame", "world"));
+         }
 
         /*std_msgs::Float32 conf_mesage;
       conf_mesage.data = conf;
@@ -343,7 +347,6 @@ private:
     doBA (camera_srv_definitions::do_ba::Request & req,
                  camera_srv_definitions::do_ba::Response & response)
     {
-
         if(cameras_.size() == 0)
         {
             ROS_WARN("Called bundle adjusment but no camera poses available\n");
@@ -351,26 +354,15 @@ private:
         }
 
         kp::Object &model = camtracker->getModel();
-
-
-        std::cout << "creating bundle adj. " << std::endl;
-        {
-            ba.optimize(model);
-        }
-
-        std::cout << "destroying bundle adj. " << std::endl;
+        ba.optimize(model);
 
         for(size_t i=0; i < cameras_.size(); i++)
         {
             Eigen::Matrix4f inv_pose_after_ba;
-            std::cout << "keyframe [" << i << "]: " << keyframes_[i].first << std::endl;
             kp::invPose(model.cameras[keyframes_[i].first], inv_pose_after_ba);
             cameras_[i] = inv_pose_after_ba;
         }
-
-        std::cout << "I am done with bundle adjustment. " << std::endl;
         return true;
-
     }
 
     bool
@@ -379,7 +371,6 @@ private:
     {
         for(size_t i=0; i < cameras_.size(); i++)
         {
-
             sensor_msgs::PointCloud2 msg;
             pcl::toROSMsg(*(keyframes_[i].second), msg);
             response.keyframes.push_back(msg);
@@ -398,11 +389,9 @@ private:
             tt.rotation.z = q.z();
             tt.rotation.w = q.w();
             response.transforms.push_back(tt);
-
         }
 
         return true;
-
     }
 
     bool
@@ -424,7 +413,6 @@ private:
             kp::Object &model = camtracker->getModel();
             ba.optimize(model);
 
-            std::cout << keyframes_.size() << " / cameras size: " << cameras_.size() << std::endl;
             for(size_t i=0; i < cameras_.size(); i++)
             {
                 Eigen::Matrix4f inv_pose_after_ba;
@@ -474,7 +462,7 @@ public:
         param.om_param.kd_param.rt_param.inl_dist = 0.01; //e.g. 0.01 .. table top, 0.03 ..rooms
         param.om_param.kt_param.rt_param.inl_dist = 0.03;  //e.g. 0.04 .. table top, 0.1 ..room
 
-        camera_topic_ = "/camera/depth_registered;
+        camera_topic_ = "/camera/depth_registered";
         debug_mode_ = false;
   }
 
