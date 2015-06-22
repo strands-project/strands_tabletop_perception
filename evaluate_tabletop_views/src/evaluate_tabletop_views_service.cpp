@@ -4,7 +4,7 @@
 #include "geometry_msgs/Polygon.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/Quaternion.h"
-#include "nav_goals_msgs/ROINavGoals.h"
+#include "nav_goals_generator/ROINavGoals.h"
 #include "visualization_msgs/Marker.h"
 #include <math.h> 
 
@@ -391,8 +391,8 @@ bool voxel_in_frustum(point3d p3d, geometry_msgs::Pose pose)
   return false;
 }
 
-bool evaluate(nav_goals_msgs::ROINavGoals::Request  &req,
-              nav_goals_msgs::ROINavGoals::Response &res)
+bool evaluate(nav_goals_generator::ROINavGoals::Request  &req,
+              nav_goals_generator::ROINavGoals::Response &res)
 {
   static bool first_call = true;
   static OcTree* octree = NULL;
