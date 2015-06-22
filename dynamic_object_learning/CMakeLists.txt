@@ -8,6 +8,9 @@ project(dynamic_object_learning)
 find_package(catkin REQUIRED COMPONENTS roscpp rospy do_learning_srv_definitions
                                         strands_v4r genmsg)
 
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O1")
+
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
 
@@ -59,7 +62,7 @@ include_directories(include
   ${catkin_INCLUDE_DIRS}
 )
 
-set(incs include/pcl_conversions.h)
+set(incs include/pcl_conversions.h include/do_learning.h)
 
 ## Declare a cpp executable
 add_executable(do_learning_service src/do_learning.cpp ${incs})
