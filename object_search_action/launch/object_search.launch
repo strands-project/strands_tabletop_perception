@@ -8,21 +8,22 @@
   <!-- VIEW PLANNING -->
   <include file="$(find scitos_moveit_config)/launch/move_group.launch"/>
   <node name="ptu_fk" pkg="viper" type="ptu_fk"/>
-  <param name="inflation_radius" type="double" value="0.1" />  
-  <param name="views_at_pose" type="int" value="10" />  
+  <param name="inflation_radius" type="double" value="0.0" />  
+  <param name="views_at_pose" type="int" value="25" />  
 
   <!-- VIEW EVALUATION -->  
   <arg name="robot" default="scitos_simple"/>
   <include file="$(find viper)/launch/$(arg robot)/_evalaute_views.launch"/>
 
   <!-- NAV GOAL GENERATOR -->
-  <arg name="map" default="/move_base/global_costmap/costmap"/>  
-  <arg name="is_costmap" default="true"/>
+  <!-- <arg name="map" default="/move_base/global_costmap/costmap"/> -->
+  <arg name="map" default="/map"/>
+  <arg name="is_costmap" default="false"/>
   <include file="$(find nav_goals_generator)/launch/nav_goals_generator.launch">
     <arg name="map" value="$(arg map)"/>
     <arg name="is_costmap" default="$(arg is_costmap)"/>
   </include>
-  <!-- <param name="inflation_radius" type="double" value="0.5" /> -->
+  <param name="inflation_radius" type="double" value="0.3" />
 
   <!-- ACTION SERVER -->
   <node name="object_search_action" pkg="object_search_action" type="object_search_server.py" output="screen">
@@ -30,8 +31,8 @@
     <param name="soma_map" type="string" value="$(arg soma_map)"/>
     <param name="soma_conf" type="string" value="$(arg soma_conf)"/>
     <param name="num_of_views" type="int" value="200" />  
-    <param name="num_of_plans" type="int" value="500"/>
-    <param name="plan_length" type="int" value="30"/>
+    <param name="num_of_plans" type="int" value="2000"/>
+    <param name="plan_length" type="int" value="20"/>
     <param name="rho" type="double" value="2.0"/>
   </node>
   
