@@ -42,7 +42,7 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 
-#define USE_SIFT_GPU
+//#define USE_SIFT_GPU
 //#define SOC_VISUALIZE
 
 #ifdef SOC_VISUALIZE
