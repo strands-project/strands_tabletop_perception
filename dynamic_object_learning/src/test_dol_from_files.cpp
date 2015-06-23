@@ -11,7 +11,9 @@
 #include <pcl/visualization/pcl_visualizer.h>
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "std_msgs/String.h"
 #include "do_learning_srv_definitions/learn_object.h"
+#include "do_learning_srv_definitions/save_model.h"
 #include <opencv2/opencv.hpp>
 #include <v4r/utils/filesystem_utils.h>
 
@@ -29,7 +31,9 @@ class DOLDemoFromFiles
 private:
     typedef pcl::PointXYZRGB PointT;
     ros::NodeHandle *n_;
-    std::string directory_;
+    std::string directory_,
+                models_dir_,
+                recognition_structure_dir_;
     bool visualize_;
     boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
 
@@ -63,9 +67,14 @@ public:
         std::sort(poses_str.begin(), poses_str.end());
         std::sort(object_indices_str.begin(), object_indices_str.end());
 
-        std::string service_name = "/dynamic_object_learning/learn_object";
-        ros::ServiceClient DOLclient = n_->serviceClient<do_learning_srv_definitions::learn_object>(service_name);
-        do_learning_srv_definitions::learn_object srv;
+        std::string service_name_learn = "/dynamic_object_learning/learn_object";
+        ros::ServiceClient DOLclient = n_->serviceClient<do_learning_srv_definitions::learn_object>(service_name_learn);
+        do_learning_srv_definitions::learn_object srv_learn;
+
+
+        std::string service_name_save = "/dynamic_object_learning/save_model";
+        ros::ServiceClient DOLclient_save = n_->serviceClient<do_learning_srv_definitions::save_model>(service_name_save);
+        do_learning_srv_definitions::save_model srv_save;
 
 
         //create request
@@ -92,7 +101,7 @@ public:
         {
             std_msgs::Int32 int_data;
             int_data.data = idx_tmp;
-            srv.request.intial_object_indices.push_back(int_data);
+            srv_learn.request.intial_object_indices.push_back(int_data);
             pind.indices.push_back(idx_tmp);
         }
         initial_mask_file.close();
@@ -122,7 +131,7 @@ public:
             sensor_msgs::PointCloud2 msg_cloud;
             pcl::toROSMsg(*pCloud, msg_cloud);
 
-            srv.request.keyframes.push_back(msg_cloud);
+            srv_learn.request.keyframes.push_back(msg_cloud);
 
 
             Eigen::Matrix4f trans;
@@ -152,18 +161,32 @@ public:
             tt.rotation.z = pCloud->sensor_orientation_.z();
             tt.rotation.w = pCloud->sensor_orientation_.w();
 
-            srv.request.transforms.push_back(tt);
+            srv_learn.request.transforms.push_back(tt);
         }
         if(visualize_)
             vis_->spin();
 
-        if ( ! DOLclient.call(srv) )
+        if ( ! DOLclient.call(srv_learn) )
         {
             std::stringstream mm;
-            mm << "Error calling service: " << service_name << std::endl;
+            mm << "Error calling service: " << service_name_learn << std::endl;
             ROS_ERROR(mm.str().c_str());
             return false;
         }
+
+        // Saving model
+        srv_save.request.object_name.data = "my_dynamic_object.pcd";
+        srv_save.request.models_folder.data = models_dir_;
+        srv_save.request.recognition_structure_folder.data = recognition_structure_dir_;
+
+        if ( ! DOLclient_save.call(srv_save) )
+        {
+            std::stringstream mm;
+            mm << "Error calling service: " << service_name_save << std::endl;
+            ROS_ERROR(mm.str().c_str());
+            return false;
+        }
+
         return true;
     }
 
@@ -183,12 +206,22 @@ public:
         n_ = new ros::NodeHandle ( "~" );
 
         if(!n_->getParam ( "directory", directory_ ))
-            directory_ = "";
-
-        //directory_ = "/media/aitor14/DATA/STRANDS_MODELS/recognition_structure/playstation_turn_table.pcd/";
-        if(directory_.compare("") == 0)
         {
-            ROS_ERROR("Specify a directory\n");
+            //directory_ = "/media/aitor14/DATA/STRANDS_MODELS/recognition_structure/playstation_turn_table.pcd/";
+            ROS_ERROR("Specify a directory using param directory.\n");
+            exit(-1);
+        }
+
+        if(!n_->getParam( "models_dir", models_dir_) )
+        {
+            ROS_ERROR("Specify a model directory using param models_dir.\n");
+            exit(-1);
+        }
+
+        if(!n_->getParam( "recognition_dir", recognition_structure_dir_) )
+        {
+
+            ROS_ERROR("Specify a model directory using param recognition_structure_dir.\n");
             exit(-1);
         }
     }

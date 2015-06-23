@@ -54,6 +54,7 @@ find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs messa
    visualize_compound.srv
    do_ba.srv
    get_tracking_results.srv
+   save_tracking_results_to_file.srv
    cleanup.srv
  )
 

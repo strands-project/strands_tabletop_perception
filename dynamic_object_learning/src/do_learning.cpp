@@ -251,51 +251,56 @@ void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int
 
     std::cout << "Found nearest neighbor: " << nn.size() << std::endl;
 
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_nn;
-    vis_nn.reset(new pcl::visualization::PCLVisualizer());
-    std::vector<std::string> subwindow_title;
-    subwindow_title.push_back("original scene");
-    subwindow_title.push_back("search points");
-    std::vector<int> vp_nn;
-    vp_nn = faat_pcl::utils::visualization_framework (vis_nn, 1, 2, subwindow_title);
-    pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler(octree.getInputCloud());
-    vis_nn->addPointCloud(octree.getInputCloud(), rgb_handler, "input_cloud", vp_nn[0]);
-    pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2(segmented_trans);
-    vis_nn->addPointCloud(segmented_trans, rgb_handler2, "segmented_trans", vp_nn[1]);
-    vis_nn->spinOnce();
+//    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_nn;
+//    vis_nn.reset(new pcl::visualization::PCLVisualizer());
+//    std::vector<std::string> subwindow_title;
+//    subwindow_title.push_back("original scene");
+//    subwindow_title.push_back("search points");
+//    std::vector<int> vp_nn;
+//    vp_nn = faat_pcl::utils::visualization_framework (vis_nn, 1, 2, subwindow_title);
+//    pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler(octree.getInputCloud());
+//    vis_nn->addPointCloud(octree.getInputCloud(), rgb_handler, "input_cloud", vp_nn[0]);
+//    pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2(segmented_trans);
+//    vis_nn->addPointCloud(segmented_trans, rgb_handler2, "segmented_trans", vp_nn[1]);
+//    vis_nn->spinOnce();
 }
 
 void DOL::erodeInitialIndices(const pcl::PointCloud<PointT> & cloud,
-                              const std::vector<int> & initial_indices,
+                              const pcl::PointIndices & initial_indices,
                               pcl::PointIndices & eroded_indices)
 {
     cv::Mat mask = cv::Mat(cloud.height, cloud.width, CV_8UC1);
+    cv::Mat mask_dst;
     mask.setTo(0);
 
-    for(size_t i=0; i < initial_indices.size(); i++)
+    for(size_t i=0; i < initial_indices.indices.size(); i++)
     {
         int r,c;
-        r = initial_indices[i] / mask.cols;
-        c = initial_indices[i] % mask.cols;
+        r = initial_indices.indices[i] / mask.cols;
+        c = initial_indices.indices[i] % mask.cols;
 
         mask.at<unsigned char>(r,c) = 255;
     }
 
-    //        cv::imshow("mask", mask);
-    //        cv::waitKey(0);
+    cv::Mat const structure_elem = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
+    cv::Mat close_result;
+    cv::morphologyEx(mask, close_result, cv::MORPH_CLOSE, structure_elem);
 
-    cv::erode(mask, mask, cv::Mat(), cv::Point(-1,-1), 3);
+    cv::erode(close_result, mask_dst, cv::Mat(), cv::Point(-1,-1), 3);
 
-    //        cv::imshow("mask", mask);
-    //        cv::waitKey(0);
+//    cv::imshow("mask", mask);
+//    cv::imshow("close_result", close_result);
+//    cv::imshow("mask_dst", mask_dst);
+//    cv::waitKey(0);
 
-    for(int r=0; r < mask.rows; r++)
+    eroded_indices.indices.clear();
+    for(int r=0; r < mask_dst.rows; r++)
     {
-        for(int c=0; c< mask.cols; c++)
+        for(int c=0; c< mask_dst.cols; c++)
         {
-            if(mask.at<unsigned char>(r,c) > 0)
+            if(mask_dst.at<unsigned char>(r,c) > 0)
             {
-                eroded_indices.indices.push_back(r * mask.cols + c);
+                eroded_indices.indices.push_back(r * mask_dst.cols + c);
             }
         }
     }
@@ -459,7 +464,7 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
     }
 
     //erode mask
-    erodeInitialIndices(*keyframes_[0], transferred_object_indices_[0].indices, object_indices_eroded_[0]);
+    erodeInitialIndices(*keyframes_[0], transferred_object_indices_[0], object_indices_eroded_[0]);
     object_indices_[0] = transferred_object_indices_[0];
 
     pcl::PointCloud<PointT>::Ptr big_cloud(new pcl::PointCloud<PointT>);
@@ -498,7 +503,7 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
 
         object_indices_[i].indices = cluster;
 
-        erodeInitialIndices(*keyframes_[i], object_indices_[i].indices, object_indices_eroded_[i]);
+        erodeInitialIndices(*keyframes_[i], object_indices_[i], object_indices_eroded_[i]);
 
         std::cout << "Found " << transferred_object_indices_[i].indices.size() << " nearest neighbors before growing." << std::endl
                   << "After updatePointNormalsFromSuperVoxels size: " << transferred_object_indices_good_[i].indices.size() << std::endl
@@ -518,15 +523,16 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
 
     if(visualize_)
     {
-        visualize();
-    }
-    /*pcl::visualization::PCLVisualizer vis("test");
+        pcl::visualization::PCLVisualizer vis("segmented cloud");
         int v1, v2;
         vis.createViewPort(0,0,0.5,1,v1);
         vis.createViewPort(0.5,0,1,1,v2);
         vis.addPointCloud(big_cloud, "big", v1);
         vis.addPointCloud(big_cloud_segmented, "segmented", v2);
-        vis.spin();*/
+        vis.spinOnce();
+
+        visualize();        
+    }
 
     return true;
 }

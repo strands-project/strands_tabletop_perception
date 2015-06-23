@@ -99,7 +99,7 @@ public:
 
 
     void erodeInitialIndices(const pcl::PointCloud<PointT> & cloud,
-                             const std::vector<int> & initial_indices,
+                             const pcl::PointIndices & initial_indices,
                              pcl::PointIndices & eroded_indices);
 
     static void createDirIfNotExist(std::string & dirs)
