@@ -260,7 +260,8 @@ private:
         }
         catch (pcl::IOException e)
         {
-            std::cout << "Could not start camera..." << std::endl;
+            std::cout << "PCL threw error " << e.what()
+                      << ". Could not start camera..." << std::endl;
             return false;
         }
 

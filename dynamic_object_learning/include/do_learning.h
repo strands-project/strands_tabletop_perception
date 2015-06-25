@@ -36,6 +36,7 @@ private:
     std::vector<pcl::PointIndices> object_indices_eroded_;
     std::vector<pcl::PointIndices> object_indices_;
     std::vector<pcl::PointIndices> transferred_object_indices_;
+    std::vector<pcl::PointIndices> transferred_object_indices_without_plane_;
     std::vector<pcl::PointIndices> transferred_object_indices_good_;
     std::vector<Eigen::Matrix4f> cameras_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > keyframes_;
@@ -150,6 +151,7 @@ public:
         cameras_.clear();
         transferred_cluster_.clear();
         transferred_object_indices_.clear();
+        transferred_object_indices_without_plane_.clear();
         transferred_object_indices_good_.clear();
         object_indices_.clear();
         object_indices_eroded_.clear();
@@ -162,6 +164,7 @@ public:
         cameras_.resize( num_elements );
         transferred_cluster_.resize( num_elements );
         transferred_object_indices_.resize( num_elements );
+        transferred_object_indices_without_plane_.resize( num_elements );
         transferred_object_indices_good_.resize( num_elements );
         object_indices_.resize( num_elements );
         object_indices_eroded_.resize( num_elements );
@@ -172,8 +175,45 @@ public:
     void getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
                                                 const pcl::PointIndices object_mask,
                                                 std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes_dst,
+                                                pcl::PointIndices &all_plane_indices_wo_object,
                                                 float ratio=0.25);
+
+    void extractObjectIndicesWithoutPlane(const pcl::PointIndices &inputIndices,
+                                          const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
+                                          pcl::PointIndices &outputIndices);
     void visualize();
+
+    template<typename T>
+    inline std::vector<T> erase_indices(const std::vector<T>& data, std::vector<size_t>& indicesToDelete/* can't assume copy elision, don't pass-by-value */)
+    {
+        if(indicesToDelete.empty())
+            return data;
+
+        std::vector<T> ret;
+        ret.reserve(data.size() - indicesToDelete.size());
+
+        std::sort(indicesToDelete.begin(), indicesToDelete.end());
+
+        // new we can assume there is at least 1 element to delete. copy blocks at a time.
+        typename std::vector<T>::const_iterator itBlockBegin = data.begin();
+        for(std::vector<size_t>::const_iterator it = indicesToDelete.begin(); it != indicesToDelete.end(); ++ it)
+        {
+            typename std::vector<T>::const_iterator itBlockEnd = data.begin() + *it;
+            if(itBlockBegin != itBlockEnd)
+            {
+                std::copy(itBlockBegin, itBlockEnd, std::back_inserter(ret));
+            }
+            itBlockBegin = itBlockEnd + 1;
+        }
+
+        // copy last block.
+        if(itBlockBegin != data.end())
+        {
+            std::copy(itBlockBegin, data.end(), std::back_inserter(ret));
+        }
+
+        return ret;
+    }
 };
 
 

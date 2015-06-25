@@ -238,15 +238,15 @@ void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int
 
     for(size_t i=0; i < segmented_trans->points.size(); i++)
     {
-//        if (octree.nearestKSearch (segmented_trans->points[i], 1, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
-//            //if (octree.radiusSearch (segmented_trans->points[i], radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
-//        {
-//            if(pointRadiusSquaredDistance[0] <= (radius_ * radius_))
-//                all_neighbours.insert(pointIdxRadiusSearch.begin(), pointIdxRadiusSearch.end());
-//        }
+        //        if (octree.nearestKSearch (segmented_trans->points[i], 1, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
+        //            //if (octree.radiusSearch (segmented_trans->points[i], radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
+        //        {
+        //            if(pointRadiusSquaredDistance[0] <= (radius_ * radius_))
+        //                all_neighbours.insert(pointIdxRadiusSearch.begin(), pointIdxRadiusSearch.end());
+        //        }
         if (octree.radiusSearch (segmented_trans->points[i], radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
         {
-             all_neighbours.insert(pointIdxRadiusSearch.begin(), pointIdxRadiusSearch.end());
+            all_neighbours.insert(pointIdxRadiusSearch.begin(), pointIdxRadiusSearch.end());
         }
     }
 
@@ -254,18 +254,18 @@ void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int
 
     std::cout << "Found nearest neighbor: " << nn.size() << std::endl;
 
-//    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_nn;
-//    vis_nn.reset(new pcl::visualization::PCLVisualizer());
-//    std::vector<std::string> subwindow_title;
-//    subwindow_title.push_back("original scene");
-//    subwindow_title.push_back("search points");
-//    std::vector<int> vp_nn;
-//    vp_nn = faat_pcl::utils::visualization_framework (vis_nn, 1, 2, subwindow_title);
-//    pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler(octree.getInputCloud());
-//    vis_nn->addPointCloud(octree.getInputCloud(), rgb_handler, "input_cloud", vp_nn[0]);
-//    pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2(segmented_trans);
-//    vis_nn->addPointCloud(segmented_trans, rgb_handler2, "segmented_trans", vp_nn[1]);
-//    vis_nn->spinOnce();
+    //    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_nn;
+    //    vis_nn.reset(new pcl::visualization::PCLVisualizer());
+    //    std::vector<std::string> subwindow_title;
+    //    subwindow_title.push_back("original scene");
+    //    subwindow_title.push_back("search points");
+    //    std::vector<int> vp_nn;
+    //    vp_nn = faat_pcl::utils::visualization_framework (vis_nn, 1, 2, subwindow_title);
+    //    pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler(octree.getInputCloud());
+    //    vis_nn->addPointCloud(octree.getInputCloud(), rgb_handler, "input_cloud", vp_nn[0]);
+    //    pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2(segmented_trans);
+    //    vis_nn->addPointCloud(segmented_trans, rgb_handler2, "segmented_trans", vp_nn[1]);
+    //    vis_nn->spinOnce();
 }
 
 void DOL::erodeInitialIndices(const pcl::PointCloud<PointT> & cloud,
@@ -291,10 +291,10 @@ void DOL::erodeInitialIndices(const pcl::PointCloud<PointT> & cloud,
 
     cv::erode(close_result, mask_dst, cv::Mat(), cv::Point(-1,-1), 3);
 
-//    cv::imshow("mask", mask);
-//    cv::imshow("close_result", close_result);
-//    cv::imshow("mask_dst", mask_dst);
-//    cv::waitKey(0);
+    //    cv::imshow("mask", mask);
+    //    cv::imshow("close_result", close_result);
+    //    cv::imshow("mask_dst", mask_dst);
+    //    cv::waitKey(0);
 
     eroded_indices.indices.clear();
     for(int r=0; r < mask_dst.rows; r++)
@@ -461,6 +461,16 @@ void DOL::computeNormals(const pcl::PointCloud<PointT>::ConstPtr &cloud, pcl::Po
         nest_->compute(*kp_cloud, *kp_normals_tmp);
         kp::convertNormals(*kp_normals_tmp, normals);
     }
+
+    // Normalize normals to unit length
+    for ( size_t normal_pt_id = 0; normal_pt_id < normals.points.size(); normal_pt_id++)
+    {
+        Eigen::Vector3f n1 = normals.points[normal_pt_id].getNormalVector3fMap();
+        n1.normalize();
+        normals.points[normal_pt_id].normal_x = n1(0);
+        normals.points[normal_pt_id].normal_y = n1(1);
+        normals.points[normal_pt_id].normal_z = n1(2);
+    }
 }
 
 void DOL::extractPlanePoints(const pcl::PointCloud<PointT>::ConstPtr &cloud,
@@ -477,10 +487,12 @@ void DOL::extractPlanePoints(const pcl::PointCloud<PointT>::ConstPtr &cloud,
 void DOL::getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
                                             const pcl::PointIndices object_mask,
                                             std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes_dst,
+                                            pcl::PointIndices &all_plane_indices_wo_object,
                                             float ratio)
 {
     planes_dst.clear();
-    pcl::PointIndicesPtr p_all_plane_indices (new pcl::PointIndices);
+    all_plane_indices_wo_object.indices.clear();
+
     for(size_t cluster_id=0; cluster_id<planes.size(); cluster_id++)
     {
         size_t num_obj_pts = 0;
@@ -488,8 +500,8 @@ void DOL::getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormals
         if (planes[cluster_id]->is_plane)
         {
 
-             for (size_t cluster_pt_id=0; cluster_pt_id<planes[cluster_id]->indices.size(); cluster_pt_id++)
-             {
+            for (size_t cluster_pt_id=0; cluster_pt_id<planes[cluster_id]->indices.size(); cluster_pt_id++)
+            {
                 for (size_t obj_pt_id=0; obj_pt_id<object_mask.indices.size(); obj_pt_id++)
                 {
                     if (object_mask.indices[obj_pt_id] == planes[cluster_id]->indices[cluster_pt_id])
@@ -498,13 +510,47 @@ void DOL::getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormals
                     }
                 }
             }
-        }
 
-        if ( num_obj_pts < ratio * planes[cluster_id]->indices.size() )
-        {
-            planes_dst.push_back( planes[cluster_id] );
+            if ( num_obj_pts < ratio * planes[cluster_id]->indices.size() )
+            {
+                planes_dst.push_back( planes[cluster_id] );
+                all_plane_indices_wo_object.indices.insert(all_plane_indices_wo_object.indices.begin(),
+                                                           planes[cluster_id]->indices.begin(),
+                                                           planes[cluster_id]->indices.end());
+            }
+
         }
     }
+}
+
+void DOL::extractObjectIndicesWithoutPlane(const pcl::PointIndices &inputIndices,
+                                           const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
+                                           pcl::PointIndices &outputIndices)
+{
+    std::vector<size_t> indices_to_delete;
+    indices_to_delete.resize(inputIndices.indices.size());
+    size_t kept = 0;
+
+    for (size_t cluster_id=0; cluster_id < planes.size(); cluster_id++)
+    {
+        if (planes[cluster_id]->is_plane)
+        {
+            std::vector<int>::const_iterator cluster_pt_it;
+            for ( cluster_pt_it = planes[ cluster_id ]->indices.begin(); cluster_pt_it != planes[ cluster_id ]->indices.end(); ++cluster_pt_it)
+            {
+                for (size_t obj_pt_id = 0; obj_pt_id < inputIndices.indices.size(); obj_pt_id++)
+                {
+                    if ( *cluster_pt_it == inputIndices.indices[ obj_pt_id ] )
+                    {
+                        indices_to_delete[kept] = obj_pt_id;
+                        kept++;
+                    }
+                }
+            }
+        }
+    }
+    indices_to_delete.resize(kept);
+    outputIndices.indices = erase_indices<int>(inputIndices.indices, indices_to_delete);
 }
 
 bool
@@ -567,33 +613,16 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
 
         std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> planes, planes_wo_obj;
         extractPlanePoints(keyframes_[i], normals_dest, planes);
-        getPlanesNotSupportedByObjectMask(planes, transferred_object_indices_[i], planes_wo_obj);
+        pcl::PointIndices all_plane_indices_wo_object;
+        getPlanesNotSupportedByObjectMask(planes, transferred_object_indices_[i], planes_wo_obj, all_plane_indices_wo_object);
 
-        pcl::PointIndices transferred_object_indices_wo_planes;
+        extractObjectIndicesWithoutPlane(transferred_object_indices_[i], planes_wo_obj, transferred_object_indices_without_plane_[i]);
+        std::cout << "Size of object indices before and after removing plane points: "
+                  << transferred_object_indices_[i].indices.size() << " / "
+                  << transferred_object_indices_without_plane_[i].indices.size() << "." << std::endl;
 
-
-        boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("Normals pcl"));
-        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(keyframes_[i]);
-        viewer->addPointCloud<pcl::PointXYZRGB> (keyframes_[i], rgb, "sample cloud");
-        viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (keyframes_[i], normals_dest, 10, 0.05, "normals");
-        viewer->spinOnce();
-
-
-        std::cout << planes.size() << " smooth clusters detected. " << std::endl;
-
-        // remove all points which belong to a plane
         pcl::PointIndicesPtr p_all_plane_indices (new pcl::PointIndices);
-        for(size_t cluster_id=0; cluster_id<planes.size(); cluster_id++)
-        {
-            if (planes[cluster_id]->is_plane)
-            {
-                p_all_plane_indices->indices.insert (p_all_plane_indices->indices.end(),
-                                                     planes[cluster_id]->indices.begin(),
-                                                     planes[cluster_id]->indices.end());
-            }
-
-        }
-
+        p_all_plane_indices->indices = all_plane_indices_wo_object.indices;
         pcl::ExtractIndices<PointT> extract;
         extract.setInputCloud (keyframes_[i]);
         extract.setIndices (p_all_plane_indices);
@@ -606,7 +635,15 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
         extractNormals.setNegative (true);
         extractNormals.filter (*normals_dest);
 
-//#define DEBUG_SEGMENTATION
+        boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("Normals pcl"));
+        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(keyframes_[i]);
+        viewer->addPointCloud<pcl::PointXYZRGB> (keyframes_[i], rgb, "sample cloud");
+        viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (keyframes_[i], normals_dest, 10, 0.05, "normals");
+        viewer->spin();
+
+
+
+        //#define DEBUG_SEGMENTATION
 #ifdef DEBUG_SEGMENTATION
         {
             pcl::visualization::PCLVisualizer vis("segmented cloud");
@@ -646,6 +683,8 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
                                           supervoxeled_clouds_[i]);
 
         std::vector<int> cluster;
+        octree.setInputCloud ( keyframes_[i] );
+        octree.addPointsFromInputCloud ();
         extractEuclideanClustersSmooth(*keyframes_[i], *normals_dest, octree, transferred_object_indices_good_[i].indices, cluster);
 
         object_indices_[i].indices = cluster;
@@ -678,7 +717,7 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
         vis.addPointCloud(big_cloud_segmented, "segmented", v2);
         vis.spinOnce();
 
-        visualize();        
+        visualize();
     }
 
     return true;
