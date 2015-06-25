@@ -283,7 +283,6 @@ private:
 
         std::cout << "Camera started..." << std::endl;
 #else
-        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
         camera_info_subscriber_ = n_->subscribe(camera_topic_ +"/camera_info", 1, &CamTracker::camera_info_cb, this);
 
         ROS_INFO_STREAM("Wating for camera info...topic=" << camera_topic_ << "/camera_info...");
@@ -293,6 +292,7 @@ private:
         }
         ROS_INFO("got it.");
         camera_info_subscriber_.shutdown();
+        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
 
         cv::Mat_<double> distCoeffs = cv::Mat(4, 1, CV_64F, camera_info_.D.data());
         cv::Mat_<double> intrinsic = cv::Mat(3, 3, CV_64F, camera_info_.K.data());
