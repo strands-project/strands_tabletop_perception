@@ -13,6 +13,7 @@
 #include "sensor_msgs/CameraInfo.h"
 #include "std_msgs/Float32.h"
 #include <tf/transform_broadcaster.h>
+#include <visualization_msgs/Marker.h>
 
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/common/common.h>
@@ -69,6 +70,11 @@ private:
     ros::Subscriber camera_topic_subscriber_;
     ros::Subscriber camera_info_subscriber_;
     ros::Publisher confidence_publisher_;
+    ros::Publisher trajectory_publisher_;
+    ros::Publisher keyframe_publisher_;
+
+    visualization_msgs::Marker trajectory_marker_;
+    visualization_msgs::Marker keyframes_marker_;
 
     kp::KeypointSlamRGBD2::Parameter param;
     kp::KeypointSlamRGBD2::Ptr camtracker;
@@ -156,6 +162,15 @@ private:
                 Eigen::Quaternionf q(rotation);
                 keyframes_.back().second->sensor_orientation_ = q;
                 ROS_INFO("Added new keyframe**********************************************************");
+
+                geometry_msgs::Point p;
+                p.x = -pose(0,3);
+                p.y = -pose(1,3);
+                p.z = -pose(2,3);
+                keyframes_marker_.points.push_back(p);
+                keyframes_marker_.header.stamp = ros::Time::now();
+
+                keyframe_publisher_.publish(keyframes_marker_);
             }
         }
         return type;
@@ -210,6 +225,19 @@ private:
             transform.setRotation(q);
             ros::Time now_sync = ros::Time::now();
             cameraTransformBroadcaster.sendTransform(tf::StampedTransform(transform, now_sync, "camera_rgb_optical_frame", "world"));
+
+            geometry_msgs::Point p;
+            p.x = -pose_(0,3);
+            p.y = -pose_(1,3);
+            p.z = -pose_(2,3);
+            std_msgs::ColorRGBA c;
+            c.a = 1.0;
+            c.g = conf_;
+            trajectory_marker_.points.push_back(p);
+            trajectory_marker_.colors.push_back(c);
+            trajectory_marker_.header.stamp = msg->header.stamp;
+
+            trajectory_publisher_.publish(trajectory_marker_);
         }
 
         /*std_msgs::Float32 conf_mesage;
@@ -284,7 +312,6 @@ private:
 
         std::cout << "Camera started..." << std::endl;
 #else
-        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
         camera_info_subscriber_ = n_->subscribe(camera_topic_ +"/camera_info", 1, &CamTracker::camera_info_cb, this);
 
         ROS_INFO_STREAM("Wating for camera info...topic=" << camera_topic_ << "/camera_info...");
@@ -294,6 +321,7 @@ private:
         }
         ROS_INFO("got it.");
         camera_info_subscriber_.shutdown();
+        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
 
         cv::Mat_<double> distCoeffs = cv::Mat(4, 1, CV_64F, camera_info_.D.data());
         cv::Mat_<double> intrinsic = cv::Mat(3, 3, CV_64F, camera_info_.K.data());
@@ -523,6 +551,29 @@ public:
 
         camera_topic_ = "/camera/depth_registered";
         debug_mode_ = false;
+
+        trajectory_marker_.header.frame_id = "world";
+        trajectory_marker_.ns = "trajectory";
+        trajectory_marker_.id = 0;
+        trajectory_marker_.type = visualization_msgs::Marker::LINE_STRIP;
+        trajectory_marker_.action = visualization_msgs::Marker::ADD;
+        trajectory_marker_.scale.x = 0.005;
+        trajectory_marker_.scale.y = 0.005;
+        trajectory_marker_.scale.z = 0.005;
+        trajectory_marker_.color.a = 1.0;
+        trajectory_marker_.pose.orientation.w = 1.0;
+        keyframes_marker_.header.frame_id = "world";
+        keyframes_marker_.ns = "keyframes";
+        keyframes_marker_.id = 0;
+        keyframes_marker_.type = visualization_msgs::Marker::CUBE_LIST;
+        keyframes_marker_.action = visualization_msgs::Marker::ADD;
+        keyframes_marker_.scale.x = 0.05;
+        keyframes_marker_.scale.y = 0.05;
+        keyframes_marker_.scale.z = 0.05;
+        keyframes_marker_.color.a = 0.7;
+        keyframes_marker_.color.r = 1.0;
+        keyframes_marker_.color.g = 0.0;
+        keyframes_marker_.pose.orientation.w = 1.0;
     }
 
     void
@@ -547,6 +598,10 @@ public:
 
         if( n_->getParam ( "delta_angle_deg", delta_angle_deg ) )
             cos_min_delta_angle_ = cos( delta_angle_deg *M_PI/180.);
+
+        confidence_publisher_ = n_->advertise<visualization_msgs::Marker>("confidence", 1);
+        trajectory_publisher_ = n_->advertise<visualization_msgs::Marker>("trajectory", 1);
+        keyframe_publisher_ = n_->advertise<visualization_msgs::Marker>("keyframes", 1);
 
         ros::spin ();
     }
