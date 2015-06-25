@@ -44,7 +44,7 @@
 #include <v4r/ORUtils/noise_model_based_cloud_integration.h>
 #include <v4r/ORUtils/noise_models.h>
 
-#define USE_PCL_GRABBER
+//#define USE_PCL_GRABBER
 #ifdef USE_PCL_GRABBER
     #include <pcl/io/grabber.h>
     #include <pcl/io/openni2_grabber.h>
