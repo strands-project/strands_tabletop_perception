@@ -678,7 +678,7 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
 
         updatePointNormalsFromSuperVoxels(keyframes_[i],
                                           normals_dest,
-                                          transferred_object_indices_[i].indices,
+                                          transferred_object_indices_without_plane_[i].indices,
                                           transferred_object_indices_good_[i].indices,
                                           supervoxeled_clouds_[i]);
 
