@@ -16,11 +16,14 @@
 #include <pcl/common/angles.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/time.h>
-#include <pcl/io/pcd_io.h>
+#include <pcl/features/integral_image_normal.h>
 #include <pcl/features/normal_3d_omp.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/io/pcd_io.h>
 
 #include "do_learning.h"
 
+#include "v4r/KeypointConversions/convertNormals.hpp"
 #include "v4r/KeypointTools/invPose.hpp"
 #include "v4r/KeypointTools/toString.hpp"
 #include "v4r/KeypointTools/PoseIO.hpp"
@@ -430,6 +433,80 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
     return true;
 }
 
+void DOL::computeNormals(const pcl::PointCloud<PointT>::ConstPtr &cloud, pcl::PointCloud<pcl::Normal> &normals)
+{
+    if(normal_method_== 0)
+    {
+        pcl::NormalEstimation<PointT, pcl::Normal> n3d;
+        n3d.setRadiusSearch (0.01f);
+        n3d.setInputCloud (cloud);
+        n3d.compute (normals);
+    }
+    else if(normal_method_ == 1)
+    {
+        pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
+        ne.setNormalEstimationMethod (ne.AVERAGE_3D_GRADIENT);
+        ne.setMaxDepthChangeFactor(0.02f);
+        ne.setNormalSmoothingSize(15.f);//20.0f);
+        ne.setDepthDependentSmoothing(false);//param.normals_depth_dependent_smoothing);
+        ne.setInputCloud(cloud);
+        ne.setViewPoint(0,0,0);
+        ne.compute(normals);
+    }
+    else //if(normal_method_ == 2)
+    {
+        kp::DataMatrix2D<Eigen::Vector3f>::Ptr kp_cloud( new kp::DataMatrix2D<Eigen::Vector3f>() );
+        kp::DataMatrix2D<Eigen::Vector3f>::Ptr kp_normals_tmp( new kp::DataMatrix2D<Eigen::Vector3f>() );
+        kp::convertCloud(*cloud, *kp_cloud);
+        nest_->compute(*kp_cloud, *kp_normals_tmp);
+        kp::convertNormals(*kp_normals_tmp, normals);
+    }
+}
+
+void DOL::extractPlanePoints(const pcl::PointCloud<PointT>::ConstPtr &cloud,
+                             const pcl::PointCloud<pcl::Normal>::ConstPtr &normals,
+                             std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes)
+{
+    kp::DataMatrix2D<Eigen::Vector3f>::Ptr kp_cloud( new kp::DataMatrix2D<Eigen::Vector3f>() );
+    kp::DataMatrix2D<Eigen::Vector3f>::Ptr kp_normals( new kp::DataMatrix2D<Eigen::Vector3f>() );
+    kp::convertCloud(*cloud, *kp_cloud);
+    kp::convertNormals(*normals, *kp_normals);
+    pest_->compute(*kp_cloud, *kp_normals, planes);
+}
+
+void DOL::getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
+                                            const pcl::PointIndices object_mask,
+                                            std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes_dst,
+                                            float ratio)
+{
+    planes_dst.clear();
+    pcl::PointIndicesPtr p_all_plane_indices (new pcl::PointIndices);
+    for(size_t cluster_id=0; cluster_id<planes.size(); cluster_id++)
+    {
+        size_t num_obj_pts = 0;
+
+        if (planes[cluster_id]->is_plane)
+        {
+
+             for (size_t cluster_pt_id=0; cluster_pt_id<planes[cluster_id]->indices.size(); cluster_pt_id++)
+             {
+                for (size_t obj_pt_id=0; obj_pt_id<object_mask.indices.size(); obj_pt_id++)
+                {
+                    if (object_mask.indices[obj_pt_id] == planes[cluster_id]->indices[cluster_pt_id])
+                    {
+                        num_obj_pts++;
+                    }
+                }
+            }
+        }
+
+        if ( num_obj_pts < ratio * planes[cluster_id]->indices.size() )
+        {
+            planes_dst.push_back( planes[cluster_id] );
+        }
+    }
+}
+
 bool
 DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
                    do_learning_srv_definitions::learn_object::Response & response)
@@ -477,6 +554,9 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
         std::cout << "Computing indices for cloud " << i << std::endl
                   << "===================================" << std::endl;
 
+        pcl::PointCloud<pcl::Normal>::Ptr normals_dest(new pcl::PointCloud<pcl::Normal>);
+        computeNormals(keyframes_[i], *normals_dest);
+
         octree.setInputCloud ( keyframes_[i] );
         octree.addPointsFromInputCloud ();
 
@@ -485,12 +565,79 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
             transferIndicesAndNNSearch(i-1, i, transferred_object_indices_[i].indices);
         }
 
-        //smooth region growing
-        pcl::PointCloud<pcl::Normal>::Ptr normals_dest(new pcl::PointCloud<pcl::Normal>);
-        pcl::NormalEstimation<PointT, pcl::Normal> n3d;
-        n3d.setRadiusSearch (0.01f);
-        n3d.setInputCloud (keyframes_[i]);
-        n3d.compute (*normals_dest);
+        std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> planes, planes_wo_obj;
+        extractPlanePoints(keyframes_[i], normals_dest, planes);
+        getPlanesNotSupportedByObjectMask(planes, transferred_object_indices_[i], planes_wo_obj);
+
+        pcl::PointIndices transferred_object_indices_wo_planes;
+
+
+        boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("Normals pcl"));
+        pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGB> rgb(keyframes_[i]);
+        viewer->addPointCloud<pcl::PointXYZRGB> (keyframes_[i], rgb, "sample cloud");
+        viewer->addPointCloudNormals<pcl::PointXYZRGB, pcl::Normal> (keyframes_[i], normals_dest, 10, 0.05, "normals");
+        viewer->spinOnce();
+
+
+        std::cout << planes.size() << " smooth clusters detected. " << std::endl;
+
+        // remove all points which belong to a plane
+        pcl::PointIndicesPtr p_all_plane_indices (new pcl::PointIndices);
+        for(size_t cluster_id=0; cluster_id<planes.size(); cluster_id++)
+        {
+            if (planes[cluster_id]->is_plane)
+            {
+                p_all_plane_indices->indices.insert (p_all_plane_indices->indices.end(),
+                                                     planes[cluster_id]->indices.begin(),
+                                                     planes[cluster_id]->indices.end());
+            }
+
+        }
+
+        pcl::ExtractIndices<PointT> extract;
+        extract.setInputCloud (keyframes_[i]);
+        extract.setIndices (p_all_plane_indices);
+        extract.setNegative (true);
+        extract.filter (*keyframes_[i]);
+
+        pcl::ExtractIndices<pcl::Normal> extractNormals;
+        extractNormals.setInputCloud (normals_dest);
+        extractNormals.setIndices (p_all_plane_indices);
+        extractNormals.setNegative (true);
+        extractNormals.filter (*normals_dest);
+
+//#define DEBUG_SEGMENTATION
+#ifdef DEBUG_SEGMENTATION
+        {
+            pcl::visualization::PCLVisualizer vis("segmented cloud");
+            for(size_t cluster_id=0; cluster_id<planes.size(); cluster_id++)
+            {
+                vis.removeAllPointCloud();
+                pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler(keyframes_[i]);
+                vis.addPointCloud(keyframes_[i], rgb_handler, "original_cloud");
+
+
+                pcl::PointCloud<PointT>::Ptr segmented (new pcl::PointCloud<PointT>());
+                pcl::copyPointCloud(*keyframes_[i], planes[cluster_id]->indices, *segmented);
+                if (planes[cluster_id]->is_plane)
+                {
+                    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> red_source (segmented, 255, 0, 0);
+                    vis.addPointCloud(segmented, red_source, "segmented");
+                }
+                else
+                {
+                    break;
+                    pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> green_source (segmented, 0, 255, 0);
+                    vis.addPointCloud(segmented, green_source, "segmented");
+                }
+                vis.spin();
+            }
+            vis.removeAllPointClouds();
+            pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler(keyframes_[i]);
+            vis.addPointCloud(keyframes_[i], rgb_handler, "original_cloud");
+            vis.spin();
+        }
+#endif
 
         updatePointNormalsFromSuperVoxels(keyframes_[i],
                                           normals_dest,
@@ -537,30 +684,6 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
     return true;
 }
 
-void DOL::initialize (int argc, char ** argv)
-{
-    n_.reset( new ros::NodeHandle ( "~" ) );
-    n_->getParam ( "radius", radius_);
-    n_->getParam ( "dot_product", eps_angle_);
-    n_->getParam ( "seed_res", seed_resolution_);
-    n_->getParam ( "voxel_res", voxel_resolution_);
-    n_->getParam ( "ratio", ratio_);
-    n_->getParam ( "visualize", visualize_);
-    n_->getParam ( "do_erosion", do_erosion_);
-
-    learn_object_  = n_->advertiseService ("learn_object", &DOL::learn_object, this);
-    save_model_  = n_->advertiseService ("save_model", &DOL::save_model, this);
-
-    std::cout << "Started dynamic object learning with parameters: " << std::endl
-              << "===================================================" << std::endl
-              << "radius: " << radius_ << std::endl
-              << "eps_angle: " << eps_angle_ << std::endl
-              << "voxel_resolution: " << seed_resolution_ << std::endl
-              << "ratio: " << ratio_ << std::endl
-              << "===================================================" << std::endl << std::endl;
-
-    ros::spin ();
-}
 
 void DOL::visualize()
 {
@@ -626,6 +749,41 @@ void DOL::visualize()
         vis_->addPointCloud(segmented_eroded_trans, rgb_handler5, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + 5]);
     }
     vis_->spin();
+}
+
+
+void DOL::initialize (int argc, char ** argv)
+{
+    double inlDist, minPoints;
+
+    n_.reset( new ros::NodeHandle ( "~" ) );
+    n_->getParam ( "radius", radius_);
+    n_->getParam ( "dot_product", eps_angle_);
+    n_->getParam ( "seed_res", seed_resolution_);
+    n_->getParam ( "voxel_res", voxel_resolution_);
+    n_->getParam ( "ratio", ratio_);
+    n_->getParam ( "visualize", visualize_);
+    n_->getParam ( "do_erosion", do_erosion_);
+    if( n_->getParam ( "inlier_threshold_plane_seg", inlDist) )
+        p_param_.inlDist = static_cast<float> (inlDist);
+
+    if ( n_->getParam ( "min_plane_points", minPoints) )
+        p_param_.minPoints = static_cast<float> (minPoints);
+
+    learn_object_  = n_->advertiseService ("learn_object", &DOL::learn_object, this);
+    save_model_  = n_->advertiseService ("save_model", &DOL::save_model, this);
+
+    pest_.reset(new kp::ClusterNormalsToPlanes(p_param_));
+
+    std::cout << "Started dynamic object learning with parameters: " << std::endl
+              << "===================================================" << std::endl
+              << "radius: " << radius_ << std::endl
+              << "eps_angle: " << eps_angle_ << std::endl
+              << "voxel_resolution: " << seed_resolution_ << std::endl
+              << "ratio: " << ratio_ << std::endl
+              << "===================================================" << std::endl << std::endl;
+
+    ros::spin ();
 }
 
 int

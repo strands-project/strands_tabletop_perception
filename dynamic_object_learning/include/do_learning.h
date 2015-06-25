@@ -10,6 +10,10 @@
 
 #include "v4r/KeypointConversions/convertImage.hpp"
 #include "v4r/KeypointConversions/convertCloud.hpp"
+#include "v4r/KeypointTools/ClusterNormalsToPlanes.hh"
+#include "v4r/KeypointTools/DataMatrix2D.hpp"
+#include "v4r/KeypointTools/PointTypes.hpp"
+#include "v4r/KeypointTools/ZAdaptiveNormals.hh"
 struct IndexPoint
 {
     int idx;
@@ -27,6 +31,7 @@ private:
     ros::ServiceServer learn_object_;
     ros::ServiceServer save_model_;
     int v1, v2;
+    int normal_method_;
 
     std::vector<pcl::PointIndices> object_indices_eroded_;
     std::vector<pcl::PointIndices> object_indices_;
@@ -50,6 +55,11 @@ private:
     bool do_erosion_;
     pcl::octree::OctreePointCloudSearch<PointT> octree;
 
+    kp::ClusterNormalsToPlanes::Ptr pest_;
+    kp::ClusterNormalsToPlanes::Parameter p_param_;
+    kp::ZAdaptiveNormals::Ptr nest_;
+    kp::ZAdaptiveNormals::Parameter n_param_;
+
 public:
 
     DOL () : octree(0.005f)
@@ -61,6 +71,21 @@ public:
         ratio_ = 0.25f;
         visualize_ = false;
         do_erosion_ = true;
+
+        // Parameters for smooth clustering / plane segmentation
+        p_param_.thrAngle=45;
+        p_param_.inlDist=0.05;
+        p_param_.minPoints=5000;    // minimum number for a plane to be segmented
+        p_param_.least_squares_refinement=true;
+        p_param_.smooth_clustering=true;
+        p_param_.thrAngleSmooth=30;
+        p_param_.inlDistSmooth=0.02;
+        p_param_.minPointsSmooth=20;    // minimum number for a segment other than a plane
+
+        n_param_.adaptive = true;
+        nest_.reset(new kp::ZAdaptiveNormals(n_param_));
+
+        normal_method_ = 0;
     }
 
     static Eigen::Matrix4f fromGMTransform(geometry_msgs::Transform & gm_trans)
@@ -142,7 +167,12 @@ public:
         object_indices_eroded_.resize( num_elements );
         supervoxeled_clouds_.resize( num_elements );
     }
-
+    void computeNormals(const pcl::PointCloud<PointT>::ConstPtr & cloud, pcl::PointCloud<pcl::Normal> &normals);
+    void extractPlanePoints(const pcl::PointCloud<PointT>::ConstPtr &cloud, const pcl::PointCloud<pcl::Normal>::ConstPtr &normals, std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes);
+    void getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
+                                                const pcl::PointIndices object_mask,
+                                                std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes_dst,
+                                                float ratio=0.25);
     void visualize();
 };
 

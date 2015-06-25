@@ -24,9 +24,6 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/features/normal_3d_omp.h>
 
-#include <pcl/io/grabber.h>
-#include <pcl/io/openni2_grabber.h>
-
 #include "camera_srv_definitions/start_tracker.h"
 #include "camera_srv_definitions/stop_tracker.h"
 #include "camera_srv_definitions/visualize_compound.h"
@@ -48,21 +45,17 @@
 #include <v4r/ORUtils/noise_models.h>
 
 #define USE_PCL_GRABBER
-
-void saveToDisk(pcl::PointCloud<pcl::PointXYZRGB> scene,
-                int saved_cloud)
-{
-    pcl::ScopeTime t("saving took....................");
-    std::stringstream name;
-    name << "/media/aitor14/DATA/camtracker/output_" << std::setfill ('0') << std::setw (8) << saved_cloud << ".pcd";
-    pcl::io::savePCDFileBinary(name.str(), scene);
-}
+#ifdef USE_PCL_GRABBER
+    #include <pcl/io/grabber.h>
+    #include <pcl/io/openni2_grabber.h>
+#endif
 
 class CamTracker
 {
 private:
+    double conf_;
+    Eigen::Matrix4f pose_;
     boost::shared_ptr<pcl::visualization::CloudViewer> viewer_;
-    boost::shared_ptr<pcl::Grabber> interface;
     typedef pcl::PointXYZRGB PointT;
     boost::shared_ptr<ros::NodeHandle> n_;
     ros::ServiceServer cam_tracker_start_;
@@ -95,6 +88,10 @@ private:
     tf::TransformBroadcaster cameraTransformBroadcaster;
 
     kp::ProjBundleAdjuster ba;
+
+#ifdef USE_PCL_GRABBER
+    boost::shared_ptr<pcl::Grabber> interface;
+#endif
 
     void camera_info_cb(const sensor_msgs::CameraInfoPtr& msg) {
         camera_info_ = *msg;
@@ -161,14 +158,11 @@ private:
                 ROS_INFO("Added new keyframe**********************************************************");
             }
         }
-
-
         return type;
     }
 
     void trackNewCloud(const sensor_msgs::PointCloud2Ptr& msg)
     {
-
         ros::Time start_time_stamp = msg->header.stamp;
 
         boost::posix_time::ptime start_time = boost::posix_time::microsec_clock::local_time ();
@@ -183,42 +177,34 @@ private:
         scene_.reset(new pcl::PointCloud<PointT>);
         pcl::moveFromROSMsg (*msg, *scene_);
 
-        //save point cloud to file
-        /*{
-          pcl::ScopeTime t("thread creation");
-          std::thread (saveToDisk,*scene_, saved_clouds_++).detach();
-      }*/
-
         kp::DataMatrix2D<Eigen::Vector3f> kp_cloud;
         cv::Mat_<cv::Vec3b> image;
 
         kp::convertCloud(*scene_, kp_cloud, image);
 
-        double conf=0;
         int cam_idx=-1;
-        Eigen::Matrix4f pose;
 
-        bool is_ok = camtracker->track(image, kp_cloud, pose, conf, cam_idx);
+        bool is_ok = camtracker->track(image, kp_cloud, pose_, conf_, cam_idx);
 
         if(debug_mode_)
         {
-            drawConfidenceBar(image, conf);
+            drawConfidenceBar(image, conf_);
             cv::imshow("image", image);
             cv::waitKey(1);
         }
 
-        std::cout << time_ms << " conf:" << conf << std::endl;
+        std::cout << time_ms << " conf:" << conf_ << std::endl;
 
         if(is_ok)
         {
-            selectFrames(*scene_, cam_idx, pose);
+            selectFrames(*scene_, cam_idx, pose_);
             tf::Transform transform;
 
             //kp::invPose(pose, inv_pose);
-            transform.setOrigin(tf::Vector3(pose(0,3), pose(1,3), pose(2,3)));
-            tf::Matrix3x3 R(pose(0,0), pose(0,1), pose(0,2),
-                            pose(1,0), pose(1,1), pose(1,2),
-                            pose(2,0), pose(2,1), pose(2,2));
+            transform.setOrigin(tf::Vector3(pose_(0,3), pose_(1,3), pose_(2,3)));
+            tf::Matrix3x3 R(pose_(0,0), pose_(0,1), pose_(0,2),
+                            pose_(1,0), pose_(1,1), pose_(1,2),
+                            pose_(2,0), pose_(2,1), pose_(2,2));
             tf::Quaternion q;
             R.getRotation(q);
             transform.setRotation(q);
@@ -251,6 +237,8 @@ private:
         cameras_.clear();
         keyframes_.clear();
         saved_clouds_ = 0;
+        conf_=0;
+        pose_ = Eigen::Matrix4f::Identity();
 
         return true;
     }
@@ -259,10 +247,11 @@ private:
     start (camera_srv_definitions::start_tracker::Request & req,
            camera_srv_definitions::start_tracker::Response & response)
     {
-
         cameras_.clear();
         keyframes_.clear();
         saved_clouds_ = 0;
+        conf_=0;
+        pose_ = Eigen::Matrix4f::Identity();
 
 #ifdef USE_PCL_GRABBER
         try
@@ -290,17 +279,12 @@ private:
         boost::function<void (const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr&)> f =
           boost::bind (&CamTracker::cloud_cb_, this, _1);
         interface->registerCallback (f);
-//        boost::function<void (const boost::shared_ptr<openni_wrapper::Image>&)> f_rgb =
-//          boost::bind (&CamTracker::cloud_cb_rgb_, this, _1);
-//        interface->registerCallback (f_rgb);
         interface->start ();
 
         std::cout << "Camera started..." << std::endl;
-
 #else
-
-        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 10, &CamTracker::getCloud, this);
-        camera_info_subscriber_ = n_->subscribe(camera_topic_ +"/camera_info", 10, &CamTracker::camera_info_cb, this);
+        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
+        camera_info_subscriber_ = n_->subscribe(camera_topic_ +"/camera_info", 1, &CamTracker::camera_info_cb, this);
 
         ROS_INFO_STREAM("Wating for camera info...topic=" << camera_topic_ << "/camera_info...");
         while (!got_camera_info_) {
@@ -315,7 +299,6 @@ private:
 
         camtracker.reset( new kp::KeypointSlamRGBD2(param) );
         camtracker->setCameraParameter(intrinsic,distCoeffs);
-
 
         confidence_publisher_ = n_->advertise<std_msgs::Float32>("cam_tracker_confidence", 1);
 #endif
@@ -474,7 +457,6 @@ private:
     visCompound (camera_srv_definitions::visualize_compound::Request & req,
                  camera_srv_definitions::visualize_compound::Response & response)
     {
-
         if(cameras_.size() == 0)
             return false;
 
@@ -518,12 +500,13 @@ private:
         vis.spin();
 
         return true;
-
     }
 
 public:
     CamTracker () : got_camera_info_(false)
     {
+        conf_=0;
+        pose_ = Eigen::Matrix4f::Identity();
         cos_min_delta_angle_ = cos(15*M_PI/180.);
         sqr_min_cam_distance_ = 1.*1.;
 
@@ -544,6 +527,7 @@ public:
     void
     initialize (int argc, char ** argv)
     {
+        double delta_angle_deg;
         n_.reset( new ros::NodeHandle ( "~" ) );
 
         cam_tracker_start_  = n_->advertiseService ("start_recording", &CamTracker::start, this);
@@ -559,6 +543,9 @@ public:
 
         if(!n_->getParam ( "debug_mode", debug_mode_ ))
             debug_mode_ = false;
+
+        if( n_->getParam ( "delta_angle_deg", delta_angle_deg ) )
+            cos_min_delta_angle_ = cos( delta_angle_deg *M_PI/180.);
 
         ros::spin ();
     }
