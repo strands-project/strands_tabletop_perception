@@ -8,9 +8,6 @@ project(dynamic_object_learning)
 find_package(catkin REQUIRED COMPONENTS roscpp rospy do_learning_srv_definitions
                                         strands_v4r genmsg)
 
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O1")
-
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
 
