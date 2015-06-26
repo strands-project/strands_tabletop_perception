@@ -40,18 +40,22 @@ private:
 
     pcl::PointCloud<PointT>::Ptr big_cloud_;
     pcl::PointCloud<PointT>::Ptr big_cloud_segmented_;
-    std::vector<pcl::PointIndices> object_indices_eroded_;
-    std::vector<pcl::PointIndices> object_indices_;
+    std::vector<pcl::PointIndices> obj_indices_eroded_to_original_;
+    std::vector<pcl::PointIndices> obj_indices_2_to_filtered_;
     std::vector<pcl::PointIndices> scene_points_;
-    std::vector<pcl::PointIndices> transferred_object_indices_;
+    std::vector<pcl::PointIndices> transfered_nn_points_;
     std::vector<pcl::PointIndices> transferred_object_indices_without_plane_;
-    std::vector<pcl::PointIndices> transferred_object_indices_good_;
+    std::vector<pcl::PointIndices> initial_indices_good_to_unfiltered_;
+    std::vector<pcl::PointIndices> obj_indices_3_to_original_;
     std::vector<Eigen::Matrix4f> cameras_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > keyframes_;
+    std::vector< pcl::PointCloud<pcl::Normal>::Ptr > normals_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > transferred_cluster_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGBA>::Ptr > supervoxeled_clouds_;
     boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
     std::vector<int> vis_viewpoint_;
+
+    std::vector<size_t> LUT_new2old_indices;
 
     ///radius to select points in other frames to belong to the same object
     /// bootstraps region growing
@@ -123,7 +127,7 @@ public:
 
     void extractEuclideanClustersSmooth (
                 const pcl::PointCloud<PointT>::Ptr &cloud,
-                const pcl::PointCloud<pcl::Normal> &normals,
+                const pcl::PointCloud<pcl::Normal> &normals_,
                 const std::vector<int> &initial,
                 std::vector<int> &cluster);
 
@@ -137,7 +141,7 @@ public:
     void transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int> &nn);
 
     void updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr & cloud,
-                                           pcl::PointCloud<pcl::Normal>::Ptr & normals,
+                                           pcl::PointCloud<pcl::Normal>::Ptr & normals_,
                                            const std::vector<int> &object_points,
                                            std::vector<int> & good_neighbours,
                                            pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &supervoxel_cloud);
@@ -167,31 +171,36 @@ public:
     void clearMem()
     {
         keyframes_.clear();
+        normals_.clear();
         cameras_.clear();
         transferred_cluster_.clear();
-        transferred_object_indices_.clear();
+        scene_points_.clear();
+        transfered_nn_points_.clear();
         transferred_object_indices_without_plane_.clear();
-        transferred_object_indices_good_.clear();
-        object_indices_.clear();
-        object_indices_eroded_.clear();
+        initial_indices_good_to_unfiltered_.clear();
+        obj_indices_3_to_original_.clear();
+        obj_indices_2_to_filtered_.clear();
+        obj_indices_eroded_to_original_.clear();
         supervoxeled_clouds_.clear();
     }
 
     void reserveMem(const size_t &num_elements)
     {
         keyframes_.resize( num_elements );
+        normals_.resize(num_elements);
         cameras_.resize( num_elements );
         transferred_cluster_.resize( num_elements );
         scene_points_.resize( num_elements );
-        transferred_object_indices_.resize( num_elements );
+        transfered_nn_points_.resize( num_elements );
         transferred_object_indices_without_plane_.resize( num_elements );
-        transferred_object_indices_good_.resize( num_elements );
-        object_indices_.resize( num_elements );
-        object_indices_eroded_.resize( num_elements );
+        initial_indices_good_to_unfiltered_.resize( num_elements );
+        obj_indices_3_to_original_.resize( num_elements );
+        obj_indices_2_to_filtered_.resize( num_elements );
+        obj_indices_eroded_to_original_.resize( num_elements );
         supervoxeled_clouds_.resize( num_elements );
     }
-    void computeNormals(const pcl::PointCloud<PointT>::ConstPtr & cloud, pcl::PointCloud<pcl::Normal> &normals);
-    void extractPlanePoints(const pcl::PointCloud<PointT>::ConstPtr &cloud, const pcl::PointCloud<pcl::Normal>::ConstPtr &normals, std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes);
+    void computeNormals(const pcl::PointCloud<PointT>::ConstPtr & cloud, pcl::PointCloud<pcl::Normal> &normals_);
+    void extractPlanePoints(const pcl::PointCloud<PointT>::ConstPtr &cloud, const pcl::PointCloud<pcl::Normal>::ConstPtr &normals_, std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes);
     void getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
                                                 const pcl::PointIndices object_mask,
                                                 std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes_dst,
