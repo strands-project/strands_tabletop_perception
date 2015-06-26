@@ -1,6 +1,12 @@
 #ifndef DO_LEARNING_H_
 #define DO_LEARNING_H_
 
+/*
+ * Author: Thomas Faeulhammer
+ * Date: June 2015
+ *
+ * */
+
 #include "ros/ros.h"
 #include "do_learning_srv_definitions/learn_object.h"
 #include "do_learning_srv_definitions/save_model.h"
@@ -30,11 +36,13 @@ private:
     boost::shared_ptr<ros::NodeHandle> n_;
     ros::ServiceServer learn_object_;
     ros::ServiceServer save_model_;
-    int v1, v2;
     int normal_method_;
 
+    pcl::PointCloud<PointT>::Ptr big_cloud_;
+    pcl::PointCloud<PointT>::Ptr big_cloud_segmented_;
     std::vector<pcl::PointIndices> object_indices_eroded_;
     std::vector<pcl::PointIndices> object_indices_;
+    std::vector<pcl::PointIndices> scene_points_;
     std::vector<pcl::PointIndices> transferred_object_indices_;
     std::vector<pcl::PointIndices> transferred_object_indices_without_plane_;
     std::vector<pcl::PointIndices> transferred_object_indices_good_;
@@ -52,9 +60,10 @@ private:
     double voxel_resolution_;
     double seed_resolution_;
     double ratio_;
+    double chop_z_;
     bool visualize_;
     bool do_erosion_;
-    pcl::octree::OctreePointCloudSearch<PointT> octree;
+    pcl::octree::OctreePointCloudSearch<PointT> octree_;
 
     kp::ClusterNormalsToPlanes::Ptr pest_;
     kp::ClusterNormalsToPlanes::Parameter p_param_;
@@ -63,13 +72,14 @@ private:
 
 public:
 
-    DOL () : octree(0.005f)
+    DOL () : octree_(0.005f)
     {
         radius_ = 0.005f;
         eps_angle_ = 0.99f;
         voxel_resolution_ = 0.005f;
         seed_resolution_ = 0.03f;
         ratio_ = 0.25f;
+        chop_z_ = std::numeric_limits<double>::quiet_NaN();
         visualize_ = false;
         do_erosion_ = true;
 
@@ -87,6 +97,9 @@ public:
         nest_.reset(new kp::ZAdaptiveNormals(n_param_));
 
         normal_method_ = 0;
+
+        big_cloud_.reset(new pcl::PointCloud<PointT>);
+        big_cloud_segmented_.reset(new pcl::PointCloud<PointT>);
     }
 
     static Eigen::Matrix4f fromGMTransform(geometry_msgs::Transform & gm_trans)
@@ -109,17 +122,23 @@ public:
     }
 
     void extractEuclideanClustersSmooth (
-                const pcl::PointCloud<PointT> &cloud,
+                const pcl::PointCloud<PointT>::Ptr &cloud,
                 const pcl::PointCloud<pcl::Normal> &normals,
-                const pcl::octree::OctreePointCloudSearch<PointT> &tree,
                 const std::vector<int> &initial,
                 std::vector<int> &cluster);
 
+    /**
+     * @brief transfers object indices from origin into dest camera frame and performs
+     *        nearest neighbor search in dest frame.
+     * @param origin... id of source frame
+     * @param dest... id of destination frame
+     * @param nn... nearest neighbors
+     */
     void transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int> &nn);
 
-    void updatePointNormalsFromSuperVoxels(pcl::PointCloud<PointT>::Ptr & cloud,
+    void updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr & cloud,
                                            pcl::PointCloud<pcl::Normal>::Ptr & normals,
-                                           const std::vector<int> & all_neighbours,
+                                           const std::vector<int> &object_points,
                                            std::vector<int> & good_neighbours,
                                            pcl::PointCloud<pcl::PointXYZRGBA>::Ptr &supervoxel_cloud);
 
@@ -163,6 +182,7 @@ public:
         keyframes_.resize( num_elements );
         cameras_.resize( num_elements );
         transferred_cluster_.resize( num_elements );
+        scene_points_.resize( num_elements );
         transferred_object_indices_.resize( num_elements );
         transferred_object_indices_without_plane_.resize( num_elements );
         transferred_object_indices_good_.resize( num_elements );
@@ -182,6 +202,36 @@ public:
                                           const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
                                           pcl::PointIndices &outputIndices);
     void visualize();
+
+    /**
+     * @brief transforms each keyframe to global coordinate system using given camera
+     *  pose and does segmentation based on the computed object indices to create
+     *  reconstructed point cloud of scene and object model
+     */
+    void createBigCloud();
+
+
+    /**
+     * @brief given indices of an image or pointcloud, this function create a boolean mask of the indices
+     * @param objectIndices
+     * @param image_size
+     * @param object_mask (output)
+     */
+    void createMaskFromIndices( const std::vector<int> &objectIndices,
+                                size_t image_size,
+                                std::vector<bool> &object_mask);
+
+    /**
+     * @brief this function returns the indices of foreground given the foreground mask and considering all true pixels in background mask are being removed
+     * @param background_mask (if true, pixel is neglected / not being part of the scene)
+     * @param foreground_mask
+     * @param new_foreground_indices (output)
+     * @param indices of original image which belong to the scene (output)
+     */
+    void updateIndicesConsideringMask(const std::vector<bool> &background_mask,
+                                           const std::vector<bool> &foreground_mask,
+                                           std::vector<int> &new_foreground_indices,
+                                           std::vector<int> &old_bg_indices);
 
     template<typename T>
     inline std::vector<T> erase_indices(const std::vector<T>& data, std::vector<size_t>& indicesToDelete/* can't assume copy elision, don't pass-by-value */)
