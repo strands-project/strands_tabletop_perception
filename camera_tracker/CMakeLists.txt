@@ -6,7 +6,7 @@ project(camera_tracker)
 ## is used, also find other catkin packages
 
 find_package(catkin REQUIRED COMPONENTS roscpp rospy camera_srv_definitions
-                                        strands_v4r genmsg tf_conversions)
+                                        strands_v4r genmsg tf2 tf visualization_msgs)
 
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
@@ -43,7 +43,7 @@ ENDIF(${Ceres_FOUND})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-   CATKIN_DEPENDS roscpp rospy camera_srv_definitions strands_v4r tf_conversions
+   CATKIN_DEPENDS roscpp rospy camera_srv_definitions strands_v4r tf2
 )
 
 ###########
