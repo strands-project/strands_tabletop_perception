@@ -67,6 +67,8 @@ private:
     double chop_z_;
     bool visualize_;
     bool do_erosion_;
+//    bool do_sift_based_camera_pose_estimation_;
+    bool transfer_indices_from_latest_frame_only_;
     pcl::octree::OctreePointCloudSearch<PointT> octree_;
 
     kp::ClusterNormalsToPlanes::Ptr pest_;
@@ -86,6 +88,8 @@ public:
         chop_z_ = std::numeric_limits<double>::quiet_NaN();
         visualize_ = false;
         do_erosion_ = true;
+        transfer_indices_from_latest_frame_only_ = false;
+//        do_sift_based_camera_pose_estimation_ = false;
 
         // Parameters for smooth clustering / plane segmentation
         p_param_.thrAngle=45;
@@ -136,9 +140,9 @@ public:
      *        nearest neighbor search in dest frame.
      * @param origin... id of source frame
      * @param dest... id of destination frame
-     * @param nn... nearest neighbors
+     * @param nn... nearest neighbors points highlighted (true) in object mask
      */
-    void transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int> &nn);
+    void transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<bool> &object_mask); //std::vector<int> &nn);
 
     void updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr & cloud,
                                            pcl::PointCloud<pcl::Normal>::Ptr & normals_,

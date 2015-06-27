@@ -11,6 +11,9 @@ find_package(catkin REQUIRED COMPONENTS roscpp rospy do_learning_srv_definitions
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
 
+#set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O1")
+
 FIND_PACKAGE(Ceres)
 IF(${Ceres_FOUND})
   INCLUDE_DIRECTORIES(${CERES_INCLUDES})

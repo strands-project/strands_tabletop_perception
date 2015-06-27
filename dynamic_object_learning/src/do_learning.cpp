@@ -37,6 +37,7 @@
 #include <v4r/KeypointTools/toString.hpp>
 #include <v4r/KeypointSlam/KeypointSlamRGBD2.hh>
 #include <v4r/KeypointSlam/ProjBundleAdjuster.hh>
+#include <v4r/Registration/FeatureBasedRegistration.h>
 #include <v4r/ORUtils/noise_model_based_cloud_integration.h>
 #include <v4r/ORUtils/noise_models.h>
 #include <v4r/ORUtils/pcl_visualization_utils.h>
@@ -210,7 +211,7 @@ void DOL::updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr &
     }
 }
 
-void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int> &nn)
+void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<bool> &obj_mask)
 {
     pcl::PointCloud<PointT>::Ptr cloud_origin_filtered(new pcl::PointCloud<PointT>);
     pcl::PointCloud<PointT>::Ptr segmented(new pcl::PointCloud<PointT>);
@@ -219,7 +220,7 @@ void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int
 
     if (do_erosion_)
     {
-        pcl::copyPointCloud(*cloud_origin_filtered, obj_indices_eroded_to_original_[origin], *segmented);
+        pcl::copyPointCloud(*keyframes_[origin], obj_indices_eroded_to_original_[origin], *segmented);
     }
     else
     {
@@ -228,18 +229,16 @@ void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int
 
     //transform segmented to dest RF
     Eigen::Matrix4f combined = cameras_[dest].inverse() * cameras_[origin];
-    //Eigen::Matrix4f combined = cameras_[dest] * cameras_[origin].inverse();
 
     pcl::PointCloud<PointT>::Ptr segmented_trans(new pcl::PointCloud<PointT>);
     pcl::transformPointCloud(*segmented, *segmented_trans, combined);
+    transferred_cluster_[dest]->points.insert(transferred_cluster_[dest]->points.end(),
+                                              segmented_trans->points.begin(),
+                                              segmented_trans->points.end());// = segmented_trans;
 
-    transferred_cluster_[dest] = segmented_trans;
-
-    //find neighbours from segmented in keyframes_[dest]
+    //find neighbours from transferred object points
     std::vector<int> pointIdxRadiusSearch;
     std::vector<float> pointRadiusSquaredDistance;
-
-    std::set<int> all_neighbours;
 
     for(size_t i=0; i < segmented_trans->points.size(); i++)
     {
@@ -249,15 +248,19 @@ void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<int
         //            if(pointRadiusSquaredDistance[0] <= (radius_ * radius_))
         //                all_neighbours.insert(pointIdxRadiusSearch.begin(), pointIdxRadiusSearch.end());
         //        }
-        if (octree_.radiusSearch (segmented_trans->points[i], radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
+        if ( ! pcl::isFinite(segmented_trans->points[i]) )
         {
-            all_neighbours.insert(pointIdxRadiusSearch.begin(), pointIdxRadiusSearch.end());
+            PCL_WARN ("Warning: Point is NaN.\n");    // not sure if this causes somewhere else a problem.
+            continue;
+        }
+        if ( octree_.radiusSearch (segmented_trans->points[i], radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
+        {
+            for( size_t nn_id = 0; nn_id < pointIdxRadiusSearch.size(); nn_id++)
+            {
+                obj_mask[ pointIdxRadiusSearch[ nn_id ] ] = true;
+            }
         }
     }
-
-    std::copy(all_neighbours.begin(), all_neighbours.end(), std::back_inserter(nn));
-
-    std::cout << "Found nearest neighbor: " << nn.size() << std::endl;
 }
 
 void DOL::erodeInitialIndices(const pcl::PointCloud<PointT> & cloud,
@@ -293,13 +296,16 @@ void DOL::erodeInitialIndices(const pcl::PointCloud<PointT> & cloud,
     {
         for(int c=0; c< mask_dst.cols; c++)
         {
-            if(mask_dst.at<unsigned char>(r,c) > 0)
+            const int idx = r * mask_dst.cols + c;
+
+            if (    mask_dst.at<unsigned char>(r,c) > 0
+                && pcl::isFinite( cloud.points[idx] )
+                && cloud.points[idx].z < chop_z_        )
             {
-                eroded_indices.indices.push_back(r * mask_dst.cols + c);
+                eroded_indices.indices.push_back(idx);
             }
         }
     }
-
 }
 
 
@@ -311,6 +317,10 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
     std::string recognition_structure_dir = req.recognition_structure_folder.data;
     std::string model_name = req.object_name.data;
 
+    std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > keyframes_used;
+    std::vector< pcl::PointCloud<pcl::Normal>::Ptr > normals_used;
+    std::vector<Eigen::Matrix4f> cameras_used;
+
     std::vector<pcl::PointCloud<IndexPoint> > object_indices_clouds;
 
     std::vector<std::vector<float> > weights;
@@ -319,25 +329,44 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
     weights.resize(keyframes_.size());
     indices.resize(keyframes_.size());
     object_indices_clouds.resize(keyframes_.size());
+    keyframes_used.resize(keyframes_.size());
+    normals_used.resize(keyframes_.size());
+    cameras_used.resize(keyframes_.size());
 
+
+    // only used keyframes with have object points in them
+    size_t kept_keyframes=0;
     for(size_t i=0; i < keyframes_.size(); i++)
     {
-        indices[i] = obj_indices_eroded_to_original_[i].indices;
-
-        object_indices_clouds[i].points.resize(indices[i].size());
-
-        for(size_t k=0; k < indices[i].size(); k++)
+        if ( obj_indices_eroded_to_original_[i].indices. size() )
         {
-            object_indices_clouds[i].points[k].idx = indices[i][k];
+            keyframes_used[ kept_keyframes ] = keyframes_[i];
+            normals_used [ kept_keyframes ] = normals_[i];
+            cameras_used [ kept_keyframes ] = cameras_[i];
+            indices[ kept_keyframes ] = obj_indices_eroded_to_original_[i].indices;
+
+            object_indices_clouds[ kept_keyframes ].points.resize( indices[ kept_keyframes ].size());
+
+            for(size_t k=0; k < indices[ kept_keyframes ].size(); k++)
+            {
+                object_indices_clouds[ kept_keyframes ].points[k].idx = indices[ kept_keyframes ][k];
+            }
+            kept_keyframes++;
         }
     }
+    weights.resize(kept_keyframes);
+    indices.resize(kept_keyframes);
+    object_indices_clouds.resize(kept_keyframes);
+    keyframes_used.resize(kept_keyframes);
+    normals_used.resize(kept_keyframes);
+    cameras_used.resize(kept_keyframes);
 
     //compute noise weights
-    for(size_t i=0; i < keyframes_.size(); i++)
+    for(size_t i=0; i < kept_keyframes; i++)
     {
         faat_pcl::utils::noise_models::NguyenNoiseModel<pcl::PointXYZRGB> nm;
-        nm.setInputCloud(keyframes_[i]);
-        nm.setInputNormals(normals_[i]);
+        nm.setInputCloud(keyframes_used[i]);
+        nm.setInputNormals(normals_used[i]);
         nm.setLateralSigma(0.001);
         nm.setMaxAngle(60.f);
         nm.setUseDepthEdges(true);
@@ -347,12 +376,12 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr octree_cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     faat_pcl::utils::NMBasedCloudIntegration<pcl::PointXYZRGB> nmIntegration;
-    nmIntegration.setInputClouds(keyframes_);
+    nmIntegration.setInputClouds(keyframes_used);
     nmIntegration.setResolution(0.002f);
     nmIntegration.setWeights(weights);
-    nmIntegration.setTransformations(cameras_);
+    nmIntegration.setTransformations(cameras_used);
     nmIntegration.setMinWeight(0.5f);
-    nmIntegration.setInputNormals(normals_);
+    nmIntegration.setInputNormals(normals_used);
     nmIntegration.setMinPointsPerVoxel(1);
     nmIntegration.setFinalResolution(0.002f);
     nmIntegration.setIndices(indices);
@@ -370,13 +399,17 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
     createDirIfNotExist(models_dir);
     createDirIfNotExist(export_to);
 
+    std::cout << "Saving " << kept_keyframes << " keyframes from " << keyframes_.size() << "." << std::endl;
+
     //save the data with new poses
-    for(size_t i=0; i < cameras_.size(); i++)
+    for(size_t i=0; i < kept_keyframes; i++)
     {
         std::stringstream view_file;
         view_file << export_to << "/cloud_" << setfill('0') << setw(8) << i << ".pcd";
 
-        pcl::io::savePCDFileBinary (view_file.str (), *(keyframes_[i]));
+        std::cout << "Kept keyframe " << i << " has " << keyframes_used[i]->points.size() << " points. " << std::endl;
+
+        pcl::io::savePCDFileBinary (view_file.str (), *(keyframes_used[i]));
         std::cout << view_file.str() << std::endl;
 
         std::string file_replaced1 (view_file.str());
@@ -386,7 +419,7 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
         std::cout << file_replaced1 << std::endl;
 
         //read pose as well
-        v4r::utils::writeMatrixToFile(file_replaced1, cameras_[i]);
+        v4r::utils::writeMatrixToFile(file_replaced1, cameras_used[i]);
 
         std::string file_replaced2 (view_file.str());
         boost::replace_last (file_replaced2, "cloud", "object_indices");
@@ -616,7 +649,7 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
         {
             for(size_t i=0; i < req.intial_object_indices.size(); i++)
             {
-                transfered_nn_points_[0].indices.push_back(req.intial_object_indices[i].data);
+                transfered_nn_points_[0].indices.push_back(req.intial_object_indices[i]);
             }
             //erode mask
             erodeInitialIndices(*keyframes_[0], transfered_nn_points_[0], obj_indices_eroded_to_original_[0]);
@@ -624,7 +657,40 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
         }
         else
         {
-            transferIndicesAndNNSearch(i-1, i, transfered_nn_points_[i].indices);
+            std::vector<bool> obj_mask;
+            obj_mask.resize(keyframes_[0]->points.size());
+            for (size_t pt_id=0; pt_id < obj_mask.size(); pt_id++)
+            {
+                obj_mask [pt_id] = false;
+            }
+
+            transferred_cluster_[i].reset(new pcl::PointCloud<PointT>());
+
+            {
+                size_t k;
+
+                if (transfer_indices_from_latest_frame_only_)
+                    k = i-1;
+                else
+                    k = 0; // transfer object indices from all frames
+
+                for (k; k < i; k++)
+                {
+                    transferIndicesAndNNSearch(k, i, obj_mask); //transfered_nn_points_[i].indices);
+                }
+            }
+
+            transfered_nn_points_[i].indices.resize( keyframes_[0]->points.size() );
+            size_t kept = 0;
+            for (size_t pt_id=0; pt_id < obj_mask.size(); pt_id++)
+            {
+                if( obj_mask [pt_id] )
+                {
+                    transfered_nn_points_[i].indices[kept] = pt_id;
+                    kept++;
+                }
+            }
+            transfered_nn_points_[i].indices.resize( kept );
         }
 
 
@@ -766,6 +832,13 @@ void DOL::visualize()
         subwindow_title.push_back("after 2D erosion");
         vis_viewpoint_ = faat_pcl::utils::visualization_framework (vis_, keyframes_.size(), NUM_SUBWINDOWS, subwindow_title);
     }
+    else
+    {
+        for (size_t vp_id=0; vp_id < vis_viewpoint_.size(); vp_id++)
+        {
+            vis_->removeAllPointClouds( vis_viewpoint_[vp_id] );
+        }
+    }
 
     for(size_t i=0; i < keyframes_.size(); i++)
     {
@@ -829,6 +902,8 @@ void DOL::visualize()
         vis_->addPointCloud(segmented_eroded_trans, rgb_handler5, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + 6]);
     }
     vis_->spin();
+
+    vis_ = NULL;
 }
 
 
@@ -844,6 +919,8 @@ void DOL::initialize (int argc, char ** argv)
     n_->getParam ( "ratio", ratio_);
     n_->getParam ( "visualize", visualize_);
     n_->getParam ( "do_erosion", do_erosion_);
+//    n_->getParam ( "do_sift_based_camera_pose_estimation", do_sift_based_camera_pose_estimation_);
+    n_->getParam ( "transfer_latest_only", transfer_indices_from_latest_frame_only_);
     n_->getParam ( "chop_z", chop_z_);
 
     if( n_->getParam ( "inlier_threshold_plane_seg", inlDist) )
@@ -871,6 +948,7 @@ void DOL::initialize (int argc, char ** argv)
 int
 main (int argc, char ** argv)
 {
+    std::cout << "BLABA" << std::endl;
     ros::init (argc, argv, "dynamic_object_learning");
     DOL m;
     m.initialize (argc, argv);
