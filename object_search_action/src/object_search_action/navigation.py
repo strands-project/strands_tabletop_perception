@@ -3,13 +3,12 @@ import rospy
 import smach
 import smach_ros
 import json
+import math
 
 from actionlib import *
 from actionlib.msg import *
-from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
-import threading
 from scitos_ptu.msg import PtuGotoAction,PtuGotoGoal
-import math
+from strands_navigation_msgs.msg import MonitoredNavigationAction, MonitoredNavigationGoal
 
 from std_msgs.msg import *
 from sensor_msgs.msg import *
@@ -27,50 +26,53 @@ class GoTo(smach.State):
                              outcomes=['succeeded', 'aborted', 'preempted'],
                              input_keys=['robot_pose','ptu_state'])
 
-        self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+        self.nav_client = actionlib.SimpleActionClient('monitored_navigation', MonitoredNavigationAction)
         rospy.loginfo("Wait for monitored navigation server")
-        self.client.wait_for_server(rospy.Duration(60))
+        self.nav_client.wait_for_server(rospy.Duration(60))
+        rospy.loginfo("Done")
+
         self.ptu_client = actionlib.SimpleActionClient('SetPTUState', PtuGotoAction)
         rospy.loginfo("Wait for PTU action server")
         self.ptu_client.wait_for_server(rospy.Duration(60))
+        rospy.loginfo("Done")
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
 
-        self.robot_pose = userdata.robot_pose  
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
 
-        self.mb_done = False
-        mb_thread = threading.Thread(target = self.move_base)
-        mb_thread.start()
+        pose = userdata.robot_pose  
+
+ 	rospy.loginfo("GOTO: x: %f y: %f", pose.position.x, pose.position.y)
+      	goal = MonitoredNavigationGoal()
+	goal.action_server = 'move_base'
+      	goal.target_pose.header.frame_id = 'map'
+      	goal.target_pose.header.stamp = rospy.Time.now()
+      	goal.target_pose.pose = pose
+      	self.nav_client.send_goal(goal)
+      	self.nav_client.wait_for_result()
+        res = self.nav_client.get_result()
+	if res.outcome != 'succeeded':
+	  return 'aborted'
+        rospy.loginfo("Reached nav goal")
+
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
 
         ptu_state = userdata.ptu_state
-
         goal = PtuGotoGoal()
-        goal.pan = ptu_state.position[ptu_state.name.index('pan')] * 180/math.pi
-        goal.tilt = ptu_state.position[ptu_state.name.index('tilt')]  * 180/math.pi
+        goal.pan = math.degrees(ptu_state.position[ptu_state.name.index('pan')])
+        goal.tilt = math.degrees(ptu_state.position[ptu_state.name.index('tilt')])
         goal.pan_vel = ptu_state.velocity[ptu_state.name.index('pan')] * 100
         goal.tilt_vel = ptu_state.velocity[ptu_state.name.index('tilt')] * 100
+        rospy.loginfo("SET PTU: pan: %f tilt: %f", goal.pan, goal.tilt)
         self.ptu_client.send_goal(goal)
         self.ptu_client.wait_for_result()
-
         rospy.loginfo("Reached ptu goal")
-        while self.mb_done == False: #self.client.get_state() == GoalStatus.ACTIVE:
-            rospy.sleep(rospy.Duration(0.5))
-            rospy.loginfo("Wait for move_base")
-        rospy.loginfo("Reached move_base goal")
-        self.client.cancel_goal()
 
         return 'succeeded'
 
-    def mb_done_cb(self,status,result):
-        self.mb_done = True
-    
-    def move_base(self):
-        self.client.wait_for_server(rospy.Duration(60))
-        goal = MoveBaseGoal()
-        goal.target_pose.header.frame_id = 'map'
-        goal.target_pose.header.stamp = rospy.Time.now()
-        goal.target_pose.pose = self.robot_pose
-        self.client.send_goal(goal, done_cb=self.mb_done_cb)
-        self.client.wait_for_result()
 

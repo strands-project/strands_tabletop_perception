@@ -30,6 +30,11 @@ class Executive(smach.State):
         
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
+
+        if self.preempt_requested():
+            self.service_preempt()
+            return 'preempted'
+
         
         if self.first_call:
             self.views = userdata.views
@@ -40,8 +45,8 @@ class Executive(smach.State):
             rospy.loginfo('View list is empty.')
             return 'no_views'
         else:
-            userdata.percentage_complete  = (float((self.plan_length - len(self.views))) / float(self.plan_length))  * 100 
             view = self.views.pop(0)
+            userdata.percentage_complete  = (float((self.plan_length - len(self.views))) / float(self.plan_length))  * 100 
             userdata.robot_pose = view.get_robot_pose()
             userdata.ptu_state = view.get_ptu_state()
 

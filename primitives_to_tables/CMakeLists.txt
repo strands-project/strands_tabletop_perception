@@ -12,13 +12,13 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   strands_perception_msgs
   visualization_msgs
-  mongodb_store_cpp_client
+  mongodb_store
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(Eigen REQUIRED)
-include_directories(${Eigen_INCLUDE_DIRS})
+find_package(Eigen3 REQUIRED)
+include_directories(${Eigen3_INCLUDE_DIRS})
 
 find_package(Boost REQUIRED COMPONENTS system thread program_options filesystem)
 

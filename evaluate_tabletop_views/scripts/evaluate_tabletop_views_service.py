@@ -6,7 +6,7 @@ import tf
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 
-from nav_goals_msgs.srv import *
+from nav_goals_generator.srv import *
 from geometry_msgs.msg import PoseArray
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import Point32
