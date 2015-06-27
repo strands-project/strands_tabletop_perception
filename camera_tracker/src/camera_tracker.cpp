@@ -12,7 +12,10 @@
 #include "sensor_msgs/PointCloud2.h"
 #include "sensor_msgs/CameraInfo.h"
 #include "std_msgs/Float32.h"
+#include <tf/transform_broadcaster.h>
+#include <visualization_msgs/Marker.h>
 
+#include <pcl/visualization/cloud_viewer.h>
 #include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl_conversions.h>
@@ -26,6 +29,7 @@
 #include "camera_srv_definitions/stop_tracker.h"
 #include "camera_srv_definitions/visualize_compound.h"
 #include "camera_srv_definitions/get_tracking_results.h"
+#include "camera_srv_definitions/save_tracking_results_to_file.h"
 #include "camera_srv_definitions/do_ba.h"
 #include "camera_srv_definitions/cleanup.h"
 
@@ -41,23 +45,18 @@
 #include <v4r/ORUtils/noise_model_based_cloud_integration.h>
 #include <v4r/ORUtils/noise_models.h>
 
-#include <tf/tf.h>
-#include <tf_conversions/tf_eigen.h>
-#include <tf/transform_broadcaster.h>
-
-void saveToDisk(pcl::PointCloud<pcl::PointXYZRGB> scene,
-                int saved_cloud)
-{
-
-    pcl::ScopeTime t("saving took....................");
-    std::stringstream name;
-    name << "/media/aitor14/DATA/camtracker/output_" << std::setfill ('0') << std::setw (8) << saved_cloud << ".pcd";
-    pcl::io::savePCDFileBinary(name.str(), scene);
-}
+//#define USE_PCL_GRABBER
+#ifdef USE_PCL_GRABBER
+    #include <pcl/io/grabber.h>
+    #include <pcl/io/openni2_grabber.h>
+#endif
 
 class CamTracker
 {
 private:
+    double conf_;
+    Eigen::Matrix4f pose_;
+    boost::shared_ptr<pcl::visualization::CloudViewer> viewer_;
     typedef pcl::PointXYZRGB PointT;
     boost::shared_ptr<ros::NodeHandle> n_;
     ros::ServiceServer cam_tracker_start_;
@@ -65,11 +64,17 @@ private:
     ros::ServiceServer cam_tracker_vis_compound_;
     ros::ServiceServer cam_tracker_do_ba_;
     ros::ServiceServer cam_tracker_get_tracking_results_;
+    ros::ServiceServer cam_tracker_save_tracking_results_to_file_;
     ros::ServiceServer cam_tracker_cleanup_;
 
     ros::Subscriber camera_topic_subscriber_;
     ros::Subscriber camera_info_subscriber_;
     ros::Publisher confidence_publisher_;
+    ros::Publisher trajectory_publisher_;
+    ros::Publisher keyframe_publisher_;
+
+    visualization_msgs::Marker trajectory_marker_;
+    visualization_msgs::Marker keyframes_marker_;
 
     kp::KeypointSlamRGBD2::Parameter param;
     kp::KeypointSlamRGBD2::Ptr camtracker;
@@ -78,7 +83,6 @@ private:
     double sqr_min_cam_distance_;
     std::vector<Eigen::Matrix4f> cameras_;
     std::vector<std::pair<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > keyframes_;
-    int num_clouds_;
     pcl::PointCloud<PointT>::Ptr scene_;
     int saved_clouds_;
     boost::posix_time::ptime last_cloud_;
@@ -87,10 +91,17 @@ private:
     bool debug_mode_;
     sensor_msgs::CameraInfo camera_info_;
     bool got_camera_info_;
+    tf::TransformBroadcaster cameraTransformBroadcaster;
+
+    kp::ProjBundleAdjuster ba;
+
+#ifdef USE_PCL_GRABBER
+    boost::shared_ptr<pcl::Grabber> interface;
+#endif
 
     void camera_info_cb(const sensor_msgs::CameraInfoPtr& msg) {
-      camera_info_ = *msg;
-      got_camera_info_=true;
+        camera_info_ = *msg;
+        got_camera_info_=true;
     }
 
     void drawConfidenceBar(cv::Mat &im, const double &conf)
@@ -142,17 +153,31 @@ private:
                 cameras_.push_back(inv_pose);
                 keyframes_.push_back(std::make_pair(cam_id, pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>())));
                 pcl::copyPointCloud(cloud, *(keyframes_.back().second));
+
+                keyframes_.back().second->sensor_origin_[0] = inv_pose(0,3);
+                keyframes_.back().second->sensor_origin_[1] = inv_pose(1,3);
+                keyframes_.back().second->sensor_origin_[2] = inv_pose(2,3);
+
+                Eigen::Matrix3f rotation = inv_pose.block<3,3>(0,0);
+                Eigen::Quaternionf q(rotation);
+                keyframes_.back().second->sensor_orientation_ = q;
                 ROS_INFO("Added new keyframe**********************************************************");
+
+                geometry_msgs::Point p;
+                p.x = -pose(0,3);
+                p.y = -pose(1,3);
+                p.z = -pose(2,3);
+                keyframes_marker_.points.push_back(p);
+                keyframes_marker_.header.stamp = ros::Time::now();
+
+                keyframe_publisher_.publish(keyframes_marker_);
             }
         }
-
-
         return type;
     }
 
     void trackNewCloud(const sensor_msgs::PointCloud2Ptr& msg)
     {
-        static tf::TransformBroadcaster br;
         ros::Time start_time_stamp = msg->header.stamp;
 
         boost::posix_time::ptime start_time = boost::posix_time::microsec_clock::local_time ();
@@ -164,64 +189,73 @@ private:
         last_cloud_ros_time_ = start_time_stamp;
 
         pcl::ScopeTime t("trackNewCloud");
-
-        if(num_clouds_ < 60)
-        {
-            num_clouds_++;
-            return;
-        }
-
         scene_.reset(new pcl::PointCloud<PointT>);
         pcl::moveFromROSMsg (*msg, *scene_);
-
-        //save point cloud to file
-        /*{
-          pcl::ScopeTime t("thread creation");
-          std::thread (saveToDisk,*scene_, saved_clouds_++).detach();
-      }*/
 
         kp::DataMatrix2D<Eigen::Vector3f> kp_cloud;
         cv::Mat_<cv::Vec3b> image;
 
         kp::convertCloud(*scene_, kp_cloud, image);
 
-        double conf=0;
         int cam_idx=-1;
-        Eigen::Matrix4f pose;
 
-	Eigen::Matrix4d md(pose.cast<double>());
-	Eigen::Affine3d affine(md);
-	tf::Transform transform;
-	tf::transformEigenToTF(affine, transform);
-	br.sendTransform(tf::StampedTransform(transform, msg->header.stamp, "initial", "tracker"));
-  
-
-        bool is_ok = camtracker->track(image, kp_cloud, pose, conf, cam_idx);
+        bool is_ok = camtracker->track(image, kp_cloud, pose_, conf_, cam_idx);
 
         if(debug_mode_)
         {
-            drawConfidenceBar(image, conf);
+            drawConfidenceBar(image, conf_);
             cv::imshow("image", image);
             cv::waitKey(1);
         }
 
-        std::cout << time_ms << " conf:" << conf << std::endl;
+        std::cout << time_ms << " conf:" << conf_ << std::endl;
 
         if(is_ok)
         {
-            selectFrames(*scene_, cam_idx, pose);
+            selectFrames(*scene_, cam_idx, pose_);
+            tf::Transform transform;
+
+            //kp::invPose(pose, inv_pose);
+            transform.setOrigin(tf::Vector3(pose_(0,3), pose_(1,3), pose_(2,3)));
+            tf::Matrix3x3 R(pose_(0,0), pose_(0,1), pose_(0,2),
+                            pose_(1,0), pose_(1,1), pose_(1,2),
+                            pose_(2,0), pose_(2,1), pose_(2,2));
+            tf::Quaternion q;
+            R.getRotation(q);
+            transform.setRotation(q);
+            ros::Time now_sync = ros::Time::now();
+            cameraTransformBroadcaster.sendTransform(tf::StampedTransform(transform, now_sync, "camera_rgb_optical_frame", "world"));
+
+            geometry_msgs::Point p;
+            p.x = -pose_(0,3);
+            p.y = -pose_(1,3);
+            p.z = -pose_(2,3);
+            std_msgs::ColorRGBA c;
+            c.a = 1.0;
+            c.g = conf_;
+            trajectory_marker_.points.push_back(p);
+            trajectory_marker_.colors.push_back(c);
+            trajectory_marker_.header.stamp = msg->header.stamp;
+
+            trajectory_publisher_.publish(trajectory_marker_);
         }
 
         /*std_msgs::Float32 conf_mesage;
       conf_mesage.data = conf;
       confidence_publisher_.publish(conf_mesage);*/
-
-
     }
 
     void getCloud(const sensor_msgs::PointCloud2Ptr& msg)
     {
         trackNewCloud(msg);
+    }
+
+
+    void cloud_cb_ (const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr &cloud)
+    {
+        sensor_msgs::PointCloud2Ptr pMsg (new sensor_msgs::PointCloud2);
+        pcl::toROSMsg(*cloud, *pMsg);
+        trackNewCloud(pMsg);
     }
 
     bool
@@ -230,42 +264,75 @@ private:
     {
         cameras_.clear();
         keyframes_.clear();
-        num_clouds_ = 0;
         saved_clouds_ = 0;
+        conf_=0;
+        pose_ = Eigen::Matrix4f::Identity();
+
+        return true;
     }
 
     bool
     start (camera_srv_definitions::start_tracker::Request & req,
            camera_srv_definitions::start_tracker::Response & response)
     {
-
         cameras_.clear();
         keyframes_.clear();
-        num_clouds_ = 0;
         saved_clouds_ = 0;
+        conf_=0;
+        pose_ = Eigen::Matrix4f::Identity();
 
-        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
-        camera_info_subscriber_ = n_->subscribe(camera_topic_ +"/camera_info", 1, &CamTracker::camera_info_cb, this);
+#ifdef USE_PCL_GRABBER
+        try
+        {
+            interface.reset( new pcl::io::OpenNI2Grabber() );
+        }
+        catch (pcl::IOException e)
+        {
+            std::cout << "PCL threw error " << e.what()
+                      << ". Could not start camera..." << std::endl;
+            return false;
+        }
 
-        ROS_INFO_STREAM("Wating for camera info...topic=" << camera_topic_ << "/camera_info...");
-	while (!got_camera_info_) {
-	  ros::Duration(0.1).sleep();
-          ros::spinOnce();
-	}
-        ROS_INFO("got it.");
-	camera_info_subscriber_.shutdown();
+        cv::Mat_<double> distCoeffs;
+        cv::Mat_<double> intrinsic = cv::Mat::zeros(3, 3, CV_64F);
+        intrinsic.at<double>(0,0) = 525.f;
+        intrinsic.at<double>(1,1) = 525.f;
+        intrinsic.at<double>(0,2) = 320.f;
+        intrinsic.at<double>(1,2) = 240.f;
+        intrinsic.at<double>(2,2) = 1.f;
+        std::cout << intrinsic << std::endl << std::endl;
 
-        cv::Mat_<double> distCoeffs = cv::Mat(4, 1, CV_64F, camera_info_.D.data());
-        cv::Mat_<double> intrinsic = cv::Mat(3, 3, CV_64F, camera_info_.K.data()); 
-	
         camtracker.reset( new kp::KeypointSlamRGBD2(param) );
         camtracker->setCameraParameter(intrinsic,distCoeffs);
 
+        boost::function<void (const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr&)> f =
+          boost::bind (&CamTracker::cloud_cb_, this, _1);
+        interface->registerCallback (f);
+        interface->start ();
+
+        std::cout << "Camera started..." << std::endl;
+#else
+        camera_info_subscriber_ = n_->subscribe(camera_topic_ +"/camera_info", 1, &CamTracker::camera_info_cb, this);
+
+        ROS_INFO_STREAM("Wating for camera info...topic=" << camera_topic_ << "/camera_info...");
+        while (!got_camera_info_) {
+            ros::Duration(0.1).sleep();
+            ros::spinOnce();
+        }
+        ROS_INFO("got it.");
+        camera_info_subscriber_.shutdown();
+        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
+
+        cv::Mat_<double> distCoeffs = cv::Mat(4, 1, CV_64F, camera_info_.D.data());
+        cv::Mat_<double> intrinsic = cv::Mat(3, 3, CV_64F, camera_info_.K.data());
+
+        camtracker.reset( new kp::KeypointSlamRGBD2(param) );
+        camtracker->setCameraParameter(intrinsic,distCoeffs);
 
         confidence_publisher_ = n_->advertise<std_msgs::Float32>("cam_tracker_confidence", 1);
+#endif
         last_cloud_ = boost::posix_time::microsec_clock::local_time ();
         last_cloud_ros_time_ = ros::Time::now();
-
         return true;
     }
 
@@ -276,13 +343,16 @@ private:
         camera_topic_subscriber_.shutdown();
         camtracker->stopObjectManagement();
 
+#ifdef USE_PCL_GRABBER
+        if(interface.get())
+            interface->stop();
+#endif
         return true;
     }
 
 
     void createObjectCloudFiltered(pcl::PointCloud<pcl::PointXYZRGB>::Ptr & octree_cloud)
     {
-
         double max_angle = 70.f;
         double lateral_sigma = 0.0015f;
         bool depth_edges = true;
@@ -337,9 +407,8 @@ private:
 
     bool
     doBA (camera_srv_definitions::do_ba::Request & req,
-                 camera_srv_definitions::do_ba::Response & response)
+          camera_srv_definitions::do_ba::Response & response)
     {
-
         if(cameras_.size() == 0)
         {
             ROS_WARN("Called bundle adjusment but no camera poses available\n");
@@ -347,7 +416,6 @@ private:
         }
 
         kp::Object &model = camtracker->getModel();
-        kp::ProjBundleAdjuster ba;
         ba.optimize(model);
 
         for(size_t i=0; i < cameras_.size(); i++)
@@ -356,9 +424,7 @@ private:
             kp::invPose(model.cameras[keyframes_[i].first], inv_pose_after_ba);
             cameras_[i] = inv_pose_after_ba;
         }
-
         return true;
-
     }
 
     bool
@@ -367,7 +433,6 @@ private:
     {
         for(size_t i=0; i < cameras_.size(); i++)
         {
-
             sensor_msgs::PointCloud2 msg;
             pcl::toROSMsg(*(keyframes_[i].second), msg);
             response.keyframes.push_back(msg);
@@ -386,18 +451,41 @@ private:
             tt.rotation.z = q.z();
             tt.rotation.w = q.w();
             response.transforms.push_back(tt);
-
         }
 
         return true;
+    }
 
+    bool
+    saveTrackingResultsToFile(camera_srv_definitions::save_tracking_results_to_file::Request &req,
+                              camera_srv_definitions::save_tracking_results_to_file::Response &response)
+    {
+        for(size_t i=0; i < cameras_.size(); i++)
+        {
+            std::string dir = req.dir_name.data;
+
+            //            Eigen::Matrix4f trans = cameras_[i];
+            //            keyframes_[i].second->sensor_origin_[0] = trans(0,3);
+            //            keyframes_[i].second->sensor_origin_[1] = trans(1,3);
+            //            keyframes_[i].second->sensor_origin_[2] = trans(2,3);
+
+            //            Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
+            //            Eigen::Quaternionf q(rotation);
+            //            keyframes_[i].second->sensor_orientation_ = q;
+
+            std::stringstream filename;
+            filename << dir << "/cloud_" << i << ".pcd";
+            std::cout << "Writing file to " << filename.str() << "." << std::endl;
+            pcl::io::savePCDFileBinary(filename.str(), *(keyframes_[i].second));
+        }
+
+        return true;
     }
 
     bool
     visCompound (camera_srv_definitions::visualize_compound::Request & req,
                  camera_srv_definitions::visualize_compound::Response & response)
     {
-
         if(cameras_.size() == 0)
             return false;
 
@@ -410,7 +498,6 @@ private:
         if(do_ba_)
         {
             kp::Object &model = camtracker->getModel();
-            kp::ProjBundleAdjuster ba;
             ba.optimize(model);
 
             for(size_t i=0; i < cameras_.size(); i++)
@@ -418,6 +505,7 @@ private:
                 Eigen::Matrix4f inv_pose_after_ba;
                 kp::invPose(model.cameras[keyframes_[i].first], inv_pose_after_ba);
                 cameras_[i] = inv_pose_after_ba;
+                std::cout << cameras_[i] << std::endl << std::endl;
             }
         }
 
@@ -441,15 +529,15 @@ private:
         vis.spin();
 
         return true;
-
     }
 
 public:
-  CamTracker () : got_camera_info_(false)
+    CamTracker () : got_camera_info_(false)
     {
-        cos_min_delta_angle_ = cos(20*M_PI/180.);
+        conf_=0;
+        pose_ = Eigen::Matrix4f::Identity();
+        cos_min_delta_angle_ = cos(15*M_PI/180.);
         sqr_min_cam_distance_ = 1.*1.;
-        num_clouds_ = 0;
 
         param.det_param.nfeatures = 150;
         param.kt_param.plk_param.use_ncc = true;
@@ -461,15 +549,37 @@ public:
         param.om_param.kd_param.rt_param.inl_dist = 0.01; //e.g. 0.01 .. table top, 0.03 ..rooms
         param.om_param.kt_param.rt_param.inl_dist = 0.03;  //e.g. 0.04 .. table top, 0.1 ..room
 
-        camera_topic_ = "/camera/depth_registered/points";
-        camera_topic_ = "/head_xtion/depth_registered/points";
+        camera_topic_ = "/camera/depth_registered";
         debug_mode_ = false;
+
+        trajectory_marker_.header.frame_id = "world";
+        trajectory_marker_.ns = "trajectory";
+        trajectory_marker_.id = 0;
+        trajectory_marker_.type = visualization_msgs::Marker::LINE_STRIP;
+        trajectory_marker_.action = visualization_msgs::Marker::ADD;
+        trajectory_marker_.scale.x = 0.005;
+        trajectory_marker_.scale.y = 0.005;
+        trajectory_marker_.scale.z = 0.005;
+        trajectory_marker_.color.a = 1.0;
+        trajectory_marker_.pose.orientation.w = 1.0;
+        keyframes_marker_.header.frame_id = "world";
+        keyframes_marker_.ns = "keyframes";
+        keyframes_marker_.id = 0;
+        keyframes_marker_.type = visualization_msgs::Marker::CUBE_LIST;
+        keyframes_marker_.action = visualization_msgs::Marker::ADD;
+        keyframes_marker_.scale.x = 0.05;
+        keyframes_marker_.scale.y = 0.05;
+        keyframes_marker_.scale.z = 0.05;
+        keyframes_marker_.color.a = 0.7;
+        keyframes_marker_.color.r = 1.0;
+        keyframes_marker_.color.g = 0.0;
+        keyframes_marker_.pose.orientation.w = 1.0;
     }
 
     void
     initialize (int argc, char ** argv)
     {
-
+        double delta_angle_deg;
         n_.reset( new ros::NodeHandle ( "~" ) );
 
         cam_tracker_start_  = n_->advertiseService ("start_recording", &CamTracker::start, this);
@@ -477,6 +587,7 @@ public:
         cam_tracker_vis_compound_  = n_->advertiseService ("vis_compound", &CamTracker::visCompound, this);
         cam_tracker_do_ba_  = n_->advertiseService ("do_ba", &CamTracker::doBA, this);
         cam_tracker_get_tracking_results_  = n_->advertiseService ("get_results", &CamTracker::getTrackingResults, this);
+        cam_tracker_save_tracking_results_to_file_  = n_->advertiseService ("save_results_to_file", &CamTracker::saveTrackingResultsToFile, this);
         cam_tracker_cleanup_  = n_->advertiseService ("cleanup", &CamTracker::cleanup, this);
 
         if(!n_->getParam ( "camera_topic", camera_topic_ ))
@@ -484,6 +595,13 @@ public:
 
         if(!n_->getParam ( "debug_mode", debug_mode_ ))
             debug_mode_ = false;
+
+        if( n_->getParam ( "delta_angle_deg", delta_angle_deg ) )
+            cos_min_delta_angle_ = cos( delta_angle_deg *M_PI/180.);
+
+        confidence_publisher_ = n_->advertise<visualization_msgs::Marker>("confidence", 1);
+        trajectory_publisher_ = n_->advertise<visualization_msgs::Marker>("trajectory", 1);
+        keyframe_publisher_ = n_->advertise<visualization_msgs::Marker>("keyframes", 1);
 
         ros::spin ();
     }

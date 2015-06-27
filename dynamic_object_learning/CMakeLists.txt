@@ -59,7 +59,7 @@ include_directories(include
   ${catkin_INCLUDE_DIRS}
 )
 
-set(incs include/pcl_conversions.h)
+set(incs include/pcl_conversions.h include/do_learning.h)
 
 ## Declare a cpp executable
 add_executable(do_learning_service src/do_learning.cpp ${incs})
