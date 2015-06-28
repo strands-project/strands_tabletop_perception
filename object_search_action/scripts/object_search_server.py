@@ -32,7 +32,7 @@ class ObjectSearchActionServer:
         
     def execute_cb(self, goal):
 
-        rospy.loginfo('Received request: waypoint:%s roi:%s', goal.waypoint, goal.roi_id)
+        rospy.loginfo('Received request: waypoint:%s roi:%s', goal.waypoint, goal.roi_id, goal.objects)
         
         # helper variables
         r = rospy.Rate(1)
@@ -51,11 +51,13 @@ class ObjectSearchActionServer:
         # set arguments from call
         sm.userdata.waypoint = goal.waypoint
         sm.userdata.roi_id = goal.roi_id
+        sm.userdata.objects = goal.objects
+        sm.userdata.found_objects = []
         #sm.userdata.mode   = goal.mode
 
         # set parameters from parameter server
-        sm.userdata.soma_map = rospy.get_param('~soma_map', 'g4s')
-        sm.userdata.soma_conf = rospy.get_param('~soma_conf', 'main')
+        sm.userdata.soma_map = rospy.get_param('~soma_map', 'aachen')
+        sm.userdata.soma_conf = rospy.get_param('~soma_conf', 'object_search')
 
                 
         smach_thread = threading.Thread(target = sm.execute)
@@ -91,6 +93,7 @@ class ObjectSearchActionServer:
 
         if success:
             rospy.loginfo('%s: Succeeded' % self._action_name)
+            self._result.found_objects = sm.userdata.found_objects 
             self._as.set_succeeded(self._result)
         else:
             rospy.loginfo('%s: Failed' % self._action_name)
