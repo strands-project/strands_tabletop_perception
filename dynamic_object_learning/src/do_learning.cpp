@@ -616,7 +616,7 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
         {
             for(size_t i=0; i < req.intial_object_indices.size(); i++)
             {
-                transfered_nn_points_[0].indices.push_back(req.intial_object_indices[i].data);
+                transfered_nn_points_[0].indices.push_back(req.intial_object_indices[i]);
             }
             //erode mask
             erodeInitialIndices(*keyframes_[0], transfered_nn_points_[0], obj_indices_eroded_to_original_[0]);

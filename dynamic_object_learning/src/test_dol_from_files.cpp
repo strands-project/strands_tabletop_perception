@@ -97,9 +97,7 @@ public:
         pcl::PointIndices pind;
         while (initial_mask_file >> idx_tmp)
         {
-            std_msgs::Int32 int_data;
-            int_data.data = idx_tmp;
-            srv_learn.request.intial_object_indices.push_back(int_data);
+            srv_learn.request.intial_object_indices.push_back(idx_tmp);
             pind.indices.push_back(idx_tmp);
         }
         initial_mask_file.close();
