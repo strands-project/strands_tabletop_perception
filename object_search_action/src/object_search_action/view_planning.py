@@ -33,7 +33,7 @@ class ViewPlanning(smach.State):
     def __init__(self):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=['waypoint','num_of_views'],
+                             input_keys=['waypoint','num_of_views','objects'],
                              output_keys=['views'])
         self.robot_poses_pub = rospy.Publisher('robot_poses', PoseArray, queue_size=100)
         self.vis = Vis()

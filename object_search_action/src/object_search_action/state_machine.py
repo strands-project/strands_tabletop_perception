@@ -73,6 +73,7 @@ class ObjectSearchSM(smach.StateMachine):
 
             smach.StateMachine.add('Perception', self._perception, 
                                    transitions={'succeeded':'Executive',
+                                                'found_all_objects':'Shutdown',
                                                 'aborted':'Shutdown',
                                                 'preempted':'Shutdown'}
                                )
