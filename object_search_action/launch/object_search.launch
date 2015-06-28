@@ -1,8 +1,8 @@
 <launch>
   <arg name="camera" default="/head_xtion/depth_registered/points"/>
   <!-- <arg name="camera" default="/camera/depth_registered/points"/> -->
-  <arg name="soma_map" default="g4s"/>
-  <arg name="soma_conf" default="g4s"/>
+  <arg name="soma_map" default="umic"/>
+  <arg name="soma_conf" default="object_search"/>
 
 
   <!-- VIEW PLANNING -->
@@ -35,5 +35,11 @@
     <param name="plan_length" type="int" value="20"/>
     <param name="rho" type="double" value="2.0"/>
   </node>
-  
+
+  <!-- SEMANTIC SEGMENTATION -->
+  <include file="$(find semantic_segmentation)/launch/semantic_segmentation.launch"/> 
+
+  <!-- SOMA PCL SEGMENTATION-->
+  <node name="soma_pcl_segmentation" pkg="soma_pcl_segmentation" type="soma_pcl_segmentation_service.py"/>
+
 </launch>
