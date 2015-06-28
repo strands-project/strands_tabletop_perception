@@ -2,6 +2,10 @@ import rospy
 import smach
 import math
 
+from actionlib import *
+from actionlib.msg import *
+from scitos_ptu.msg import PtuGotoAction,PtuGotoGoal
+
 from std_srvs.srv import Empty
 from geometry_msgs.msg import TransformStamped
 from util import get_ros_service
@@ -20,14 +24,27 @@ class TurnPTUToObject(smach.State):
         self._jnts.name=["pan","tilt"]
         self._jnts.velocity=[1,1]
         self._jnts.position=[0,0]
+        self.ptu_client = actionlib.SimpleActionClient('SetPTUState', PtuGotoAction)
+        rospy.loginfo("Wait for PTU action server")
+        self.ptu_client.wait_for_server(rospy.Duration(60))
+        rospy.loginfo("Done")
+
 
     def execute(self, userdata):
         try:
             # start transformation
             self._jnts.position=[math.radians(userdata.dynamic_object.pan_angle),
                                  math.radians(userdata.dynamic_object.tilt_angle)]
-            self._ptu_angle_pub.publish(self._jnts)
-            rospy.sleep(3)
+            goal = PtuGotoGoal()
+            goal.pan = userdata.dynamic_object.pan_angle
+            goal.tilt = userdata.dynamic_object.tilt_angle
+            goal.pan_vel = 30
+            goal.tilt_vel = 30
+            rospy.loginfo("SET PTU: pan: %f tilt: %f", goal.pan, goal.tilt)
+            self.ptu_client.send_goal(goal)
+            self.ptu_client.wait_for_result()
+            rospy.loginfo("Reached ptu goal")
+
             print "Capturing a new shot of that object before tracking."
             userdata.dynamic_object.object_cloud = rospy.wait_for_message("/head_xtion/depth_registered/points", PointCloud2)
             print "ok."
