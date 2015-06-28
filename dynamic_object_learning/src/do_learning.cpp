@@ -49,7 +49,7 @@ void DOL::extractEuclideanClustersSmooth (
         const pcl::PointCloud<PointT>::Ptr &cloud,
         const pcl::PointCloud<pcl::Normal> &normals,
         const std::vector<int> &initial,
-        std::vector<int> &cluster)
+        std::vector<int> &cluster) const
 {
     float tolerance = radius_;
 
@@ -155,10 +155,11 @@ void DOL::updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr &
 
     supervoxel_cloud = super.getColoredVoxelCloud();
 
-    pcl::PointCloud<pcl::PointNormal>::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud (supervoxel_clusters);
+    const pcl::PointCloud<pcl::PointNormal>::Ptr sv_normal_cloud = super.makeSupervoxelNormalCloud (supervoxel_clusters);
 
     std::vector<int> label_to_idx;
     label_to_idx.resize(max_label + 1, -1);
+
     typename std::map <uint32_t, typename pcl::Supervoxel<PointT>::Ptr>::iterator sv_itr,sv_itr_end;
     sv_itr = supervoxel_clusters.begin ();
     sv_itr_end = supervoxel_clusters.end ();
@@ -168,19 +169,18 @@ void DOL::updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr &
         label_to_idx[sv_itr->first] = i;
     }
 
-    int sv_size = supervoxel_clusters.size ();
-
     //count total number of pixels for each supervoxel
+    size_t sv_size = supervoxel_clusters.size ();
     std::vector<int> label_count;
-    label_count.resize(sv_size, 0);
+    label_count.resize ( supervoxel_clusters.size(), 0 );
 
     for(size_t i=0; i < supervoxels_labels_cloud->size(); i++)
     {
-        int sv_idx = label_to_idx[supervoxels_labels_cloud->at(i).label];
+        const int sv_idx = label_to_idx[supervoxels_labels_cloud->at(i).label];
         if(sv_idx < 0 || sv_idx >= sv_size)
             continue;
 
-        Eigen::Vector3f sv_normal = sv_normal_cloud->points[sv_idx].getNormalVector3fMap();
+        const Eigen::Vector3f sv_normal = sv_normal_cloud->points[sv_idx].getNormalVector3fMap();
         normals->points[i].getNormalVector3fMap() = sv_normal;
         label_count[sv_idx]++;
     }
@@ -191,7 +191,7 @@ void DOL::updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr &
 
     for(size_t id = 0; id < obj_points.size(); id++)
     {
-        int sv_idx = label_to_idx[ supervoxels_labels_cloud->at( obj_points[ id ] ).label];
+        const int sv_idx = label_to_idx[ supervoxels_labels_cloud->at( obj_points[ id ] ).label];
         if(sv_idx >= 0 && sv_idx < sv_size)
         {
             label_count_nn[sv_idx]++;
@@ -200,7 +200,7 @@ void DOL::updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr &
 
     for(size_t id = 0; id < obj_points.size(); id++)
     {
-        int sv_idx = label_to_idx[ supervoxels_labels_cloud->at( obj_points[ id ] ).label];
+        const int sv_idx = label_to_idx[ supervoxels_labels_cloud->at( obj_points[ id ] ).label];
         if(sv_idx < 0 || sv_idx >= sv_size)
             continue;
 
@@ -250,7 +250,7 @@ void DOL::transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<boo
         //        }
         if ( ! pcl::isFinite(segmented_trans->points[i]) )
         {
-            PCL_WARN ("Warning: Point is NaN.\n");    // not sure if this causes somewhere else a problem.
+            PCL_WARN ("Warning: Point is NaN.\n");    // not sure if this causes somewhere else a problem. This condition should not be fulfilled.
             continue;
         }
         if ( octree_.radiusSearch (segmented_trans->points[i], radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0)
@@ -320,9 +320,7 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > keyframes_used;
     std::vector< pcl::PointCloud<pcl::Normal>::Ptr > normals_used;
     std::vector<Eigen::Matrix4f> cameras_used;
-
     std::vector<pcl::PointCloud<IndexPoint> > object_indices_clouds;
-
     std::vector<std::vector<float> > weights;
     std::vector<std::vector<int> > indices;
 
@@ -401,62 +399,53 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
 
     std::cout << "Saving " << kept_keyframes << " keyframes from " << keyframes_.size() << "." << std::endl;
 
-    //save the data with new poses
+    //save recognition data with new poses
     for(size_t i=0; i < kept_keyframes; i++)
     {
         std::stringstream view_file;
         view_file << export_to << "/cloud_" << setfill('0') << setw(8) << i << ".pcd";
-
-        std::cout << "Kept keyframe " << i << " has " << keyframes_used[i]->points.size() << " points. " << std::endl;
-
         pcl::io::savePCDFileBinary (view_file.str (), *(keyframes_used[i]));
         std::cout << view_file.str() << std::endl;
 
-        std::string file_replaced1 (view_file.str());
-        boost::replace_last (file_replaced1, "cloud", "pose");
-        boost::replace_last (file_replaced1, ".pcd", ".txt");
+        std::string path_pose (view_file.str());
+        boost::replace_last (path_pose, "cloud", "pose");
+        boost::replace_last (path_pose, ".pcd", ".txt");
+        v4r::utils::writeMatrixToFile(path_pose, cameras_used[i]);
+        std::cout << path_pose << std::endl;
 
-        std::cout << file_replaced1 << std::endl;
-
-        //read pose as well
-        v4r::utils::writeMatrixToFile(file_replaced1, cameras_used[i]);
-
-        std::string file_replaced2 (view_file.str());
-        boost::replace_last (file_replaced2, "cloud", "object_indices");
-
-        std::cout << file_replaced2 << std::endl;
-
-        pcl::io::savePCDFileBinary (file_replaced2, object_indices_clouds[i]);
+        std::string path_obj_indices (view_file.str());
+        boost::replace_last (path_obj_indices, "cloud", "object_indices");
+        pcl::io::savePCDFileBinary (path_obj_indices, object_indices_clouds[i]);
+        std::cout << path_obj_indices << std::endl;
     }
 
-    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr filtered_with_normals_oriented (new pcl::PointCloud<pcl::PointXYZRGBNormal>());
+    std::stringstream path_model;
+    path_model << models_dir << "/" << model_name;
 
-    std::stringstream model_output;
-    model_output << models_dir << "/" << model_name;
+    pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr filtered_with_normals_oriented (new pcl::PointCloud<pcl::PointXYZRGBNormal>());
     pcl::concatenateFields(*octree_normals, *octree_cloud, *filtered_with_normals_oriented);
 
     pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud_normals_oriented (new pcl::PointCloud<pcl::PointXYZRGBNormal>());
-
     pcl::StatisticalOutlierRemoval<pcl::PointXYZRGBNormal> sor;
     sor.setInputCloud (filtered_with_normals_oriented);
     sor.setMeanK (50);
     sor.setStddevMulThresh (3.0);
     sor.filter (*cloud_normals_oriented);
+    pcl::io::savePCDFileBinary(path_model.str(), *cloud_normals_oriented);
 
-    pcl::io::savePCDFileBinary(model_output.str(), *cloud_normals_oriented);
     return true;
 }
 
-void DOL::computeNormals(const pcl::PointCloud<PointT>::ConstPtr &cloud, pcl::PointCloud<pcl::Normal> &normals)
+void DOL::computeNormals(const pcl::PointCloud<PointT>::ConstPtr &cloud, pcl::PointCloud<pcl::Normal> &normals, int method)
 {
-    if(normal_method_== 0)
+    if(method== 0)
     {
         pcl::NormalEstimation<PointT, pcl::Normal> n3d;
         n3d.setRadiusSearch (0.01f);
         n3d.setInputCloud (cloud);
         n3d.compute (normals);
     }
-    else if(normal_method_ == 1)
+    else if(method == 1)
     {
         pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
         ne.setNormalEstimationMethod (ne.AVERAGE_3D_GRADIENT);
@@ -469,10 +458,15 @@ void DOL::computeNormals(const pcl::PointCloud<PointT>::ConstPtr &cloud, pcl::Po
     }
     else //if(normal_method_ == 2)
     {
+
+        kp::ZAdaptiveNormals::Parameter n_param;
+        n_param.adaptive = true;
+        kp::ZAdaptiveNormals nest(n_param);
+
         kp::DataMatrix2D<Eigen::Vector3f>::Ptr kp_cloud( new kp::DataMatrix2D<Eigen::Vector3f>() );
         kp::DataMatrix2D<Eigen::Vector3f>::Ptr kp_normals_tmp( new kp::DataMatrix2D<Eigen::Vector3f>() );
         kp::convertCloud(*cloud, *kp_cloud);
-        nest_->compute(*kp_cloud, *kp_normals_tmp);
+        nest.compute(*kp_cloud, *kp_normals_tmp);
         kp::convertNormals(*kp_normals_tmp, normals);
     }
 
@@ -489,13 +483,16 @@ void DOL::computeNormals(const pcl::PointCloud<PointT>::ConstPtr &cloud, pcl::Po
 
 void DOL::extractPlanePoints(const pcl::PointCloud<PointT>::ConstPtr &cloud,
                              const pcl::PointCloud<pcl::Normal>::ConstPtr &normals,
+                             const kp::ClusterNormalsToPlanes::Parameter p_param,
                              std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes)
 {
+    kp::ClusterNormalsToPlanes pest(p_param);
+
     kp::DataMatrix2D<Eigen::Vector3f>::Ptr kp_cloud( new kp::DataMatrix2D<Eigen::Vector3f>() );
     kp::DataMatrix2D<Eigen::Vector3f>::Ptr kp_normals( new kp::DataMatrix2D<Eigen::Vector3f>() );
     kp::convertCloud(*cloud, *kp_cloud);
     kp::convertNormals(*normals, *kp_normals);
-    pest_->compute(*kp_cloud, *kp_normals, planes);
+    pest.compute(*kp_cloud, *kp_normals, planes);
 }
 
 void DOL::getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
@@ -534,36 +531,6 @@ void DOL::getPlanesNotSupportedByObjectMask(const std::vector<kp::ClusterNormals
 
         }
     }
-}
-
-void DOL::extractObjectIndicesWithoutPlane(const pcl::PointIndices &inputIndices,
-                                           const std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes,
-                                           pcl::PointIndices &outputIndices)
-{
-    std::vector<size_t> indices_to_delete;
-    indices_to_delete.resize(inputIndices.indices.size());
-    size_t kept = 0;
-
-    for (size_t cluster_id=0; cluster_id < planes.size(); cluster_id++)
-    {
-        if (planes[cluster_id]->is_plane)
-        {
-            std::vector<int>::const_iterator cluster_pt_it;
-            for ( cluster_pt_it = planes[ cluster_id ]->indices.begin(); cluster_pt_it != planes[ cluster_id ]->indices.end(); ++cluster_pt_it)
-            {
-                for (size_t obj_pt_id = 0; obj_pt_id < inputIndices.indices.size(); obj_pt_id++)
-                {
-                    if ( *cluster_pt_it == inputIndices.indices[ obj_pt_id ] )
-                    {
-                        indices_to_delete[kept] = obj_pt_id;
-                        kept++;
-                    }
-                }
-            }
-        }
-    }
-    indices_to_delete.resize(kept);
-    outputIndices.indices = erase_indices<int>(inputIndices.indices, indices_to_delete);
 }
 
 void DOL::createMaskFromIndices( const std::vector<int> &objectIndices,
@@ -639,7 +606,7 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
         pcl::fromROSMsg(req.keyframes[i], *keyframes_[i]);
         cameras_[i] = fromGMTransform(req.transforms[i]);
 
-        computeNormals(keyframes_[i], *normals_[i]);
+        computeNormals(keyframes_[i], *normals_[i], normal_method_);
         assert(keyframes_[i]->points.size() == normals_[i]->points.size());
 
         octree_.setInputCloud ( keyframes_[i] );
@@ -695,7 +662,7 @@ DOL::learn_object (do_learning_srv_definitions::learn_object::Request & req,
 
 
         createMaskFromIndices(transfered_nn_points_[i].indices, keyframes_[i]->points.size(), pixel_is_object);
-        extractPlanePoints(keyframes_[i], normals_[i], planes);
+        extractPlanePoints(keyframes_[i], normals_[i], p_param_, planes);
         getPlanesNotSupportedByObjectMask(planes,
                                           transfered_nn_points_[i],
                                           planes_wo_obj,
@@ -932,14 +899,18 @@ void DOL::initialize (int argc, char ** argv)
     learn_object_  = n_->advertiseService ("learn_object", &DOL::learn_object, this);
     save_model_  = n_->advertiseService ("save_model", &DOL::save_model, this);
 
-    pest_.reset(new kp::ClusterNormalsToPlanes(p_param_));
 
     std::cout << "Started dynamic object learning with parameters: " << std::endl
               << "===================================================" << std::endl
               << "radius: " << radius_ << std::endl
               << "eps_angle: " << eps_angle_ << std::endl
-              << "voxel_resolution: " << seed_resolution_ << std::endl
+              << "seed resolution: " << seed_resolution_ << std::endl
+              << "voxel resolution: " << voxel_resolution_ << std::endl
               << "ratio: " << ratio_ << std::endl
+              << "show visualization: " << visualize_ << std::endl
+              << "do_erosion: " << do_erosion_ << std::endl
+              << "max z distance: " << chop_z_ << std::endl
+              << "transferring object indices from latest frame only: " << transfer_indices_from_latest_frame_only_ << std::endl
               << "===================================================" << std::endl << std::endl;
 
     ros::spin ();
@@ -948,7 +919,6 @@ void DOL::initialize (int argc, char ** argv)
 int
 main (int argc, char ** argv)
 {
-    std::cout << "BLABA" << std::endl;
     ros::init (argc, argv, "dynamic_object_learning");
     DOL m;
     m.initialize (argc, argv);
