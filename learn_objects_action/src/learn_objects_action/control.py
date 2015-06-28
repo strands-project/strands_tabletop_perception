@@ -12,6 +12,7 @@ import yaml
 from world_state.observation import MessageStoreObject, Observation, TransformationStore
 from world_state.identification import ObjectIdentification
 from world_state.state import World, Object
+import os
 
 class TravelAroundObject(smach.State):
     def __init__(self):
@@ -49,8 +50,8 @@ class TravelAroundObject(smach.State):
 
     def execute(self, userdata):
         self._status_publisher.publish(String("start_viewing"))
-        # Load the waypoint to soma from file, ugly ugly ugly TODO: properly
-        with open("/home/strands/.waypointsomas", "r") as f:
+        # Load the waypoint to soma from file, ugly TODO: properly
+        with open(os.path.expanduser("~/.waypointsomas"), "r") as f:
             somas = yaml.load(f.read())	
         soma_region = somas[userdata.action_goal.waypoint]
 
