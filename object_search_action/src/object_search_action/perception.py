@@ -44,8 +44,8 @@ class PerceptionReal (smach.State):
     def __init__(self):
         smach.State.__init__(self,
                              outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=[],
-                             output_keys=[])
+                             input_keys=['found_objects','objects'],
+                             output_keys=['found_objects'])
 
         self.pc_frame = rospy.get_param('~camera', '/head_xtion/depth_registered/points')
         self.obj_list = []
@@ -60,11 +60,13 @@ class PerceptionReal (smach.State):
             rospy.logerr("Service call failed: %s" % e)
             
         self._world = World()
+        self.found_objs = dict()
         #self._pcv = PointCloudVisualiser()
 
     def execute(self, userdata):
         rospy.loginfo('Executing state %s', self.__class__.__name__)
         self.obj_list = []
+
 
         if self.preempt_requested():
             self.service_preempt()
@@ -158,6 +160,26 @@ class PerceptionReal (smach.State):
             new_object._bounding_box = bbox
             
         print "=" * 80, "\n"
-        #################################################################################
-        return 'succeeded'
+
+
+        # init self.found_objs 
+        for obj in userdata.objects:
+            if obj not in self.found_objs:
+                self.found_objs[obj] = False
+
+        # set found objects to true
+        for obj in obj_lst:
+            self.found_objs[obj] = True
+
+        found_all_objects = True
+        for obj in self.found_objs:
+            if self.found_objs[obj]:
+                if obj not in userdata.found_objects:
+                    userdata.found_objects.append(obj)
+            else:
+                found_all_objects = False
+
+        if found_all_objects:
+            return 'found_all_objects'
+        return 'succeeded' # perception succeeded, but not all objects has been found yet
 
