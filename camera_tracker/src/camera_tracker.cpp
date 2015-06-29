@@ -8,10 +8,13 @@
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 
 #include <thread>
-#include "ros/ros.h"
-#include "sensor_msgs/PointCloud2.h"
-#include "sensor_msgs/CameraInfo.h"
-#include "std_msgs/Float32.h"
+
+#include <boost/filesystem.hpp>
+
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/CameraInfo.h>
+#include <std_msgs/Float32.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/Marker.h>
 #include <image_transport/image_transport.h>
@@ -83,6 +86,9 @@ private:
 
     kp::KeypointSlamRGBD2::Parameter param;
     kp::KeypointSlamRGBD2::Ptr camtracker;
+
+    // Distance threshold to the last position for adding new visualization markers to the trajectory
+    double trajectory_threshold_;
 
     double cos_min_delta_angle_;
     double sqr_min_cam_distance_;
@@ -230,18 +236,30 @@ private:
             ros::Time now_sync = ros::Time::now();
             cameraTransformBroadcaster.sendTransform(tf::StampedTransform(transform, now_sync, "camera_rgb_optical_frame", "world"));
 
-            geometry_msgs::Point p;
-            p.x = -pose_(0,3);
-            p.y = -pose_(1,3);
-            p.z = -pose_(2,3);
-            std_msgs::ColorRGBA c;
-            c.a = 1.0;
-            c.g = conf_;
-            trajectory_marker_.points.push_back(p);
-            trajectory_marker_.colors.push_back(c);
-            trajectory_marker_.header.stamp = msg->header.stamp;
+            bool publish_trajectory = true;
+            if (!trajectory_marker_.points.empty())
+            {
+                const geometry_msgs::Point& last = trajectory_marker_.points.back();
+                Eigen::Vector3f v_last(last.x, last.y, last.z);
+                Eigen::Vector3f v_curr(-pose_.col(3).head<3>());
+                if ((v_last - v_curr).norm() < trajectory_threshold_)
+                    publish_trajectory = false;
+            }
 
-            trajectory_publisher_.publish(trajectory_marker_);
+            if (publish_trajectory)
+            {
+                geometry_msgs::Point p;
+                p.x = -pose_(0,3);
+                p.y = -pose_(1,3);
+                p.z = -pose_(2,3);
+                std_msgs::ColorRGBA c;
+                c.a = 1.0;
+                c.g = conf_;
+                trajectory_marker_.points.push_back(p);
+                trajectory_marker_.colors.push_back(c);
+                trajectory_marker_.header.stamp = msg->header.stamp;
+                trajectory_publisher_.publish(trajectory_marker_);
+            }
         }
 
         /*std_msgs::Float32 conf_mesage;
@@ -327,7 +345,6 @@ private:
         }
         ROS_INFO("got it.");
         camera_info_subscriber_.shutdown();
-        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
 
         cv::Mat_<double> distCoeffs = cv::Mat(4, 1, CV_64F, camera_info_.D.data());
         cv::Mat_<double> intrinsic = cv::Mat(3, 3, CV_64F, camera_info_.K.data());
@@ -336,6 +353,7 @@ private:
         camtracker->setCameraParameter(intrinsic,distCoeffs);
 
         confidence_publisher_ = n_->advertise<std_msgs::Float32>("cam_tracker_confidence", 1);
+        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
 #endif
         last_cloud_ = boost::posix_time::microsec_clock::local_time ();
         last_cloud_ros_time_ = ros::Time::now();
@@ -346,13 +364,14 @@ private:
     stop (camera_srv_definitions::start_tracker::Request & req,
           camera_srv_definitions::start_tracker::Response & response)
     {
-        camera_topic_subscriber_.shutdown();
-        camtracker->stopObjectManagement();
-
 #ifdef USE_PCL_GRABBER
         if(interface.get())
             interface->stop();
+#else
+        camera_topic_subscriber_.shutdown();
 #endif
+        if (!camtracker.empty())
+          camtracker->stopObjectManagement();
         return true;
     }
 
@@ -466,23 +485,32 @@ private:
     saveTrackingResultsToFile(camera_srv_definitions::save_tracking_results_to_file::Request &req,
                               camera_srv_definitions::save_tracking_results_to_file::Response &response)
     {
-        for(size_t i=0; i < cameras_.size(); i++)
+        using namespace boost::filesystem;
+        try
         {
-            std::string dir = req.dir_name.data;
-
-            //            Eigen::Matrix4f trans = cameras_[i];
-            //            keyframes_[i].second->sensor_origin_[0] = trans(0,3);
-            //            keyframes_[i].second->sensor_origin_[1] = trans(1,3);
-            //            keyframes_[i].second->sensor_origin_[2] = trans(2,3);
-
-            //            Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
-            //            Eigen::Quaternionf q(rotation);
-            //            keyframes_[i].second->sensor_orientation_ = q;
-
-            std::stringstream filename;
-            filename << dir << "/cloud_" << i << ".pcd";
-            std::cout << "Writing file to " << filename.str() << "." << std::endl;
-            pcl::io::savePCDFileBinary(filename.str(), *(keyframes_[i].second));
+            file_status s = status(req.dir_name.data);
+            if(is_regular_file(s))
+            {
+                ROS_ERROR("Failed to save tracking results: expected directory name, got filename");
+                return false;
+            }
+            if(!is_directory(s))
+            {
+                path p(req.dir_name.data);
+                create_directory(p);
+                for(size_t i=0; i < cameras_.size(); i++)
+                {
+                    path f = p / boost::str(boost::format("cloud_%i.pcd") % i);
+                    std::string filename = f.string();
+                    std::cout << "Writing file to " << filename << "." << std::endl;
+                    pcl::io::savePCDFileBinary(filename, *(keyframes_[i].second));
+                }
+            }
+        }
+        catch(filesystem_error& e)
+        {
+            ROS_ERROR("Failed to save tracking results: %s", e.what());
+            return false;
         }
 
         return true;
@@ -564,6 +592,10 @@ public:
         double delta_angle_deg;
         n_.reset( new ros::NodeHandle ( "~" ) );
 
+        confidence_publisher_ = n_->advertise<visualization_msgs::Marker>("confidence", 1);
+        trajectory_publisher_ = n_->advertise<visualization_msgs::Marker>("trajectory", 1);
+        keyframe_publisher_ = n_->advertise<visualization_msgs::Marker>("keyframes", 1);
+
         cam_tracker_start_  = n_->advertiseService ("start_recording", &CamTracker::start, this);
         cam_tracker_stop_  = n_->advertiseService ("stop_recording", &CamTracker::stop, this);
         cam_tracker_vis_compound_  = n_->advertiseService ("vis_compound", &CamTracker::visCompound, this);
@@ -578,9 +610,8 @@ public:
         if( n_->getParam ( "delta_angle_deg", delta_angle_deg ) )
             cos_min_delta_angle_ = cos( delta_angle_deg *M_PI/180.);
 
-        confidence_publisher_ = n_->advertise<visualization_msgs::Marker>("confidence", 1);
-        trajectory_publisher_ = n_->advertise<visualization_msgs::Marker>("trajectory", 1);
-        keyframe_publisher_ = n_->advertise<visualization_msgs::Marker>("keyframes", 1);
+        if(!n_->getParam ( "trajectory_threshold_", trajectory_threshold_ ) )
+            trajectory_threshold_ = 0.02;
 
         debug_image_transport_.reset(new image_transport::ImageTransport(*n_));
         debug_image_publisher_ = debug_image_transport_->advertise("debug_images", 1);
