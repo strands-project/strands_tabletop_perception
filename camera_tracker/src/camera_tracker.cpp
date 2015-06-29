@@ -345,7 +345,6 @@ private:
         }
         ROS_INFO("got it.");
         camera_info_subscriber_.shutdown();
-        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
 
         cv::Mat_<double> distCoeffs = cv::Mat(4, 1, CV_64F, camera_info_.D.data());
         cv::Mat_<double> intrinsic = cv::Mat(3, 3, CV_64F, camera_info_.K.data());
@@ -354,6 +353,7 @@ private:
         camtracker->setCameraParameter(intrinsic,distCoeffs);
 
         confidence_publisher_ = n_->advertise<std_msgs::Float32>("cam_tracker_confidence", 1);
+        camera_topic_subscriber_ = n_->subscribe(camera_topic_ +"/points", 1, &CamTracker::getCloud, this);
 #endif
         last_cloud_ = boost::posix_time::microsec_clock::local_time ();
         last_cloud_ros_time_ = ros::Time::now();
@@ -364,13 +364,14 @@ private:
     stop (camera_srv_definitions::start_tracker::Request & req,
           camera_srv_definitions::start_tracker::Response & response)
     {
-        camera_topic_subscriber_.shutdown();
-        camtracker->stopObjectManagement();
-
 #ifdef USE_PCL_GRABBER
         if(interface.get())
             interface->stop();
+#else
+        camera_topic_subscriber_.shutdown();
 #endif
+        if (!camtracker.empty())
+          camtracker->stopObjectManagement();
         return true;
     }
 
@@ -591,6 +592,10 @@ public:
         double delta_angle_deg;
         n_.reset( new ros::NodeHandle ( "~" ) );
 
+        confidence_publisher_ = n_->advertise<visualization_msgs::Marker>("confidence", 1);
+        trajectory_publisher_ = n_->advertise<visualization_msgs::Marker>("trajectory", 1);
+        keyframe_publisher_ = n_->advertise<visualization_msgs::Marker>("keyframes", 1);
+
         cam_tracker_start_  = n_->advertiseService ("start_recording", &CamTracker::start, this);
         cam_tracker_stop_  = n_->advertiseService ("stop_recording", &CamTracker::stop, this);
         cam_tracker_vis_compound_  = n_->advertiseService ("vis_compound", &CamTracker::visCompound, this);
@@ -607,10 +612,6 @@ public:
 
         if(!n_->getParam ( "trajectory_threshold_", trajectory_threshold_ ) )
             trajectory_threshold_ = 0.02;
-
-        confidence_publisher_ = n_->advertise<visualization_msgs::Marker>("confidence", 1);
-        trajectory_publisher_ = n_->advertise<visualization_msgs::Marker>("trajectory", 1);
-        keyframe_publisher_ = n_->advertise<visualization_msgs::Marker>("keyframes", 1);
 
         debug_image_transport_.reset(new image_transport::ImageTransport(*n_));
         debug_image_publisher_ = debug_image_transport_->advertise("debug_images", 1);
