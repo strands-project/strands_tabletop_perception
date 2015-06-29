@@ -13,14 +13,39 @@ from world_state.observation import MessageStoreObject, Observation, Transformat
 from world_state.identification import ObjectIdentification
 from world_state.state import World, Object
 from object_manager.msg import DynamicObjectTracks
+from geometry_msgs.msg import TransformStamped
+from static_transform_manager.srv import SetTransformation, StopTransformation
 
 class StartCameraTrack(smach.State):
     def __init__(self):
         smach.State.__init__( self, outcomes=['error', 'success'] )
         self._start_camera_tracker = get_ros_service("/camera_tracker/start_recording", start_tracker)       
+        self._set_transform = get_ros_service("/static_transforms_manager/set_tf",
+                                              SetTransformation)
+
 
     def execute(self, userdata):
         try:
+            trans = TransformStamped()
+
+            # get transform map->head_xtion_rgb_optical
+            listener = tf.TransformListener()
+            listener.waitForTransform("/map", "/head_xtion_rgb_optical_frame", rospy.Time(), rospy.Duration(5.0))
+            try:
+                (tran,rot) = listener.lookupTransform('/map', '/head_xtion_rgb_optical_frame', rospy.Time(0))
+            except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                rospy.loginfo("Bail because cant find intial transform to the fucking camera.")
+                return "error"
+
+            t=trans.transform.translation
+            t.x, t.y,t.z = tran
+            r=trans.transform.rotation
+            r.x,r.y,r.z,r.w=rot
+
+            trans.header.frame_id = "map"
+            trans.child_frame_id = "world"
+            self._set_transform(trans)
+
             # start transformation
             self._start_camera_tracker()
             # need to wait for camera trackers initial frame drop to finish
@@ -34,11 +59,14 @@ class StopCameraTrack(smach.State):
     def __init__(self):
         smach.State.__init__( self, outcomes=['error', 'success'] )
         self._stop_camera_tracker = get_ros_service("/camera_tracker/stop_recording", stop_tracker)
+        self._stop_transform = get_ros_service("/static_transforms_manager/stop_tf",
+                                               StopTransformation)
 
     def execute(self, userdata):
         try:
             # stop transformation
             self._stop_camera_tracker()
+            self._stop_transform("world")
             return "success"
         except:
             return "error"
@@ -111,8 +139,8 @@ class LearnObjectModel(smach.StateMachine):
                                      userdata.dynamic_object.object_mask)
             rospy.loginfo("Saving learnt model..")
             self._save_object_model(String(userdata['object'].name),
-                                    String("/home/strands/test_models"),
-                                    String("/home/strands/test_models/reconstruct"))
+                                    String("/home/review/test_models"),
+                                    String("/home/review/test_models/reconstruct"))
             return 'done'
         except Exception, e:
             print e
