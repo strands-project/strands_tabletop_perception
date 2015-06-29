@@ -1,0 +1,7 @@
+string text
+int32 xpos
+int32 ypos
+string id
+int32 viewport
+---
+bool result
