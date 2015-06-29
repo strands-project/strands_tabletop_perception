@@ -84,6 +84,9 @@ private:
     kp::KeypointSlamRGBD2::Parameter param;
     kp::KeypointSlamRGBD2::Ptr camtracker;
 
+    // Distance threshold to the last position for adding new visualization markers to the trajectory
+    double trajectory_threshold_;
+
     double cos_min_delta_angle_;
     double sqr_min_cam_distance_;
     std::vector<Eigen::Matrix4f> cameras_;
@@ -230,18 +233,30 @@ private:
             ros::Time now_sync = ros::Time::now();
             cameraTransformBroadcaster.sendTransform(tf::StampedTransform(transform, now_sync, "camera_rgb_optical_frame", "world"));
 
-            geometry_msgs::Point p;
-            p.x = -pose_(0,3);
-            p.y = -pose_(1,3);
-            p.z = -pose_(2,3);
-            std_msgs::ColorRGBA c;
-            c.a = 1.0;
-            c.g = conf_;
-            trajectory_marker_.points.push_back(p);
-            trajectory_marker_.colors.push_back(c);
-            trajectory_marker_.header.stamp = msg->header.stamp;
+            bool publish_trajectory = true;
+            if (!trajectory_marker_.points.empty())
+            {
+                const geometry_msgs::Point& last = trajectory_marker_.points.back();
+                Eigen::Vector3f v_last(last.x, last.y, last.z);
+                Eigen::Vector3f v_curr(-pose_.col(3).head<3>());
+                if ((v_last - v_curr).norm() < trajectory_threshold_)
+                    publish_trajectory = false;
+            }
 
-            trajectory_publisher_.publish(trajectory_marker_);
+            if (publish_trajectory)
+            {
+                geometry_msgs::Point p;
+                p.x = -pose_(0,3);
+                p.y = -pose_(1,3);
+                p.z = -pose_(2,3);
+                std_msgs::ColorRGBA c;
+                c.a = 1.0;
+                c.g = conf_;
+                trajectory_marker_.points.push_back(p);
+                trajectory_marker_.colors.push_back(c);
+                trajectory_marker_.header.stamp = msg->header.stamp;
+                trajectory_publisher_.publish(trajectory_marker_);
+            }
         }
 
         /*std_msgs::Float32 conf_mesage;
@@ -577,6 +592,9 @@ public:
 
         if( n_->getParam ( "delta_angle_deg", delta_angle_deg ) )
             cos_min_delta_angle_ = cos( delta_angle_deg *M_PI/180.);
+
+        if(!n_->getParam ( "trajectory_threshold_", trajectory_threshold_ ) )
+            trajectory_threshold_ = 0.02;
 
         confidence_publisher_ = n_->advertise<visualization_msgs::Marker>("confidence", 1);
         trajectory_publisher_ = n_->advertise<visualization_msgs::Marker>("trajectory", 1);
