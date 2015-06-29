@@ -152,7 +152,7 @@ class PerceptionReal (smach.State):
         for i in range(len(res.ids)):
 
             rospy.loginfo("Recognized: %s %s" % (res.ids[i], res.confidence[i]))
-            self.obj_list.append(res.ids[i])
+            self.obj_list.append(res.ids[i].data.strip('.pcd'))
             new_object =  self._world.create_object()
 
             # TODO
@@ -195,7 +195,7 @@ class PerceptionReal (smach.State):
                 self.found_objs[obj] = False
 
         # set found objects to true
-        for obj in obj_lst:
+        for obj in self.obj_list:
             self.found_objs[obj] = True
 
         found_all_objects = True

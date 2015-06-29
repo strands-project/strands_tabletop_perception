@@ -37,6 +37,8 @@ class StartCameraTrack(smach.State):
                 rospy.loginfo("Bail because cant find intial transform to the fucking camera.")
                 return "error"
 
+            print "tran=",tran
+            print "rot=",rot
             t=trans.transform.translation
             t.x, t.y,t.z = tran
             r=trans.transform.rotation
@@ -44,15 +46,18 @@ class StartCameraTrack(smach.State):
 
             trans.header.frame_id = "map"
             trans.child_frame_id = "world"
+            rospy.loginfo("SETTING TRANSFORM")
             self._set_transform(trans)
 
             # start transformation
+            rospy.loginfo("STARTING CAMERA TACKER")
             self._start_camera_tracker()
             # need to wait for camera trackers initial frame drop to finish
             rospy.loginfo("Giving camera tracker 10s to init...")
             rospy.sleep(10)
             return "success"
-        except:
+        except Exception, e:
+            rospy.loginfo("ERROR:"+str(e))
             return "error"
 
 class StopCameraTrack(smach.State):
