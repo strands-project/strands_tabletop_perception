@@ -46,7 +46,7 @@ class LearnObjectActionMachine(smach.StateMachine):
                 transitions={'error':'failed',
                              'success':'TRAVEL_AROUND' })
             smach.StateMachine.add('TRAVEL_AROUND', TravelAroundObject(),
-                transitions={'error':'failed',
+                transitions={'error':'STOP_CAMERA_TRACK',
                              'done':'STOP_CAMERA_TRACK',
                              'preempted':'preempted'})
             self._stop_cam_track = StopCameraTrack()
