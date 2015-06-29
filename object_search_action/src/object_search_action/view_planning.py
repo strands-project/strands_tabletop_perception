@@ -19,6 +19,8 @@ from viper.core.robot import Robot
 from octomap_msgs.msg import Octomap
 from semantic_map_publisher.srv import ObservationOctomapServiceRequest, ObservationOctomapService
 
+from soma_pcl_segmentation.srv import GetProbabilityAtViewRequest, GetProbabilityAtView
+
 from visualization_msgs.msg import Marker, InteractiveMarkerControl
 from interactive_markers.interactive_marker_server import *
 from visualization_msgs.msg import MarkerArray
@@ -98,18 +100,43 @@ class ViewPlanning(smach.State):
         
         view_values = planner.compute_view_values(views, octomap)
 
-        print "VIEWS SIZE:", len(views)
-        for v in views:
-            print v.ID, len(v.get_keys()), len(v.get_values())
-        
         if self.preempt_requested():
             self.service_preempt()
             return 'preempted'
 
+
+        rospy.loginfo("Waiting for soma pcl segmenation")
+        service_name = '/soma_probability_at_view'
+        rospy.wait_for_service(service_name)
+        rospy.loginfo("Done")
+
+        print "VIEWS SIZE:", len(views)
+
+        view_probs = dict()
+        for v in views:
+            print v.ID, len(v.get_keys()), len(v.get_values())
+            try:
+                service = rospy.ServiceProxy(service_name, GetProbabilityAtView)
+                req = GetProbabilityAtViewRequest()
+                req.waypoint = userdata.waypoint
+                req.objects = userdata.objects
+                req.keys = v.get_keys()
+                rospy.loginfo("Requesting probability for view")
+                res = service(req)
+                prob = res.probability
+                rospy.loginfo("Received probability: %s", res.probability)
+                # set value of view
+                view_probs[v.ID] = prob
+            except rospy.ServiceException, e:
+                rospy.logerr("Service call failed: %s"%e)
+
+            
         view_costs = planner.compute_view_costs(views)
 
         print view_values
-        print view_costs
+        print view_probs
+        view_values = view_probs
+        #print view_costs
         
         current_view = self.get_current_view()
         if current_view == None:
