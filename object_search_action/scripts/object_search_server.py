@@ -32,7 +32,7 @@ class ObjectSearchActionServer:
         
     def execute_cb(self, goal):
 
-        rospy.loginfo('Received request: waypoint:%s roi:%s', goal.waypoint, goal.roi_id, goal.objects)
+        rospy.loginfo('Received request: waypoint:%s roi:%s objects:%s', goal.waypoint, goal.roi_id, goal.objects)
         
         # helper variables
         r = rospy.Rate(1)

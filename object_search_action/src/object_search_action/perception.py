@@ -29,21 +29,48 @@ class PerceptionNill(smach.State):
 
     def __init__(self):
         smach.State.__init__(self,
-                             outcomes=['succeeded', 'aborted', 'preempted'],
-                             input_keys=[],
-                             output_keys=[])
+                             outcomes=['succeeded', 'aborted', 'preempted', 'found_all_objects'],
+                             input_keys=['found_objects','objects'],
+                             output_keys=['found_objects'])
+        self.found_objs = dict()
 
+        
     def execute(self, userdata):
-        rospy.loginfo("Sleeping for a bit")
+        rospy.loginfo("Perceiving...")
         rospy.sleep(3)
-        return 'succeeded'
+
+        # init self.found_objs 
+        for obj in userdata.objects:
+            if obj not in self.found_objs:
+                self.found_objs[obj] = False
+
+        # set found objects to true
+        for obj in userdata.objects:
+            import random
+            r = random.random()
+            if r > 0.9:
+                rospy.loginfo("Found %s", obj)
+                self.found_objs[obj] = True
+
+        found_all_objects = True
+        for obj in self.found_objs:
+            if self.found_objs[obj]:
+                if obj not in userdata.found_objects:
+                    userdata.found_objects.append(obj)
+            else:
+                found_all_objects = False
+
+        if found_all_objects:
+            return 'found_all_objects'
+        return 'succeeded' # perception succeeded, but not all objects has been found yet
+
 
 class PerceptionReal (smach.State):
     """ Perceive the environemt. """
 
     def __init__(self):
         smach.State.__init__(self,
-                             outcomes=['succeeded', 'aborted', 'preempted'],
+                             outcomes=['succeeded', 'aborted', 'preempted', 'found_all_objects'],
                              input_keys=['found_objects','objects'],
                              output_keys=['found_objects'])
 
