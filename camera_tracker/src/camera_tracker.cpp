@@ -14,6 +14,8 @@
 #include "std_msgs/Float32.h"
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/Marker.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
 
 #include <pcl/visualization/cloud_viewer.h>
 #include <pcl/common/common.h>
@@ -73,6 +75,9 @@ private:
     ros::Publisher trajectory_publisher_;
     ros::Publisher keyframe_publisher_;
 
+    boost::shared_ptr<image_transport::ImageTransport> debug_image_transport_;
+    image_transport::Publisher debug_image_publisher_;
+
     visualization_msgs::Marker trajectory_marker_;
     visualization_msgs::Marker keyframes_marker_;
 
@@ -88,7 +93,6 @@ private:
     boost::posix_time::ptime last_cloud_;
     ros::Time last_cloud_ros_time_;
     std::string camera_topic_;
-    bool debug_mode_;
     sensor_msgs::CameraInfo camera_info_;
     bool got_camera_info_;
     tf::TransformBroadcaster cameraTransformBroadcaster;
@@ -201,11 +205,11 @@ private:
 
         bool is_ok = camtracker->track(image, kp_cloud, pose_, conf_, cam_idx);
 
-        if(debug_mode_)
+        if(debug_image_publisher_.getNumSubscribers())
         {
             drawConfidenceBar(image, conf_);
-            cv::imshow("image", image);
-            cv::waitKey(1);
+            sensor_msgs::ImagePtr image_msg = cv_bridge::CvImage(msg->header, "bgr8", image).toImageMsg();
+            debug_image_publisher_.publish(image_msg);
         }
 
         std::cout << time_ms << " conf:" << conf_ << std::endl;
@@ -280,6 +284,8 @@ private:
         saved_clouds_ = 0;
         conf_=0;
         pose_ = Eigen::Matrix4f::Identity();
+
+        initializeVisualizationMarkers();
 
 #ifdef USE_PCL_GRABBER
         try
@@ -550,30 +556,6 @@ public:
         param.om_param.kt_param.rt_param.inl_dist = 0.03;  //e.g. 0.04 .. table top, 0.1 ..room
 
         camera_topic_ = "/camera/depth_registered";
-        debug_mode_ = false;
-
-        trajectory_marker_.header.frame_id = "world";
-        trajectory_marker_.ns = "trajectory";
-        trajectory_marker_.id = 0;
-        trajectory_marker_.type = visualization_msgs::Marker::LINE_STRIP;
-        trajectory_marker_.action = visualization_msgs::Marker::ADD;
-        trajectory_marker_.scale.x = 0.005;
-        trajectory_marker_.scale.y = 0.005;
-        trajectory_marker_.scale.z = 0.005;
-        trajectory_marker_.color.a = 1.0;
-        trajectory_marker_.pose.orientation.w = 1.0;
-        keyframes_marker_.header.frame_id = "world";
-        keyframes_marker_.ns = "keyframes";
-        keyframes_marker_.id = 0;
-        keyframes_marker_.type = visualization_msgs::Marker::CUBE_LIST;
-        keyframes_marker_.action = visualization_msgs::Marker::ADD;
-        keyframes_marker_.scale.x = 0.05;
-        keyframes_marker_.scale.y = 0.05;
-        keyframes_marker_.scale.z = 0.05;
-        keyframes_marker_.color.a = 0.7;
-        keyframes_marker_.color.r = 1.0;
-        keyframes_marker_.color.g = 0.0;
-        keyframes_marker_.pose.orientation.w = 1.0;
     }
 
     void
@@ -593,9 +575,6 @@ public:
         if(!n_->getParam ( "camera_topic", camera_topic_ ))
             camera_topic_ = "/camera/depth_registered";
 
-        if(!n_->getParam ( "debug_mode", debug_mode_ ))
-            debug_mode_ = false;
-
         if( n_->getParam ( "delta_angle_deg", delta_angle_deg ) )
             cos_min_delta_angle_ = cos( delta_angle_deg *M_PI/180.);
 
@@ -603,8 +582,47 @@ public:
         trajectory_publisher_ = n_->advertise<visualization_msgs::Marker>("trajectory", 1);
         keyframe_publisher_ = n_->advertise<visualization_msgs::Marker>("keyframes", 1);
 
+        debug_image_transport_.reset(new image_transport::ImageTransport(*n_));
+        debug_image_publisher_ = debug_image_transport_->advertise("debug_images", 1);
+
         ros::spin ();
     }
+
+    void
+    initializeVisualizationMarkers()
+    {
+        trajectory_marker_.header.frame_id = "world";
+        trajectory_marker_.ns = "trajectory";
+        trajectory_marker_.id = 0;
+        trajectory_marker_.type = visualization_msgs::Marker::LINE_STRIP;
+        trajectory_marker_.scale.x = 0.005;
+        trajectory_marker_.scale.y = 0.005;
+        trajectory_marker_.scale.z = 0.005;
+        trajectory_marker_.color.a = 1.0;
+        trajectory_marker_.pose.orientation.w = 1.0;
+        trajectory_marker_.points.clear();
+        trajectory_marker_.colors.clear();
+        trajectory_marker_.action = 3; // delete all
+        trajectory_publisher_.publish(trajectory_marker_);
+        trajectory_marker_.action = visualization_msgs::Marker::ADD;
+
+        keyframes_marker_.header.frame_id = "world";
+        keyframes_marker_.ns = "keyframes";
+        keyframes_marker_.id = 0;
+        keyframes_marker_.type = visualization_msgs::Marker::CUBE_LIST;
+        keyframes_marker_.scale.x = 0.05;
+        keyframes_marker_.scale.y = 0.05;
+        keyframes_marker_.scale.z = 0.05;
+        keyframes_marker_.color.a = 0.7;
+        keyframes_marker_.color.r = 1.0;
+        keyframes_marker_.color.g = 0.0;
+        keyframes_marker_.pose.orientation.w = 1.0;
+        keyframes_marker_.points.clear();
+        keyframes_marker_.action = 3; // delete all
+        keyframe_publisher_.publish(keyframes_marker_);
+        keyframes_marker_.action = visualization_msgs::Marker::ADD;
+    }
+
 };
 
 int
