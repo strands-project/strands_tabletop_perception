@@ -285,6 +285,8 @@ private:
         conf_=0;
         pose_ = Eigen::Matrix4f::Identity();
 
+        initializeVisualizationMarkers();
+
 #ifdef USE_PCL_GRABBER
         try
         {
@@ -554,29 +556,6 @@ public:
         param.om_param.kt_param.rt_param.inl_dist = 0.03;  //e.g. 0.04 .. table top, 0.1 ..room
 
         camera_topic_ = "/camera/depth_registered";
-
-        trajectory_marker_.header.frame_id = "world";
-        trajectory_marker_.ns = "trajectory";
-        trajectory_marker_.id = 0;
-        trajectory_marker_.type = visualization_msgs::Marker::LINE_STRIP;
-        trajectory_marker_.action = visualization_msgs::Marker::ADD;
-        trajectory_marker_.scale.x = 0.005;
-        trajectory_marker_.scale.y = 0.005;
-        trajectory_marker_.scale.z = 0.005;
-        trajectory_marker_.color.a = 1.0;
-        trajectory_marker_.pose.orientation.w = 1.0;
-        keyframes_marker_.header.frame_id = "world";
-        keyframes_marker_.ns = "keyframes";
-        keyframes_marker_.id = 0;
-        keyframes_marker_.type = visualization_msgs::Marker::CUBE_LIST;
-        keyframes_marker_.action = visualization_msgs::Marker::ADD;
-        keyframes_marker_.scale.x = 0.05;
-        keyframes_marker_.scale.y = 0.05;
-        keyframes_marker_.scale.z = 0.05;
-        keyframes_marker_.color.a = 0.7;
-        keyframes_marker_.color.r = 1.0;
-        keyframes_marker_.color.g = 0.0;
-        keyframes_marker_.pose.orientation.w = 1.0;
     }
 
     void
@@ -608,6 +587,42 @@ public:
 
         ros::spin ();
     }
+
+    void
+    initializeVisualizationMarkers()
+    {
+        trajectory_marker_.header.frame_id = "world";
+        trajectory_marker_.ns = "trajectory";
+        trajectory_marker_.id = 0;
+        trajectory_marker_.type = visualization_msgs::Marker::LINE_STRIP;
+        trajectory_marker_.scale.x = 0.005;
+        trajectory_marker_.scale.y = 0.005;
+        trajectory_marker_.scale.z = 0.005;
+        trajectory_marker_.color.a = 1.0;
+        trajectory_marker_.pose.orientation.w = 1.0;
+        trajectory_marker_.points.clear();
+        trajectory_marker_.colors.clear();
+        trajectory_marker_.action = 3; // delete all
+        trajectory_publisher_.publish(trajectory_marker_);
+        trajectory_marker_.action = visualization_msgs::Marker::ADD;
+
+        keyframes_marker_.header.frame_id = "world";
+        keyframes_marker_.ns = "keyframes";
+        keyframes_marker_.id = 0;
+        keyframes_marker_.type = visualization_msgs::Marker::CUBE_LIST;
+        keyframes_marker_.scale.x = 0.05;
+        keyframes_marker_.scale.y = 0.05;
+        keyframes_marker_.scale.z = 0.05;
+        keyframes_marker_.color.a = 0.7;
+        keyframes_marker_.color.r = 1.0;
+        keyframes_marker_.color.g = 0.0;
+        keyframes_marker_.pose.orientation.w = 1.0;
+        keyframes_marker_.points.clear();
+        keyframes_marker_.action = 3; // delete all
+        keyframe_publisher_.publish(keyframes_marker_);
+        keyframes_marker_.action = visualization_msgs::Marker::ADD;
+    }
+
 };
 
 int
