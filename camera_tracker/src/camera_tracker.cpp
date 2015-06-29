@@ -8,10 +8,13 @@
 #define EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET
 
 #include <thread>
-#include "ros/ros.h"
-#include "sensor_msgs/PointCloud2.h"
-#include "sensor_msgs/CameraInfo.h"
-#include "std_msgs/Float32.h"
+
+#include <boost/filesystem.hpp>
+
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/CameraInfo.h>
+#include <std_msgs/Float32.h>
 #include <tf/transform_broadcaster.h>
 #include <visualization_msgs/Marker.h>
 #include <image_transport/image_transport.h>
@@ -481,23 +484,32 @@ private:
     saveTrackingResultsToFile(camera_srv_definitions::save_tracking_results_to_file::Request &req,
                               camera_srv_definitions::save_tracking_results_to_file::Response &response)
     {
-        for(size_t i=0; i < cameras_.size(); i++)
+        using namespace boost::filesystem;
+        try
         {
-            std::string dir = req.dir_name.data;
-
-            //            Eigen::Matrix4f trans = cameras_[i];
-            //            keyframes_[i].second->sensor_origin_[0] = trans(0,3);
-            //            keyframes_[i].second->sensor_origin_[1] = trans(1,3);
-            //            keyframes_[i].second->sensor_origin_[2] = trans(2,3);
-
-            //            Eigen::Matrix3f rotation = trans.block<3,3>(0,0);
-            //            Eigen::Quaternionf q(rotation);
-            //            keyframes_[i].second->sensor_orientation_ = q;
-
-            std::stringstream filename;
-            filename << dir << "/cloud_" << i << ".pcd";
-            std::cout << "Writing file to " << filename.str() << "." << std::endl;
-            pcl::io::savePCDFileBinary(filename.str(), *(keyframes_[i].second));
+            file_status s = status(req.dir_name.data);
+            if(is_regular_file(s))
+            {
+                ROS_ERROR("Failed to save tracking results: expected directory name, got filename");
+                return false;
+            }
+            if(!is_directory(s))
+            {
+                path p(req.dir_name.data);
+                create_directory(p);
+                for(size_t i=0; i < cameras_.size(); i++)
+                {
+                    path f = p / boost::str(boost::format("cloud_%i.pcd") % i);
+                    std::string filename = f.string();
+                    std::cout << "Writing file to " << filename << "." << std::endl;
+                    pcl::io::savePCDFileBinary(filename, *(keyframes_[i].second));
+                }
+            }
+        }
+        catch(filesystem_error& e)
+        {
+            ROS_ERROR("Failed to save tracking results: %s", e.what());
+            return false;
         }
 
         return true;
