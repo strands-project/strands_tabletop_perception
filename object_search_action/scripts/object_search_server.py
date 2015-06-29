@@ -56,8 +56,8 @@ class ObjectSearchActionServer:
         #sm.userdata.mode   = goal.mode
 
         # set parameters from parameter server
-        sm.userdata.soma_map = rospy.get_param('~soma_map', 'aachen')
-        sm.userdata.soma_conf = rospy.get_param('~soma_conf', 'object_search')
+        sm.userdata.soma_map = rospy.get_param('~soma_map', 'rwth')
+        sm.userdata.soma_conf = rospy.get_param('~soma_conf', 'rwth')
 
                 
         smach_thread = threading.Thread(target = sm.execute)
