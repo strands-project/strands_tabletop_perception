@@ -23,6 +23,17 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/graph/graph_traits.hpp>
+#include "v4r/KeypointConversions/convertImage.hpp"
+#include "v4r/KeypointConversions/convertCloud.hpp"
+#include "v4r/KeypointTools/ClusterNormalsToPlanes.hh"
+#include "v4r/KeypointTools/DataMatrix2D.hpp"
+#include "v4r/KeypointTools/PointTypes.hpp"
+#include "v4r/KeypointTools/ZAdaptiveNormals.hh"
+
+#include <pcl_visualizer/remote_pcl_visualizer.h>
+
+
+//struct IndexPoint
 
 class CamConnect
 {
@@ -89,8 +100,9 @@ private:
 
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > transferred_cluster_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGBA>::Ptr > supervoxeled_clouds_;
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_, vis_reconstructed_;
-    std::vector<int> vis_viewpoint_, vis_reconstructed_viewpoint_;
+    boost::shared_ptr<RemotePCLVisualizer> vis_;
+    //boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
+    std::vector<int> vis_viewpoint_;
 
     std::vector<size_t> LUT_new2old_indices;
     cv::Ptr<SiftGPU> sift_;

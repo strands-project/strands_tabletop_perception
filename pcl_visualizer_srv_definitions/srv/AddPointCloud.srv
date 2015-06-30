@@ -1,0 +1,6 @@
+sensor_msgs/PointCloud2 cloud
+pcl_visualizer_srv_definitions/ColorHandler color_handler
+string id
+int32 viewport
+---
+bool result

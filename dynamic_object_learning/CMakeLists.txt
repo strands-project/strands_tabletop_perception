@@ -6,7 +6,8 @@ project(dynamic_object_learning)
 ## is used, also find other catkin packages
 
 find_package(catkin REQUIRED COMPONENTS roscpp rospy do_learning_srv_definitions
-                                        strands_v4r genmsg)
+                                        strands_v4r genmsg
+                                        pcl_visualizer)
 
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
