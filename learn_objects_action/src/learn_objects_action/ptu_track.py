@@ -46,7 +46,10 @@ class TurnPTUToObject(smach.State):
             rospy.loginfo("Reached ptu goal")
 
             print "Capturing a new shot of that object before tracking."
-            userdata.dynamic_object.object_cloud = rospy.wait_for_message("/head_xtion/depth_registered/points", PointCloud2)
+            # So uggly force get through publisher queue
+            for i in range(30):
+                turd= rospy.wait_for_message("/head_xtion/depth_registered/points", PointCloud2)
+                # userdata.dynamic_object.object_cloud is already there
             print "ok."
             return "success"
         except Exception, e:

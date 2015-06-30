@@ -15,6 +15,7 @@ from world_state.state import World, Object
 from object_manager.msg import DynamicObjectTracks
 from geometry_msgs.msg import TransformStamped
 from static_transform_manager.srv import SetTransformation, StopTransformation
+import tf
 
 class StartCameraTrack(smach.State):
     def __init__(self):
