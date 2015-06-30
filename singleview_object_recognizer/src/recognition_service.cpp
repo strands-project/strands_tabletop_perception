@@ -73,6 +73,7 @@ struct camPosConstraints
 class Recognizer
 {
 private:
+  size_t num_recorded_clouds_;
   typedef pcl::PointXYZRGB PointT;
   std::string models_dir_;
   std::string training_dir_sift_;
@@ -283,6 +284,11 @@ private:
 
     pcl::PointCloud<PointT>::Ptr scene (new pcl::PointCloud<PointT>);
     pcl::fromROSMsg (req.cloud, *scene);
+
+    std::stringstream filepath_ss;
+    filepath_ss << "/tmp/recorded_cloud_" << num_recorded_clouds_ << ".pcd";
+    pcl::io::savePCDFileBinary(filepath_ss.str(), *scene);
+    num_recorded_clouds_++;
 
     float go_resolution_ = 0.005f;
     bool add_planes = true;
@@ -654,6 +660,7 @@ public:
     cg_size_ = 3;
     idx_flann_fn_sift_ = "sift_flann.idx";
     idx_flann_fn_shot_ = "shot_flann.idx";
+    num_recorded_clouds_ = 0;
 
 #ifdef SOC_VISUALIZE
     vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
