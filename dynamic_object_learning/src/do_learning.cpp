@@ -788,7 +788,8 @@ void DOL::visualize()
     vis.spinOnce();
 
     if (!vis_) {
-        vis_.reset(new pcl::visualization::PCLVisualizer());
+        vis_.reset(new RemotePCLVisualizer());
+        //vis_.reset(new pcl::visualization::PCLVisualizer());
         std::vector<std::string> subwindow_title;
         subwindow_title.push_back("original scene");
         subwindow_title.push_back("filtered scene");
@@ -797,7 +798,8 @@ void DOL::visualize()
         subwindow_title.push_back("good points");
         subwindow_title.push_back("before 2D erosion");
         subwindow_title.push_back("after 2D erosion");
-        vis_viewpoint_ = faat_pcl::utils::visualization_framework (vis_, keyframes_.size(), NUM_SUBWINDOWS, subwindow_title);
+        //vis_viewpoint_ = faat_pcl::utils::visualization_framework (vis_, keyframes_.size(), NUM_SUBWINDOWS, subwindow_title);
+        vis_viewpoint_ = vis_->createFramework(keyframes_.size(), NUM_SUBWINDOWS, subwindow_title);
     }
     else
     {

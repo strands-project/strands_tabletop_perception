@@ -20,6 +20,9 @@
 #include "v4r/KeypointTools/DataMatrix2D.hpp"
 #include "v4r/KeypointTools/PointTypes.hpp"
 #include "v4r/KeypointTools/ZAdaptiveNormals.hh"
+
+#include <pcl_visualizer/remote_pcl_visualizer.h>
+
 struct IndexPoint
 {
     int idx;
@@ -53,7 +56,8 @@ private:
     std::vector< pcl::PointCloud<pcl::Normal>::Ptr > normals_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > transferred_cluster_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGBA>::Ptr > supervoxeled_clouds_;
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
+    boost::shared_ptr<RemotePCLVisualizer> vis_;
+    //boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
     std::vector<int> vis_viewpoint_;
 
     std::vector<size_t> LUT_new2old_indices;
