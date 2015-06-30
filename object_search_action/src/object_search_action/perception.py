@@ -45,13 +45,17 @@ class PerceptionNill(smach.State):
                 self.found_objs[obj] = False
 
         # set found objects to true
+        rospy.loginfo("*************")
         for obj in userdata.objects:
             import random
             r = random.random()
             if r > 0.9:
-                rospy.loginfo("Found %s", obj)
+                rospy.loginfo("FOUND: %s", obj)
                 self.found_objs[obj] = True
-
+            else:
+                rospy.loginfo("NOTHING FOUND")
+        rospy.loginfo("*************")
+        
         found_all_objects = True
         for obj in self.found_objs:
             if self.found_objs[obj]:
