@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS sensor_msgs std_msgs geometry_msgs messa
   FILES
    learn_object.srv
    save_model.srv
+   visualize.srv
 )
 
 ## Generate actions in the 'action' folder

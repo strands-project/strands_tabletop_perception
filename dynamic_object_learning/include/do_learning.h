@@ -10,32 +10,65 @@
 #include "ros/ros.h"
 #include "do_learning_srv_definitions/learn_object.h"
 #include "do_learning_srv_definitions/save_model.h"
+#include "do_learning_srv_definitions/visualize.h"
 #include <pcl/common/common.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/search/kdtree.h>
 #include <pcl/search/octree.h>
 
-#include "v4r/KeypointConversions/convertImage.hpp"
-#include "v4r/KeypointConversions/convertCloud.hpp"
-#include "v4r/KeypointTools/ClusterNormalsToPlanes.hh"
-#include "v4r/KeypointTools/DataMatrix2D.hpp"
-#include "v4r/KeypointTools/PointTypes.hpp"
-#include "v4r/KeypointTools/ZAdaptiveNormals.hh"
-struct IndexPoint
+#include <v4rexternal/SiftGPU/src/SiftGPU/SiftGPU.h>
+#include <v4r/KeypointTools/ClusterNormalsToPlanes.hh>
+#include <v4r/KeypointTools/PointTypes.hpp>
+
+#include <boost/graph/adjacency_list.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/graph/graph_traits.hpp>
+
+class CamConnect
 {
-    int idx;
+public:
+    CamConnect()
+    {
+
+    }
+    Eigen::Matrix4f transformation;
+    double edge_weight;
+    std::string model_name;
+    std::string source_id, target_id;
 };
 
-POINT_CLOUD_REGISTER_POINT_STRUCT (IndexPoint,
-                                   (int, idx, idx)
-                                   )
+class KeyFrame
+{
+public:
+    KeyFrame()
+    {
+
+    }
+    //View(const View &view);
+    size_t id;
+};
 
 class DOL
 {
 private:
+
     typedef pcl::PointXYZRGB PointT;
+    typedef flann::L1<float> DistT;
+    typedef pcl::Histogram<128> FeatureT;
+
+    typedef boost::adjacency_list < boost::vecS, boost::vecS, boost::undirectedS,
+             KeyFrame, CamConnect> Graph;
+    typedef boost::graph_traits < Graph >::vertex_descriptor Vertex;
+    typedef boost::graph_traits < Graph >::edge_descriptor Edge;
+    typedef boost::graph_traits<Graph>::vertex_iterator vertex_iter;
+    typedef boost::graph_traits<Graph>::edge_iterator edge_iter;
+
+//    typedef boost::property_map<Graph, boost::vertex_index_t>::type IndexMap;
+
     boost::shared_ptr<ros::NodeHandle> n_;
-    ros::ServiceServer learn_object_;
-    ros::ServiceServer save_model_;
+    ros::ServiceServer learn_object_,
+                       save_model_,
+                       vis_model_;
     int normal_method_;
     kp::ClusterNormalsToPlanes::Parameter p_param_;
 
@@ -44,19 +77,24 @@ private:
     std::vector<pcl::PointIndices> obj_indices_eroded_to_original_;
     std::vector<pcl::PointIndices> obj_indices_2_to_filtered_;
     std::vector<pcl::PointIndices> scene_points_;
-    std::vector<pcl::PointIndices> transfered_nn_points_;
+    std::vector<pcl::PointIndices> transferred_nn_points_;
     std::vector<pcl::PointIndices> transferred_object_indices_without_plane_;
     std::vector<pcl::PointIndices> initial_indices_good_to_unfiltered_;
     std::vector<pcl::PointIndices> obj_indices_3_to_original_;
     std::vector<Eigen::Matrix4f> cameras_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > keyframes_;
     std::vector< pcl::PointCloud<pcl::Normal>::Ptr > normals_;
+    std::vector< pcl::PointCloud<FeatureT>::Ptr > sift_signatures_;
+    std::vector<pcl::PointIndices> sift_keypoint_indices_;
+
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > transferred_cluster_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGBA>::Ptr > supervoxeled_clouds_;
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
-    std::vector<int> vis_viewpoint_;
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_, vis_reconstructed_;
+    std::vector<int> vis_viewpoint_, vis_reconstructed_viewpoint_;
 
     std::vector<size_t> LUT_new2old_indices;
+    cv::Ptr<SiftGPU> sift_;
+    Graph grph_;
 
     ///radius to select points in other frames to belong to the same object
     /// bootstraps region growing
@@ -66,11 +104,11 @@ private:
     double seed_resolution_;
     double ratio_;
     double chop_z_;
-    bool visualize_;
     bool do_erosion_;
-//    bool do_sift_based_camera_pose_estimation_;
+    bool do_sift_based_camera_pose_estimation_;
     bool transfer_indices_from_latest_frame_only_;
     pcl::octree::OctreePointCloudSearch<PointT> octree_;
+    size_t min_points_for_transferring_;
 
 public:
 
@@ -81,11 +119,11 @@ public:
         voxel_resolution_ = 0.005f;
         seed_resolution_ = 0.03f;
         ratio_ = 0.25f;
+        min_points_for_transferring_ = 10;
         chop_z_ = std::numeric_limits<double>::quiet_NaN();
-        visualize_ = false;
         do_erosion_ = true;
         transfer_indices_from_latest_frame_only_ = false;
-//        do_sift_based_camera_pose_estimation_ = false;
+        do_sift_based_camera_pose_estimation_ = false;
 
         // Parameters for smooth clustering / plane segmentation
         p_param_.thrAngle=45;
@@ -103,7 +141,7 @@ public:
         big_cloud_segmented_.reset(new pcl::PointCloud<PointT>);
     }
 
-    static Eigen::Matrix4f fromGMTransform(geometry_msgs::Transform & gm_trans)
+    static Eigen::Matrix4f fromGMTransform(const geometry_msgs::Transform & gm_trans)
     {
         Eigen::Matrix4f trans = Eigen::Matrix4f::Identity();
 
@@ -135,7 +173,7 @@ public:
      * @param dest... id of destination frame
      * @param nn... nearest neighbors points highlighted (true) in object mask
      */
-    void transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<bool> &object_mask); //std::vector<int> &nn);
+    void transferIndicesAndNNSearch(size_t origin, size_t dest, std::vector<bool> &object_mask, const Eigen::Matrix4f &transform); //std::vector<int> &nn);
 
     void updatePointNormalsFromSuperVoxels(const pcl::PointCloud<PointT>::Ptr & cloud,
                                            pcl::PointCloud<pcl::Normal>::Ptr & normals_,
@@ -172,13 +210,18 @@ public:
         cameras_.clear();
         transferred_cluster_.clear();
         scene_points_.clear();
-        transfered_nn_points_.clear();
+        transferred_nn_points_.clear();
         transferred_object_indices_without_plane_.clear();
         initial_indices_good_to_unfiltered_.clear();
         obj_indices_3_to_original_.clear();
         obj_indices_2_to_filtered_.clear();
         obj_indices_eroded_to_original_.clear();
         supervoxeled_clouds_.clear();
+        big_cloud_->points.clear();
+        big_cloud_segmented_->points.clear();
+        LUT_new2old_indices.clear();
+        sift_signatures_.clear();
+        sift_keypoint_indices_.clear();
     }
 
     void reserveMem(const size_t &num_elements)
@@ -188,15 +231,16 @@ public:
         cameras_.resize( num_elements );
         transferred_cluster_.resize( num_elements );
         scene_points_.resize( num_elements );
-        transfered_nn_points_.resize( num_elements );
+        transferred_nn_points_.resize( num_elements );
         transferred_object_indices_without_plane_.resize( num_elements );
         initial_indices_good_to_unfiltered_.resize( num_elements );
         obj_indices_3_to_original_.resize( num_elements );
         obj_indices_2_to_filtered_.resize( num_elements );
         obj_indices_eroded_to_original_.resize( num_elements );
         supervoxeled_clouds_.resize( num_elements );
+        sift_signatures_.resize ( num_elements );
+        sift_keypoint_indices_.resize ( num_elements );
     }
-    static void computeNormals(const pcl::PointCloud<PointT>::ConstPtr & cloud, pcl::PointCloud<pcl::Normal> &normals_, int method = 0);
 
     /**
      * @brief given a point cloud and a normal cloud, this function computes points belonging to a table
@@ -216,6 +260,7 @@ public:
                                                 std::vector<kp::ClusterNormalsToPlanes::Plane::Ptr> &planes_dst,
                                                 pcl::PointIndices &all_plane_indices_wo_object,
                                                 float ratio=0.25);
+    bool visualizeROS(do_learning_srv_definitions::visualize::Request & req, do_learning_srv_definitions::visualize::Response & response);
     void visualize();
 
     /**
@@ -247,6 +292,21 @@ public:
                                            const std::vector<bool> &foreground_mask,
                                            std::vector<int> &new_foreground_indices,
                                            std::vector<int> &old_bg_indices);
+
+    void computeNormals(const pcl::PointCloud<PointT>::ConstPtr &cloud,
+                        pcl::PointCloud<pcl::Normal>::Ptr &normals, int method);
+
+    bool calcSiftFeatures (const pcl::PointCloud<PointT>::Ptr &cloud_src,
+                      pcl::PointCloud<PointT>::Ptr &sift_keypoints,
+                      pcl::PointIndices &sift_keypoint_indices,
+                      pcl::PointCloud<FeatureT>::Ptr &sift_signatures,
+                      std::vector<float> &sift_keypoint_scales);
+
+    void estimateViewTransformationBySIFT (size_t src, size_t dst, boost::shared_ptr<flann::Index<DistT> > &flann_index, std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f> > &transformations, bool use_gc = false);
+
+    float calcEdgeWeight (const pcl::PointCloud<PointT>::Ptr &cloud_src,
+                          const pcl::PointCloud<PointT>::Ptr &cloud_dst,
+                          Eigen::Matrix4f &transformation);
 };
 
 

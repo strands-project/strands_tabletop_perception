@@ -98,14 +98,8 @@ include_directories(include
 )
 
 set(incs
-    include/boost_graph_extension.h
-    include/boost_graph_visualization_extension.h
     include/pcl_conversions.h
-    include/segmenter.h
-    include/multiview_object_recognizer_service.h
-    include/world_representation.h
-    include/segmenter.h
-    include/singleview_object_recognizer.h
+    include/world_representation_ros.h
 )
 
 ## Declare a cpp library
@@ -115,12 +109,8 @@ set(incs
 
 ## Declare a cpp executable
 add_executable(multiview_object_recognizer_node
-                src/multiview_object_recognizer_service.cpp
-                src/world_representation.cpp
-                src/boost_graph_extension.cpp
-                src/boost_graph_visualization_extension.cpp
-		src/singleview_object_recognizer.cpp
 		src/main.cpp
+                src/world_representation_ros.cpp
                 ${incs}
 )
 

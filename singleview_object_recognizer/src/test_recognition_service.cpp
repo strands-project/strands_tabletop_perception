@@ -32,6 +32,8 @@ private:
     std::string models_dir_;
     boost::shared_ptr < faat_pcl::rec_3d_framework::ModelOnlySource<pcl::PointXYZRGBNormal, pcl::PointXYZRGB>
             > models_source_;
+    std::string file_name_;
+    int input_; // defines the test input (0... camera topic, 1... file)
 
     std::vector<std::string> model_ids_;
     std::vector<Eigen::Matrix4f> transforms_;
@@ -246,6 +248,8 @@ public:
         visualize_output_ = false;
         models_dir_ = "";
         extended_request_ = true;
+        input_ = 0;
+        file_name_ = "";
     }
 
     bool initialize(int argc, char ** argv)
@@ -269,6 +273,10 @@ public:
         if(!n_->getParam ( "new_models", new_models_added_ ))
             new_models_added_ = false;
 
+        n_->getParam ( "file_name", file_name_ );
+        n_->getParam ( "input_mode", input_ );
+
+
         std::string test_models_to_load;
         if(!n_->getParam ( "load_models", test_models_to_load ))
             test_models_to_load = "";
@@ -285,7 +293,10 @@ public:
             model_ids_to_be_loaded_.clear();
         }
 
-        checkKinect();
+        if (input_ == 0)
+        {
+            checkKinect();
+        }
 
         if(models_dir_.compare("") != 0)
         {
@@ -305,8 +316,27 @@ public:
 
     void run()
     {
-        ros::Subscriber sub_pc = n_->subscribe (topic_, 1, &SOCDemo::callService, this);
-        ros::spin();
+        if ( input_ == 0)     // Reading point cloud from Kinect and calling recognition
+        {
+            ros::Subscriber sub_pc = n_->subscribe (topic_, 1, &SOCDemo::callService, this);
+            ros::spin();
+        }
+        else
+        {
+            testFromFile();
+        }
+    }
+
+    void testFromFile()
+    {
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::io::loadPCDFile(file_name_, *scene_);
+
+        sensor_msgs::PointCloud2::Ptr pMsg (new sensor_msgs::PointCloud2());
+        pcl::toROSMsg(*scene_, *pMsg);
+
+        all_required_services_okay_ = callSegAndClassifierService( pMsg );
+
     }
 
     void visualize_output()
