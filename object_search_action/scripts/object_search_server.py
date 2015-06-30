@@ -97,6 +97,8 @@ class ObjectSearchActionServer:
             self._as.set_succeeded(self._result)
         else:
             rospy.loginfo('%s: Failed' % self._action_name)
+            self._result.found_objects = []
+            self._as.set_succeeded(self._result)
 
 
 if __name__ == '__main__':
