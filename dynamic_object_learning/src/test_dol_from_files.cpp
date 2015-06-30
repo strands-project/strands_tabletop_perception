@@ -14,6 +14,7 @@
 #include "std_msgs/String.h"
 #include "do_learning_srv_definitions/learn_object.h"
 #include "do_learning_srv_definitions/save_model.h"
+#include "do_learning_srv_definitions/visualize.h"
 #include <opencv2/opencv.hpp>
 #include <v4r/utils/filesystem_utils.h>
 
@@ -35,7 +36,6 @@ private:
                 models_dir_,
                 recognition_structure_dir_;
     bool visualize_;
-    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
 
 public:
     bool callDOL()
@@ -76,6 +76,10 @@ public:
         ros::ServiceClient DOLclient_save = n_->serviceClient<do_learning_srv_definitions::save_model>(service_name_save);
         do_learning_srv_definitions::save_model srv_save;
 
+        std::string service_name_vis = "/dynamic_object_learning/visualize";
+        ros::ServiceClient DOLclient_vis = n_->serviceClient<do_learning_srv_definitions::visualize>(service_name_vis);
+        do_learning_srv_definitions::visualize srv_vis;
+
 
         //create request
 #ifdef USE_PCL_INDICES
@@ -110,19 +114,6 @@ public:
             std::stringstream str;
             str << directory_ << "/" << keyframes_str[i];
             pcl::io::loadPCDFile(str.str(), *pCloud);
-
-
-            if(visualize_)
-            {
-                if(!vis_) {
-                    vis_.reset (new pcl::visualization::PCLVisualizer("original segment"));
-                }
-                pcl::PointCloud<PointT>::Ptr pCloudEroded(new pcl::PointCloud<PointT>());
-                pcl::PointCloud<PointT>::Ptr segmented(new pcl::PointCloud<PointT>);
-                pcl::copyPointCloud(*pCloud, pind, *pCloudEroded);
-                pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler(pCloudEroded);
-                vis_->addPointCloud<PointT>(pCloudEroded, rgb_handler, "cloud_"+i);
-            }
 
             sensor_msgs::PointCloud2 msg_cloud;
             pcl::toROSMsg(*pCloud, msg_cloud);
@@ -159,8 +150,6 @@ public:
 
             srv_learn.request.transforms.push_back(tt);
         }
-        if(visualize_)
-            vis_->spin();
 
         if ( ! DOLclient.call(srv_learn) )
         {
@@ -183,13 +172,23 @@ public:
             return false;
         }
 
+        if (visualize_)
+        {
+            if ( ! DOLclient_vis.call ( srv_vis ) )
+            {
+                std::stringstream mm;
+                mm << "Error calling service: " << service_name_vis << std::endl;
+                ROS_ERROR(mm.str().c_str());
+            }
+        }
+
         return true;
     }
 
 public:
     DOLDemoFromFiles()
     {
-        visualize_ = false;
+        visualize_ = true;
     }
 
     bool initialize(int argc, char ** argv)
@@ -200,6 +199,8 @@ public:
             ROS_WARN("PC Architectur does not use 32bit for integer - check conflicts with pcl indices.");
         }
         n_ = new ros::NodeHandle ( "~" );
+
+        n_->getParam("visualize", visualize_);
 
         if(!n_->getParam ( "directory", directory_ ))
         {
@@ -229,6 +230,5 @@ main (int argc, char ** argv)
     DOLDemoFromFiles m;
     m.initialize(argc, argv);
     m.callDOL();
-    ros::spin();
     return 0;
 }

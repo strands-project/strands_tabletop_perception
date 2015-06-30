@@ -81,6 +81,7 @@ target_link_libraries(do_learning_service
    ${OpenCV_LIBS}
    ${STRANDSV4R_LIBS}
    ${CERES_LIBRARIES}
+   siftgpu
 )
 
 target_link_libraries(test_DOL_service

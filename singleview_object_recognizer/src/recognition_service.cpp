@@ -31,6 +31,7 @@
 #include <v4r/ORRecognition/correspondence_grouping.h>
 #include <v4r/ORRecognition/graph_geometric_consistency.h>
 #include <v4r/ORRecognition/hv_go_3D.h>
+#include <v4r/ORUtils/miscellaneous.h>
 #include "recognition_srv_definitions/recognize.h"
 #include "recognition_srv_definitions/retrain_recognizer.h"
 #include "recognition_srv_definitions/get_configuration.h"
@@ -42,7 +43,7 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 
-//#define USE_SIFT_GPU
+#define USE_SIFT_GPU
 //#define SOC_VISUALIZE
 
 #ifdef SOC_VISUALIZE
@@ -586,7 +587,7 @@ sensor_msgs/PointCloud2[] cloud
             pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = verified_models->at(j)->getNormalsAssembled (res);
 
             typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>);
-            faat_pcl::utils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms->at (j));
+            v4r::ORUtils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms->at (j));
 
             //ratio of inlier points
             float confidence = 0;
@@ -750,7 +751,7 @@ public:
       boost::shared_ptr < faat_pcl::rec_3d_framework::LocalEstimator<PointT, pcl::Histogram<128> > > cast_estimator;
       cast_estimator = boost::dynamic_pointer_cast<faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, pcl::Histogram<128> > > (estimator);
 #else
-	  boost::shared_ptr < faat_pcl::rec_3d_framework::OpenCVSIFTLocalEstimation<PointT, pcl::Histogram<128> > > estimator;	
+      boost::shared_ptr < faat_pcl::rec_3d_framework::OpenCVSIFTLocalEstimation<PointT, pcl::Histogram<128> > > estimator;
       estimator.reset (new faat_pcl::rec_3d_framework::OpenCVSIFTLocalEstimation<PointT, pcl::Histogram<128> >);
 
       boost::shared_ptr < faat_pcl::rec_3d_framework::LocalEstimator<PointT, pcl::Histogram<128> > > cast_estimator;
