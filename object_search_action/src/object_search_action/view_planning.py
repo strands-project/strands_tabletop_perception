@@ -114,7 +114,7 @@ class ViewPlanning(smach.State):
 
         view_probs = dict()
         for v in views:
-            print v.ID, len(v.get_keys()), len(v.get_values())
+            print v.ID, v.get_keys(), len(v.get_values())
             try:
                 service = rospy.ServiceProxy(service_name, GetProbabilityAtView)
                 req = GetProbabilityAtViewRequest()
@@ -131,11 +131,17 @@ class ViewPlanning(smach.State):
                 rospy.logerr("Service call failed: %s"%e)
 
             
-        view_costs = planner.compute_view_costs(views)
+        view_values_vis = view_probs  
+        total_sum = sum(view_probs.values())
+        for p in view_probs:
+            view_probs[p] = view_probs[p] / total_sum  
+            view_values_vis[p] = view_probs[p] / total_sum * 100
 
         print view_values
         print view_probs
         view_values = view_probs
+
+        view_costs = planner.compute_view_costs(views)
         #print view_costs
         
         current_view = self.get_current_view()
@@ -189,9 +195,9 @@ class ViewPlanning(smach.State):
                     if view.ID in pids:
                         val = view_values[view.ID]
                         print idx, val
-                        if val > 0:
+                        if val > 0.0:
                             print "Create frustum marker with value", val
-                            self.vis.create_frustum_marker(frustum_marker, view, view.get_ptu_pose(), view_values)
+                            self.vis.create_frustum_marker(frustum_marker, view, view.get_ptu_pose(), view_values_vis)
                         idx += 1
                 self.vis.pubfrustum.publish(frustum_marker)
                 #vis.delete(p)
