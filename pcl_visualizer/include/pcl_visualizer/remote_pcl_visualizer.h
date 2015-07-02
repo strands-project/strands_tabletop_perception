@@ -75,7 +75,7 @@ class RemotePCLVisualizer
     inline bool addPointCloud(const pcl::PointCloud<pcl::PointXYZRGBA>::ConstPtr& cloud,
                               const std::string &id = "cloud", int viewport = 0)
     {
-      pcl::visualization::PointCloudColorHandlerRGBAField<pcl::PointXYZRGBA> color_handler(cloud);
+      pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBA> color_handler(cloud);
       return addPointCloud<pcl::PointXYZRGBA> (cloud, color_handler, id, viewport);
     }
 

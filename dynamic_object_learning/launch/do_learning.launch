@@ -1,5 +1,17 @@
 <launch>
+	<arg name="chop_z" default="2.5" />
+      <param name="do_erosion" value="true" type="bool"/>
+      <param name="radius" value="0.015" type="double"/>
+      <param name="dot_product" value="0.9" type="double"/>
+      <param name="normal_method" value="1" type="int" /> 
+      <param name="chop_z" value="$(arg chop_z)" type="double"/>	
+
+      <param name="transfer_latest_only" value="false"  type="bool"/>
+      <param name="do_sift_camera_pose_estimation" value="false"  type="bool"/>
+
 <node pkg="dynamic_object_learning" type="do_learning_service" name="do_learning_service" output="screen" respawn="true"> 
-<remap from="/do_learning_service" to="/dynamic_object_learning" />
+      <remap from="/do_learning_service" to="/dynamic_object_learning" />
+
+
 </node>
 </launch>

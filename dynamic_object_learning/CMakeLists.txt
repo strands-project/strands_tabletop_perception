@@ -7,7 +7,7 @@ project(dynamic_object_learning)
 
 find_package(catkin REQUIRED COMPONENTS roscpp rospy do_learning_srv_definitions
                                         strands_v4r genmsg
-                                        pcl_visualizer)
+                                        pcl_visualizer pcl_visualizer_srv_definitions)
 
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
@@ -47,7 +47,7 @@ ENDIF(${Ceres_FOUND})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-   CATKIN_DEPENDS roscpp rospy do_learning_srv_definitions strands_v4r
+   CATKIN_DEPENDS roscpp rospy do_learning_srv_definitions strands_v4r pcl_visualizer pcl_visualizer_srv_definitions
 )
 
 ###########

@@ -57,7 +57,7 @@
 #include <v4r/utils/filesystem_utils.h>
 
 
-#define NUM_SUBWINDOWS 5
+#define NUM_SUBWINDOWS 7
 
 float DOL::
 calcEdgeWeight (const pcl::PointCloud<PointT>::Ptr &cloud_src,
@@ -592,6 +592,11 @@ DOL::save_model (do_learning_srv_definitions::save_model::Request & req,
     sor.filter (*cloud_normals_oriented);
     pcl::io::savePCDFileBinary(path_model.str(), *cloud_normals_oriented);
 
+    sensor_msgs::PointCloud2 recognizedModelsRos;
+    pcl::toROSMsg (*cloud_normals_oriented, recognizedModelsRos);
+    recognizedModelsRos.header.frame_id = "world";
+    vis_pc_pub_.publish(recognizedModelsRos);
+
     return true;
 }
 
@@ -1041,6 +1046,7 @@ bool DOL::visualizeROS(do_learning_srv_definitions::visualize::Request & req,
 
 void DOL::visualize()
 {
+#ifndef USE_REMOTE_PCL_VISUALIZER
     if (!vis_reconstructed_)
     {
         vis_reconstructed_.reset(new pcl::visualization::PCLVisualizer("segmented cloud"));
@@ -1053,20 +1059,13 @@ void DOL::visualize()
     vis_reconstructed_->addPointCloud(big_cloud_, "big", vis_reconstructed_viewpoint_[0]);
     vis_reconstructed_->addPointCloud(big_cloud_segmented_, "segmented", vis_reconstructed_viewpoint_[1]);
     vis_reconstructed_->spinOnce();
-
+#endif
     if (!vis_) {
+#ifdef USE_REMOTE_PCL_VISUALIZER
         vis_.reset(new RemotePCLVisualizer());
-        //vis_.reset(new pcl::visualization::PCLVisualizer());
-        std::vector<std::string> subwindow_title;
-        subwindow_title.push_back("original scene");
-        subwindow_title.push_back("filtered scene");
-        subwindow_title.push_back("supervoxelled scene");
-        subwindow_title.push_back("after nearest neighbor search");
-        subwindow_title.push_back("good points");
-        subwindow_title.push_back("before 2D erosion");
-        subwindow_title.push_back("after 2D erosion");
-        //vis_viewpoint_ = faat_pcl::utils::visualization_framework (vis_, keyframes_.size(), NUM_SUBWINDOWS, subwindow_title);
-        vis_viewpoint_ = vis_->createFramework(keyframes_.size(), NUM_SUBWINDOWS, subwindow_title);
+#else
+        vis_.reset(new pcl::visualization::PCLVisualizer());
+#endif
     }
     else
     {
@@ -1083,7 +1082,12 @@ void DOL::visualize()
     subwindow_title.push_back("good points");
     subwindow_title.push_back("before 2D erosion");
     subwindow_title.push_back("after 2D erosion");
+
+#ifdef USE_REMOTE_PCL_VISUALIZER
+    vis_viewpoint_ = vis_->createFramework (keyframes_.size(), NUM_SUBWINDOWS, subwindow_title);
+#else
     vis_viewpoint_ = faat_pcl::utils::visualization_framework (vis_, keyframes_.size(), NUM_SUBWINDOWS, subwindow_title);
+#endif
     for(size_t i=0; i < keyframes_.size(); i++)
     {
         pcl::PointCloud<PointT>::Ptr cloud_trans (new pcl::PointCloud<PointT>());
@@ -1120,7 +1124,7 @@ void DOL::visualize()
             cloud_name << "_search_pts";
             pcl::PointCloud<PointT>::Ptr cloud_trans_tmp (new pcl::PointCloud<PointT>());
             pcl::transformPointCloud(*transferred_cluster_[i], *cloud_trans_tmp, cameras_[i]);
-            pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> red_source (cloud_trans_tmp, 255, 0, 0);
+            pcl::visualization::PointCloudColorHandlerCustom<pcl::PointXYZRGB> red_source (cloud_trans_tmp, 0, 255, 0);
             vis_->addPointCloud(cloud_trans_tmp, red_source, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + subwindow_id++]);
         }
         else
@@ -1145,21 +1149,21 @@ void DOL::visualize()
         pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler2(segmented_trans);
         vis_->addPointCloud(segmented_trans, rgb_handler2, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + subwindow_id++]);
 
-//        cloud_name << "_good";
-//        pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler3(segmented2_trans);
-//        vis_->addPointCloud(segmented2_trans, rgb_handler3, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + subwindow_id++]);
+        cloud_name << "_good";
+        pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler3(segmented2_trans);
+        vis_->addPointCloud(segmented2_trans, rgb_handler3, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + subwindow_id++]);
 
-//        cloud_name << "_region_grown";
-//        pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler4(segmented3_trans);
-//        vis_->addPointCloud(segmented3_trans, rgb_handler4, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + subwindow_id++]);
+        cloud_name << "_region_grown";
+        pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler4(segmented3_trans);
+        vis_->addPointCloud(segmented3_trans, rgb_handler4, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + subwindow_id++]);
 
         cloud_name << "_eroded";
         pcl::visualization::PointCloudColorHandlerRGBField<PointT> rgb_handler5(segmented_eroded_trans);
         vis_->addPointCloud(segmented_eroded_trans, rgb_handler5, cloud_name.str(), vis_viewpoint_[i * NUM_SUBWINDOWS + subwindow_id++]);
     }
+#ifndef USE_REMOTE_PCL_VISUALIZER
     vis_->spin();
-    vis_reconstructed_->close();
-    vis_->close();
+#endif
 }
 
 
@@ -1187,7 +1191,7 @@ void DOL::initialize (int argc, char ** argv)
     learn_object_  = n_->advertiseService ("learn_object", &DOL::learn_object, this);
     save_model_  = n_->advertiseService ("save_model", &DOL::save_model, this);
     vis_model_  = n_->advertiseService ("visualize", &DOL::visualizeROS, this);
-
+    vis_pc_pub_ = n_->advertise<sensor_msgs::PointCloud2>( "learned_model", 1 );
 
     std::cout << "Started dynamic object learning with parameters: " << std::endl
               << "===================================================" << std::endl

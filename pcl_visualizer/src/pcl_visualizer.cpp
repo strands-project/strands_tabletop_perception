@@ -115,7 +115,7 @@ class PCLVisualizerNode
       }
       else if (request.color_handler.type == pcl_visualizer_srv_definitions::ColorHandler::RGBA)
       {
-        color_handler.reset(new pcl::visualization::PointCloudColorHandlerRGBAField<PointCloud>(cloud));
+        color_handler.reset(new pcl::visualization::PointCloudColorHandlerRGBField<PointCloud>(cloud));
       }
       else
       {

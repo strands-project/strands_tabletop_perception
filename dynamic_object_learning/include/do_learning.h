@@ -30,10 +30,20 @@
 #include "v4r/KeypointTools/PointTypes.hpp"
 #include "v4r/KeypointTools/ZAdaptiveNormals.hh"
 
-#include <pcl_visualizer/remote_pcl_visualizer.h>
-
+#define USE_REMOTE_PCL_VISUALIZER
+#ifdef USE_REMOTE_PCL_VISUALIZER
+	#include <pcl_visualizer/remote_pcl_visualizer.h>
+#endif
 
 //struct IndexPoint
+//  {
+//    int idx;
+//  };
+
+
+//POINT_CLOUD_REGISTER_POINT_STRUCT (IndexPoint,
+//                                   (int, idx, idx)
+//                                   )
 
 class CamConnect
 {
@@ -97,12 +107,15 @@ private:
     std::vector< pcl::PointCloud<pcl::Normal>::Ptr > normals_;
     std::vector< pcl::PointCloud<FeatureT>::Ptr > sift_signatures_;
     std::vector<pcl::PointIndices> sift_keypoint_indices_;
-
+    ros::Publisher vis_pc_pub_; 
     std::vector< pcl::PointCloud<pcl::PointXYZRGB>::Ptr > transferred_cluster_;
     std::vector< pcl::PointCloud<pcl::PointXYZRGBA>::Ptr > supervoxeled_clouds_;
+ #ifdef USE_REMOTE_PCL_VISUALIZER
     boost::shared_ptr<RemotePCLVisualizer> vis_;
-    //boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
-    std::vector<int> vis_viewpoint_;
+ #else
+    boost::shared_ptr<pcl::visualization::PCLVisualizer> vis_;
+ #endif  
+   std::vector<int> vis_viewpoint_;
 
     std::vector<size_t> LUT_new2old_indices;
     cv::Ptr<SiftGPU> sift_;

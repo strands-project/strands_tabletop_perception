@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   pcl_conversions
   pcl_visualizer_srv_definitions
+  message_generation
 )
 
 find_package(PCL 1.7 REQUIRED)

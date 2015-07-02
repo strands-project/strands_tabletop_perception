@@ -42,7 +42,7 @@ class MetricSweep(smach.State):
         self._goal.pan_end = 160
         self._goal.tilt_start = -30
         self._goal.tilt_step = 30
-        self._goal.tilt_end = 30
+        self._goal.tilt_end = -30
 
     def execute(self, userdata):
         try:
