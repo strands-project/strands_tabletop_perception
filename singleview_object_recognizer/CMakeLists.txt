@@ -8,7 +8,8 @@ project(singleview_object_recognizer)
 find_package(catkin REQUIRED COMPONENTS roscpp rospy recognition_srv_definitions
                                         strands_v4r genmsg actionlib_msgs actionlib
                                         scitos_ptu mongodb_store_msgs mongodb_store
-                                        cv_bridge sensor_msgs image_transport )
+                                        cv_bridge sensor_msgs image_transport
+					message_generation)
 
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
@@ -71,14 +72,16 @@ include_directories(include
   ${catkin_INCLUDE_DIRS}
 )
 
-set(incs include/pcl_conversions.h include/segmenter.h)
+set(incs include/pcl_conversions.h include/segmenter.h include/recognizer_ros.h)
 
 ## Declare a cpp executable
+add_executable(recognition_service_new src/recognizer_ros.cpp ${incs})
 add_executable(recognition_service src/recognition_service.cpp ${incs})
 add_executable(checkObjectPresence src/CheckObjectPresence.cpp)
 add_executable(checkObjectPresence_client src/CheckObjectPresence_client.cpp)
 add_executable(ply_to_pcl src/ply_to_pcl.cpp)
 add_executable(test_recognition_service src/test_recognition_service.cpp)
+add_executable(test_single_view_recognition_from_file src/test_single_view_recognizer.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -87,6 +90,7 @@ add_dependencies(checkObjectPresence ${catkin_EXPORTED_TARGETS} ${STRANDSV4R_LIB
 add_dependencies(checkObjectPresence_client ${catkin_EXPORTED_TARGETS})
 add_dependencies(ply_to_pcl ${catkin_EXPORTED_TARGETS})
 add_dependencies(test_recognition_service ${catkin_EXPORTED_TARGETS})
+add_dependencies(test_single_view_recognition_from_file ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
 
@@ -103,6 +107,17 @@ target_link_libraries(recognition_service
    ${OpenCV_LIBS}
    ${STRANDSV4R_LIBS}
    ${CERES_LIBRARIES}
+   opencv_nonfree
+)
+
+
+target_link_libraries(recognition_service_new
+   ${catkin_LIBRARIES}
+   ${PCL_LIBRARIES}
+   ${OpenCV_LIBS}
+   ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
+   opencv_nonfree
 )
 
 target_link_libraries(checkObjectPresence
@@ -116,6 +131,13 @@ target_link_libraries(checkObjectPresence_client
 )
 
 target_link_libraries(test_recognition_service
+   ${catkin_LIBRARIES}
+   ${PCL_LIBRARIES}
+   ${STRANDSV4R_LIBS}
+   ${CERES_LIBRARIES}
+)
+
+target_link_libraries(test_single_view_recognition_from_file
    ${catkin_LIBRARIES}
    ${PCL_LIBRARIES}
    ${STRANDSV4R_LIBS}

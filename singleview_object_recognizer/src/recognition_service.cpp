@@ -31,6 +31,7 @@
 #include <v4r/ORRecognition/correspondence_grouping.h>
 #include <v4r/ORRecognition/graph_geometric_consistency.h>
 #include <v4r/ORRecognition/hv_go_3D.h>
+#include <v4r/ORUtils/miscellaneous.h>
 #include "recognition_srv_definitions/recognize.h"
 #include "recognition_srv_definitions/retrain_recognizer.h"
 #include "recognition_srv_definitions/get_configuration.h"
@@ -42,7 +43,7 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 
-#define USE_SIFT_GPU
+//#define USE_SIFT_GPU
 //#define SOC_VISUALIZE
 
 #ifdef SOC_VISUALIZE
@@ -73,6 +74,7 @@ struct camPosConstraints
 class Recognizer
 {
 private:
+  size_t num_recorded_clouds_;
   typedef pcl::PointXYZRGB PointT;
   std::string models_dir_;
   std::string training_dir_sift_;
@@ -284,6 +286,11 @@ private:
     pcl::PointCloud<PointT>::Ptr scene (new pcl::PointCloud<PointT>);
     pcl::fromROSMsg (req.cloud, *scene);
 
+    std::stringstream filepath_ss;
+    filepath_ss << "/tmp/recorded_cloud_" << num_recorded_clouds_ << ".pcd";
+    pcl::io::savePCDFileBinary(filepath_ss.str(), *scene);
+    num_recorded_clouds_++;
+
     float go_resolution_ = 0.005f;
     bool add_planes = true;
 
@@ -323,6 +330,11 @@ private:
         pass_.filter (*scene);
     }
 
+    if (scene->points.size()==0)
+{
+	std::cerr << "Input cloud is empty. No models found." << std::endl;
+	return false;
+}
     pcl::PointCloud<pcl::Normal>::Ptr normal_cloud (new pcl::PointCloud<pcl::Normal>);
     pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
     ne.setRadiusSearch(0.02f);
@@ -586,7 +598,7 @@ sensor_msgs/PointCloud2[] cloud
             pcl::PointCloud<pcl::Normal>::ConstPtr normal_cloud = verified_models->at(j)->getNormalsAssembled (res);
 
             typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>);
-            faat_pcl::utils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms->at (j));
+            v4r::ORUtils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms->at (j));
 
             //ratio of inlier points
             float confidence = 0;
@@ -654,6 +666,7 @@ public:
     cg_size_ = 3;
     idx_flann_fn_sift_ = "sift_flann.idx";
     idx_flann_fn_shot_ = "shot_flann.idx";
+    num_recorded_clouds_ = 0;
 
 #ifdef SOC_VISUALIZE
     vis_.reset (new pcl::visualization::PCLVisualizer ("classifier visualization"));
@@ -750,7 +763,7 @@ public:
       boost::shared_ptr < faat_pcl::rec_3d_framework::LocalEstimator<PointT, pcl::Histogram<128> > > cast_estimator;
       cast_estimator = boost::dynamic_pointer_cast<faat_pcl::rec_3d_framework::SIFTLocalEstimation<PointT, pcl::Histogram<128> > > (estimator);
 #else
-	  boost::shared_ptr < faat_pcl::rec_3d_framework::OpenCVSIFTLocalEstimation<PointT, pcl::Histogram<128> > > estimator;	
+      boost::shared_ptr < faat_pcl::rec_3d_framework::OpenCVSIFTLocalEstimation<PointT, pcl::Histogram<128> > > estimator;
       estimator.reset (new faat_pcl::rec_3d_framework::OpenCVSIFTLocalEstimation<PointT, pcl::Histogram<128> >);
 
       boost::shared_ptr < faat_pcl::rec_3d_framework::LocalEstimator<PointT, pcl::Histogram<128> > > cast_estimator;

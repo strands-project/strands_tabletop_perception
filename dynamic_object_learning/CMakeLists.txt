@@ -6,10 +6,14 @@ project(dynamic_object_learning)
 ## is used, also find other catkin packages
 
 find_package(catkin REQUIRED COMPONENTS roscpp rospy do_learning_srv_definitions
-                                        strands_v4r genmsg)
+                                        strands_v4r genmsg
+                                        pcl_visualizer pcl_visualizer_srv_definitions)
 
 find_package(PCL 1.7 REQUIRED)
 find_package( OpenCV 2.4 REQUIRED )
+
+#set(CMAKE_BUILD_TYPE Debug)
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O1")
 
 FIND_PACKAGE(Ceres)
 IF(${Ceres_FOUND})
@@ -43,7 +47,7 @@ ENDIF(${Ceres_FOUND})
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
    INCLUDE_DIRS include
-   CATKIN_DEPENDS roscpp rospy do_learning_srv_definitions strands_v4r
+   CATKIN_DEPENDS roscpp rospy do_learning_srv_definitions strands_v4r pcl_visualizer pcl_visualizer_srv_definitions
 )
 
 ###########
@@ -59,7 +63,7 @@ include_directories(include
   ${catkin_INCLUDE_DIRS}
 )
 
-set(incs include/pcl_conversions.h)
+set(incs include/pcl_conversions.h include/do_learning.h)
 
 ## Declare a cpp executable
 add_executable(do_learning_service src/do_learning.cpp ${incs})
@@ -78,6 +82,7 @@ target_link_libraries(do_learning_service
    ${OpenCV_LIBS}
    ${STRANDSV4R_LIBS}
    ${CERES_LIBRARIES}
+   siftgpu
 )
 
 target_link_libraries(test_DOL_service

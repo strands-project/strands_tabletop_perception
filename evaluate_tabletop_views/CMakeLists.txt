@@ -6,7 +6,7 @@ project(evaluate_tabletop_views)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   std_msgs
-  nav_goals_msgs
+  nav_goals_generator
   roscpp
 )
 

@@ -337,7 +337,7 @@ main (int argc, char **argv)
                 grph[vrtx].hypothesis_single_all.push_back (hypothesis);
 
                 typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>);
-                faat_pcl::utils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms->at (j));
+                v4r::ORUtils::miscellaneous::transformNormals(normal_cloud, normal_aligned, transforms->at (j));
                 aligned_normals[j] = normal_aligned;
             }
 
@@ -780,7 +780,7 @@ main (int argc, char **argv)
             }
 
             pcl::PointCloud<pcl::Normal>::Ptr normal_cloud_trans (new pcl::PointCloud<pcl::Normal>());
-            faat_pcl::utils::miscellaneous::transformNormals(normal_cloud, normal_cloud_trans, grph_final[*vp.first].absolute_pose);
+            v4r::ORUtils::miscellaneous::transformNormals(normal_cloud, normal_cloud_trans, grph_final[*vp.first].absolute_pose);
 
             if(mv_keypoints == 0)
                 //using SIFT keypoints
@@ -1250,7 +1250,7 @@ main (int argc, char **argv)
                 aligned_models[kk] = model_aligned;
 
                 typename pcl::PointCloud<pcl::Normal>::Ptr normal_aligned (new pcl::PointCloud<pcl::Normal>);
-                faat_pcl::utils::miscellaneous::transformNormals(aligned_normals[kk], normal_aligned, hypotheses_poses_in_global_frame[kk]);
+                v4r::ORUtils::miscellaneous::transformNormals(aligned_normals[kk], normal_aligned, hypotheses_poses_in_global_frame[kk]);
                 aligned_normals[kk] = normal_aligned;
             }
 

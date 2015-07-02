@@ -1,11 +1,12 @@
-#include "singleview_object_recognizer.h"
-#include "world_representation.h"
+#include "world_representation_ros.h"
 
 #include "ros/ros.h"
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <v4r/utils/filesystem_utils.h>
+#include <v4r/ORRecognition/include/singleview_object_recognizer.h>
+#include <v4r/ORRecognition/include/world_representation.h>
 
 #include <pcl/io/pcd_io.h>
 
@@ -26,7 +27,7 @@ int main (int argc, char **argv)
     int opt_type;
     int extension_mode;
     bool play_sequence_randomly = false;
-    worldRepresentation myWorld;
+    worldRepresentationROS myWorld;
     boost::shared_ptr<Recognizer> pSingleview_recognizer (new Recognizer());
 
     double chop_at_z;
@@ -206,7 +207,7 @@ int main (int argc, char **argv)
     {
         //client_ = n_->serviceClient<recognition_srv_definitions::recognize> ( "/recognition_service/mp_recognition" );
         ros::ServiceServer ros_mv_rec_server;
-        ros_mv_rec_server = nh->advertiseService("multiview_recognotion_service", &worldRepresentation::recognizeROSWrapper, &myWorld);
+        ros_mv_rec_server = nh->advertiseService("multiview_recognotion_service", &worldRepresentationROS::recognizeROSWrapper, &myWorld);
 
         ros::Publisher vis_pc_pub;
         vis_pc_pub = nh->advertise<sensor_msgs::PointCloud2>( "multiview_recognized_objects", 0 );
