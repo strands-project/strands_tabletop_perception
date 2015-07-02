@@ -23,7 +23,7 @@
 	<arg name="publish_debug" default="false" />
 	
 	<!-- recognition service service -->
-	<node pkg="singleview_object_recognizer" type="recognition_service" name="recognition_service" output="screen" >
+	<node pkg="singleview_object_recognizer" type="recognition_service" name="recognition_service" output="screen" respawn="true" >
 		<param name="models_dir" value="$(arg models_dir)" type="string"/>
 		<param name="training_dir_sift" value="$(arg training_dir_sift)" type="string"/>
 		<param name="training_dir_shot" value="$(arg training_dir_shot)" type="string"/>

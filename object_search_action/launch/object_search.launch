@@ -9,8 +9,8 @@
   <!-- VIEW PLANNING -->
   <include file="$(find scitos_moveit_config)/launch/move_group.launch"/>
   <node name="ptu_fk" pkg="viper" type="ptu_fk"/>
-  <param name="inflation_radius" type="double" value="0.5" />  
-  <param name="views_at_pose" type="int" value="10" />  
+  <param name="inflation_radius" type="double" value="0.4" />  
+  <param name="views_at_pose" type="int" value="8" />  
 
   <!-- VIEW EVALUATION -->  
   <arg name="robot" default="scitos_simple"/>
@@ -24,14 +24,13 @@
     <arg name="map" value="$(arg map)"/>
     <arg name="is_costmap" default="$(arg is_costmap)"/>
   </include>
-  <param name="inflation_radius" type="double" value="0.5" />
 
   <!-- ACTION SERVER -->
   <node name="object_search_action" pkg="object_search_action" type="object_search_server.py" output="screen">
     <param name="camera" type="string" value="$(arg camera)"/>
     <param name="soma_map" type="string" value="$(arg soma_map)"/>
     <param name="soma_conf" type="string" value="$(arg soma_conf)"/>
-    <param name="num_of_views" type="int" value="50" />  
+    <param name="num_of_views" type="int" value="40" />  
     <param name="num_of_plans" type="int" value="1000"/>
     <param name="plan_length" type="int" value="10"/>
     <param name="rho" type="double" value="2.0"/>

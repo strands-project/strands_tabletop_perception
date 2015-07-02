@@ -43,7 +43,7 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 
-#define USE_SIFT_GPU
+//#define USE_SIFT_GPU
 //#define SOC_VISUALIZE
 
 #ifdef SOC_VISUALIZE
@@ -330,6 +330,11 @@ private:
         pass_.filter (*scene);
     }
 
+    if (scene->points.size()==0)
+{
+	std::cerr << "Input cloud is empty. No models found." << std::endl;
+	return false;
+}
     pcl::PointCloud<pcl::Normal>::Ptr normal_cloud (new pcl::PointCloud<pcl::Normal>);
     pcl::NormalEstimationOMP<PointT, pcl::Normal> ne;
     ne.setRadiusSearch(0.02f);
